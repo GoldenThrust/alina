@@ -1,0 +1,16 @@
+{
+  "name": "alina",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @alina/api\" \"npm run dev -w @alina/web\"",
+    "build": "npm run build -w @alina/api && npm run build -w @alina/web",
+    "test": "npm run test -w @alina/api",
+    "typecheck": "npm run typecheck -w @alina/api && npm run typecheck -w @alina/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

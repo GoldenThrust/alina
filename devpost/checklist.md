@@ -5,7 +5,7 @@ status: draft
 
 # Build Checklist
 
-Build mode: [learn or fast — record once chosen; carry forward on resume]
+Build mode: learn
 
 ## Slices
 
