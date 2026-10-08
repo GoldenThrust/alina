@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alina — Scope</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f6f7fb;
+      --muted: #b9c0d1;
+      --panel: #151b27;
+      --panel-2: #1d2432;
+      --line: #303a4d;
+      --accent: #79e0b2;
+      --accent-2: #8bb7ff;
+      --warm: #f4c98b;
+      --danger: #ff9d9d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #0c1018;
+      color: var(--ink);
+      font: 16px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      padding: 52px 24px 38px;
+      border-bottom: 1px solid var(--line);
+      background: radial-gradient(circle at 82% 0%, rgba(121,224,178,.14), transparent 32%), linear-gradient(150deg, #10151f, #0c1018);
+    }
+    main { max-width: 1120px; margin: auto; padding: 32px 24px 64px; }
+    h1 { margin: 0 0 8px; font-size: clamp(2rem, 6vw, 3.6rem); letter-spacing: -.04em; }
+    h2 { margin: 44px 0 14px; font-size: 1.4rem; }
+    h3 { margin: 24px 0 8px; }
+    p, li { color: var(--muted); }
+    .eyebrow { color: var(--accent); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: .78rem; }
+    .lede { max-width: 760px; font-size: 1.15rem; }
+    .card { border: 1px solid var(--line); border-radius: 18px; background: var(--panel); padding: 22px; margin: 16px 0; }
+    .card h3 { color: var(--ink); }
+    .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 22px 0; }
+    .step { position: relative; min-height: 130px; padding: 16px; border-radius: 14px; background: var(--panel-2); border: 1px solid var(--line); }
+    .step strong { display: block; color: var(--accent); margin-bottom: 8px; }
+    .step:not(:last-child)::after { content: "→"; position: absolute; right: -20px; top: 50%; color: var(--accent); font-weight: 800; z-index: 1; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .tag { display: inline-block; border-radius: 999px; padding: 4px 10px; background: rgba(121,224,178,.12); color: var(--accent); font-size: .8rem; font-weight: 700; }
+    .later { border-left: 3px solid var(--warm); padding-left: 14px; }
+    .cut { border-left: 3px solid var(--danger); padding-left: 14px; }
+    details { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); margin: 10px 0; overflow: hidden; }
+    summary { cursor: pointer; padding: 17px 20px; font-weight: 700; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; float: right; color: var(--accent); }
+    details[open] summary::after { content: "−"; }
+    details > div { padding: 0 20px 20px; color: var(--muted); }
+    .callout { border: 1px solid rgba(139,183,255,.35); background: rgba(139,183,255,.08); padding: 18px; border-radius: 14px; }
+    footer { padding: 24px; text-align: center; color: #788397; font-size: .85rem; border-top: 1px solid var(--line); }
+    @media (max-width: 760px) { .flow, .grid { grid-template-columns: 1fr; } .step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -21px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">Scope · Proof of Concept</div>
+    <h1>Alina</h1>
+    <p class="lede">A camera-assisted, AI-native skincare journal that turns repeated scans into a personal history of skin changes, plain-language insights, and personalized recommendations.</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>The Unique Kernel</h2>
+      <div class="card">
+        <p>Skinwise is not a one-time skin analyzer. Its distinctive value is the continuous agentic loop: capture a scan, understand the current skin state, compare it with prior scans, explain what changed, and recommend the next useful action while preserving the user’s preferences and control.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Core User Journey</h2>
+      <div class="flow" aria-label="Core workflow">
+        <div class="step"><strong>01 · Scan</strong><span>Alexa says “check my skin” or the user presses Scan.</span></div>
+        <div class="step"><strong>02 · Validate</strong><span>OpenCV checks face position, lighting, blur, and image quality.</span></div>
+        <div class="step"><strong>03 · Analyze</strong><span>YouCam returns cosmetic skin attributes and indicators.</span></div>
+        <div class="step"><strong>04 · Compare</strong><span>The agent retrieves history and explains changes over time.</span></div>
+        <div class="step"><strong>05 · Act</strong><span>Recommend a routine or begin confirmed PayPal checkout.</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Who It Is For</h2>
+      <div class="card">
+        <span class="tag">Skincare enthusiasts</span>
+        <p>People who want detailed trends and comparisons across days, weeks, and months, and who are interested in tracking a routine, understanding why their skin changes, and receiving recommendations that reflect both skin needs and personal preferences.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>What “Working” Looks Like</h2>
+      <div class="card">
+        <p>A user can start a scan from the dashboard or through Alexa, review current YouCam results, ask how the skin has changed since the previous scan, receive a plain-language explanation, and see a personalized recommendation.</p>
+        <p>The demo should show one real skin-analysis response, multiple saved scans, a historical comparison, an AI-generated explanation, and a recommendation informed by a small preference profile.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Proof-of-Concept Boundary</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>In scope</h3>
+          <ul>
+            <li>Simulated/test camera capture with a camera-agnostic interface</li>
+            <li>OpenCV face detection, alignment, quality checks, and best-frame selection</li>
+            <li>Real YouCam Skin Analysis API integration</li>
+            <li>Persistent scan history and trend comparisons</li>
+            <li>AI agent with tool calling and conversation memory</li>
+            <li>Dashboard, plain-language summaries, and personalized recommendations</li>
+            <li>Small user-preference profile and curated product catalog</li>
+            <li>Required Qloo product lookup with a controlled local catalog fallback</li>
+            <li>Add-to-routine and confirmed PayPal checkout request flows</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Later</h3>
+          <ul>
+            <li>Live Ring or other camera integrations</li>
+            <li>Production Alexa+ voice orchestration</li>
+
+            <li>Product catalog, cart, inventory, and fulfillment</li>
+            <li>Proactive reminders and notifications</li>
+            <li>Household profiles and shared reports</li>
+            <li>Nutrition, wearable, weather, and calendar tools</li>
+            <li>Medical claims or diagnostic advice</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Explicitly Cut</h2>
+      <div class="card cut">
+        <ul>
+          <li>Real Ring hardware integration</li>
+          <li>Automated PayPal purchases</li>
+          <li>Full Alexa+ voice experience</li>
+          <li>Advanced commerce and inventory systems</li>
+          <li>Broad wellness tracking beyond skincare</li>
+          <li>A complete multi-device or multi-camera platform</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>Agentic Platform Vision</h2>
+      <div class="callout">
+        <strong>Every integration is a tool.</strong> The AI decides when to capture, analyze, retrieve history, compare, recommend, explain, and request confirmation. New tools can be added without redesigning the whole system.
+      </div>
+    </section>
+
+    <section>
+      <h2>Review the Plan</h2>
+      <details open>
+        <summary>What is sharp</summary>
+        <div>The user journey is concrete, the target audience is specific, and the MVP proves the most valuable part of the idea: continuous history plus AI explanation.</div>
+      </details>
+      <details>
+        <summary>What remains soft</summary>
+        <div>The exact camera API access, YouCam credentials, Qloo availability, and the minimum viable product catalog are not yet established. These should be validated during technical planning.</div>
+      </details>
+    </section>
+  </main>
+
+  <footer>Markdown scope remains canonical. This companion is for visual review only.</footer>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alina — Product Requirements</title>
+  <style>
+    :root { color-scheme: dark; --ink:#f5f7fb; --muted:#b5bdca; --panel:#151b27; --panel2:#1d2432; --line:#303a4d; --accent:#79e0b2; --blue:#8bb7ff; --warm:#f4c98b; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:#0c1018; color:var(--ink); font:16px/1.6 Inter,ui-sans-serif,system-ui,sans-serif; }
+    header { padding:52px 24px 38px; border-bottom:1px solid var(--line); background:radial-gradient(circle at 82% 0%,rgba(121,224,178,.14),transparent 32%),linear-gradient(150deg,#10151f,#0c1018); }
+    main { max-width:1120px; margin:auto; padding:32px 24px 64px; }
+    h1 { margin:0 0 8px; font-size:clamp(2rem,6vw,3.6rem); letter-spacing:-.04em; }
+    h2 { margin:44px 0 14px; font-size:1.4rem; }
+    h3 { margin:24px 0 8px; }
+    p,li { color:var(--muted); }
+    .eyebrow { color:var(--accent); font-weight:700; letter-spacing:.12em; text-transform:uppercase; font-size:.78rem; }
+    .lede { max-width:760px; font-size:1.15rem; }
+    .card { border:1px solid var(--line); border-radius:18px; background:var(--panel); padding:22px; margin:16px 0; }
+    .card h3 { color:var(--ink); }
+    .flow { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:22px 0; }
+    .step { position:relative; min-height:130px; padding:16px; border-radius:14px; background:var(--panel2); border:1px solid var(--line); }
+    .step strong { display:block; color:var(--accent); margin-bottom:8px; }
+    .step:not(:last-child)::after { content:"→"; position:absolute; right:-20px; top:50%; color:var(--accent); font-weight:800; z-index:1; }
+    .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+    .tag { display:inline-block; border-radius:999px; padding:4px 10px; background:rgba(121,224,178,.12); color:var(--accent); font-size:.8rem; font-weight:700; }
+    .callout { border:1px solid rgba(139,183,255,.35); background:rgba(139,183,255,.08); padding:18px; border-radius:14px; }
+    .milestone { border-left:3px solid var(--warm); padding-left:14px; }
+    .cut { border-left:3px solid #ff9d9d; padding-left:14px; }
+    details { border:1px solid var(--line); border-radius:14px; background:var(--panel); margin:10px 0; overflow:hidden; }
+    summary { cursor:pointer; padding:17px 20px; font-weight:700; list-style:none; }
+    summary::-webkit-details-marker { display:none; }
+    summary::after { content:"+"; float:right; color:var(--accent); }
+    details[open] summary::after { content:"−"; }
+    details>div { padding:0 20px 20px; color:var(--muted); }
+    footer { padding:24px; text-align:center; color:#788397; font-size:.85rem; border-top:1px solid var(--line); }
+    @media (max-width:760px) { .flow,.grid { grid-template-columns:1fr; } .step:not(:last-child)::after { content:"↓"; right:50%; top:auto; bottom:-21px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">Product Requirements · Approved</div>
+    <h1>Alina</h1>
+    <p class="lede">An assistant-first skincare journal that turns repeated skin scans into clear, conversational progress and personalized guidance.</p>
+  </header>
+  <main>
+    <section>
+      <h2>The Core Journey</h2>
+      <div class="flow" aria-label="Core journey">
+        <div class="step"><strong>01 · Open</strong><span>See a concise current understanding of your skin.</span></div>
+        <div class="step"><strong>02 · Scan</strong><span>Capture and validate a face image with OpenCV.</span></div>
+        <div class="step"><strong>03 · Understand</strong><span>Review the current score, evidence, and plain-language summary.</span></div>
+        <div class="step"><strong>04 · Compare</strong><span>Ask Alina about changes, history, and recommendations.</span></div>
+        <div class="step"><strong>05 · Act</strong><span>Add a routine item or confirm a PayPal checkout request.</span></div>
+      </div>
+    </section>
+    <section>
+      <h2>Home Screen</h2>
+      <div class="card">
+        <span class="tag">Assistant-first</span>
+        <p>The home screen leads with the current plain-language summary, supports it with a compact score and recent-scan evidence, and ends with a contextual next action.</p>
+        <p>History and recommendations remain available, but do not compete with the understanding of the user’s skin today.</p>
+      </div>
+    </section>
+    <section>
+      <h2>First Use</h2>
+      <div class="card">
+        <p>When no scans exist, Alina explains that the first scan creates a personal skin baseline and previews the future value of tracking progress.</p>
+        <p>The primary action is <strong>Start Your First Skin Scan</strong>. The user then receives scan preparation guidance, camera capture, validation, and an initial result.</p>
+      </div>
+    </section>
+    <section>
+      <h2>Confidence and Progress</h2>
+      <div class="card milestone">
+        <h3>Transparent by design</h3>
+        <p>After one scan, Alina provides a current snapshot without claiming long-term trends. After two scans, it can describe limited differences. After four scans, it may present more specific trend-based insight.</p>
+        <p>The four-scan milestone is shown as progress, not a requirement or penalty. It updates from “1 of 4” to “2 of 4” and then continues as the user scans.</p>
+      </div>
+    </section>
+    <section>
+      <h2>Recommendations</h2>
+      <div class="card">
+        <p>Alina provides one primary product or routine recommendation, a short explanation, a confidence or limitation message, and useful alternatives when appropriate.</p>
+        <p>Qloo is required for the MVP recommendation path and is the primary product-data source. The curated local catalog is a controlled fallback only when Qloo is unavailable, unauthenticated, unusable, or temporarily failing. The UI must disclose degraded mode and must not imply that live Qloo data was used.</p>
+      </div>
+    </section>
+    <section>
+      <h2>Scan Failure and Retry</h2>
+      <div class="card">
+        <p>If capture fails, Alina names one specific issue and gives one concise correction. The user can retry without starting over.</p>
+        <p>Examples include an invisible face, insufficient light, or an image that is not clear enough.</p>
+      </div>
+    </section>
+    <section>
+      <h2>History and Conversation</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Recent scans</h3>
+          <p>A compact timeline shows the latest scans, skin score, and directional changes. It can open the complete History view.</p>
+        </div>
+        <div class="card">
+          <h3>Conversation</h3>
+          <p>The user can ask about improvement, changes, routines, or recommendations. Alina explains what is known, what is not known, and what more scans would clarify.</p>
+        </div>
+      </div>
+    </section>
+    <section>
+      <h2>States and Boundaries</h2>
+      <div class="card">
+        <ul>
+          <li>First use, first scan, and first scan complete</li>
+          <li>One or two scans with limited trend claims</li>
+          <li>Scan in progress, scan failed, and scan complete</li>
+          <li>History available and no available data</li>
+          <li>Payment request requiring explicit confirmation</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <h2>Proof of Concept</h2>
+      <div class="card">
+        <p>The MVP includes camera-agnostic capture, OpenCV validation, real YouCam analysis, persistent history, AI conversation, recommendations, required Qloo personalization, add-to-routine, and confirmed PayPal checkout request flows.</p>
+        <p>Live Ring, real-time Alexa+, production payment completion, and broader wellness tracking are deferred. Qloo is required; the local catalog is only a controlled degraded-mode fallback.</p>
+      </div>
+    </section>
+    <section>
+      <h2>Review</h2>
+      <details open><summary>Journey</summary><div>The journey is complete and understandable from first use through scan, comparison, recommendation, and action.</div></details>
+      <details><summary>Acceptance criteria</summary><div>States, failure recovery, confidence limits, progress milestones, and explicit payment confirmation are observable.</div></details>
+      <details><summary>POC boundary</summary><div>The product stays focused on skincare history, AI explanation, personalization, and a confirmed checkout request.</div></details>
+    </section>
+  </main>
+  <footer>Markdown PRD remains canonical. This companion is for visual review only.</footer>
+</body>
+</html>

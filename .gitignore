@@ -1,0 +1,7 @@
+# Local Devpost learning context (never commit learner profiles or credentials)
+devpost/learner-profile.md
+
+# Local environment files
+.env
+.env.*
+!.env.example
