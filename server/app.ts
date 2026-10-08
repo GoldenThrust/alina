@@ -1,0 +1,161 @@
+import Fastify from "fastify";
+import { prisma } from "./config/prisma.ts";
+import {
+  serializerCompiler,
+  validatorCompiler,
+  type ZodTypeProvider,
+} from "fastify-type-provider-zod";
+import { config } from "./config/index.ts";
+import APIError from "./errors/APIError.ts";
+import "./queues/index.ts";
+import fastifyOauth2 from "@fastify/oauth2";
+import superjson from "superjson";
+import multipart from "@fastify/multipart";
+
+import { env } from "./config/env.ts";
+
+const { GOOGLE_CONFIGURATION, FACEBOOK_CONFIGURATION, X_CONFIGURATION } =
+  fastifyOauth2;
+
+export function buildApp() {
+  const app = Fastify({
+    logger: {
+      file: "log/server.txt",
+    },
+  });
+
+  app.withTypeProvider<ZodTypeProvider>();
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
+
+  app.setReplySerializer((payload) => {
+    return JSON.stringify(superjson.serialize(payload)["json"]);
+  });
+
+  app.setErrorHandler((error: any, req, res) => {
+    if (error instanceof APIError) {
+      return res.status(error.statusCode).send({
+        message: error.message,
+      });
+    }
+
+    if (error.statusCode === 429) {
+      return res.status(429).send({
+        message: "You hit the rate limit! Slow down Please!",
+      });
+    }
+
+    if (error.validation) {
+      return res.status(400).send({
+        message: "Validation failed",
+        errors: error.message,
+      });
+    }
+
+    req.log.error(error);
+
+    return res.status(error.statusCode || 500).send({
+      message: error.message || "Internal Server Error",
+    });
+  });
+
+  // register plugins
+  app.register(import("@fastify/rate-limit"), {
+    max: 100,
+    timeWindow: "1 minute",
+  });
+  app.register(import("@fastify/helmet"));
+  app.register(import("@fastify/cors"), {
+    origin: config.env.CLIENT_URL,
+    credentials: true,
+  });
+
+  app.register(import("@fastify/jwt"), {
+    secret: config.env.ACCESS_TOKEN_SECRET,
+  });
+
+  app.register(import("./plugins/auth.ts"));
+
+  app.register(fastifyOauth2, {
+    name: "googleOAuth2",
+    scope: ["profile", "email"],
+    credentials: {
+      client: {
+        id: config.env.GOOGLE_CLIENT_ID,
+        secret: config.env.GOOGLE_CLIENT_SECRET,
+      },
+      auth: GOOGLE_CONFIGURATION,
+    },
+    startRedirectPath: "/auth/google",
+    callbackUri: config.env.GOOGLE_CALLBACK_URL,
+  });
+
+  app.register(fastifyOauth2, {
+    name: "XOAuth2",
+    scope: ["tweet.read", "users.read", "offline.access"],
+    credentials: {
+      client: {
+        id: config.env.X_CLIENT_ID,
+        secret: config.env.X_CLIENT_SECRET,
+      },
+      auth: X_CONFIGURATION,
+    },
+    startRedirectPath: "/auth/X",
+    callbackUri: config.env.X_CALLBACK_URL,
+  });
+
+  app.register(fastifyOauth2, {
+    name: "facebookOAuth2",
+    scope: ["email"],
+    credentials: {
+      client: {
+        id: config.env.FACEBOOK_CLIENT_ID,
+        secret: config.env.FACEBOOK_CLIENT_SECRET,
+      },
+      auth: FACEBOOK_CONFIGURATION,
+    },
+    startRedirectPath: "/auth/facebook",
+    callbackUri: config.env.FACEBOOK_CALLBACK_URL,
+  });
+
+  app.register(import("./plugins/prisma.ts"));
+  app.register(import("./plugins/redis.ts"));
+
+  app.register(import("@fastify/static"), {
+    root: env["UPLOAD_DIR"],
+    prefix: "/public/",
+  });
+
+  app.register(multipart, {
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5 MB
+      files: 1,
+    },
+  });
+
+  // register routes
+  app.register(import("./routes/api.routes.ts"), {
+    prefix: "/api",
+  });
+
+  app.get("/health", async () => ({ status: "ok", service: "alina-api" }));
+
+  app.get("/", function (_, reply) {
+    reply.send("Welcome to Alina API! Visit /api for API routes.");
+  });
+  
+  app.get("/hello", function (_, reply) {
+    reply.send("Hello from Alina API! Visit /api for API routes.");
+  });
+
+  // Hooks
+  app.addHook("onClose", async () => {
+    await prisma.$disconnect();
+  });
+
+  app.addHook("onError", async () => {
+    await prisma.$disconnect();
+  });
+
+  return app;
+}

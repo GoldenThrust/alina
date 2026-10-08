@@ -1,0 +1,81 @@
+<mjml>
+  <mj-head>
+    <mj-title>YummyHouse Account Email Change Warning</mj-title>
+    <mj-preview>Someone is trying to change your account email</mj-preview>
+
+    <mj-attributes>
+      <mj-all font-family="Helvetica, Arial, sans-serif" />
+      <mj-text font-size="14px" color="#555555" line-height="1.6" />
+      <mj-button
+        background-color="#ff9800"
+        color="#ffffff"
+        border-radius="6px"
+      />
+    </mj-attributes>
+
+    <mj-style inline="inline">
+      .container { max-width: 500px; } .warning-box { background-color: #fff3cd;
+      border-left: 4px solid #ffc107; padding: 12px; margin: 15px 0; }
+    </mj-style>
+  </mj-head>
+
+  <mj-body background-color="#f5f5f5">
+    {{> header }}
+
+    <mj-section
+      css-class="container"
+      background-color="#ffffff"
+      padding="20px"
+      border-radius="8px"
+    >
+      <mj-column>
+        <mj-text> Hello {{ name }}, </mj-text>
+
+        <mj-text>
+          <strong>⚠️ Security Alert</strong>
+        </mj-text>
+
+        <mj-text>
+          Someone has requested to change the email address associated with your
+          YummyHouse account.
+        </mj-text>
+
+        <mj-text>
+          If you made this request and want to proceed with the email change,
+          you can ignore this message.
+        </mj-text>
+
+        <mj-text>
+          If you did <strong>NOT</strong> authorize this email change, click the
+          button below to cancel it:
+        </mj-text>
+
+        <mj-button href="{{revert_link}}" width="100%">
+          Cancel Email Change
+        </mj-button>
+
+        <mj-divider border-color="#eeeeee" />
+
+        <mj-text font-size="12px" color="#999999">
+          This revert link will expire in
+          <strong>{{ expiry_days }} days</strong>.
+        </mj-text>
+
+        <mj-text font-size="12px" color="#999999">
+          If the button doesn't work, copy and paste this link into your
+          browser:
+        </mj-text>
+
+        <mj-text font-size="12px" color="#ff7a00"> {{ revert_link }} </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section padding="10px">
+      <mj-column>
+        <mj-text align="center" font-size="12px" color="#aaaaaa">
+          © {{ year }} YummyHouse. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
