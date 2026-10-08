@@ -9,14 +9,14 @@ Build mode: learn
 
 ## Slices
 
-- [ ] **1. The app starts with a usable local skin baseline**
+- [x] **1. The app starts with a usable local skin baseline**
   Becomes usable: A running frontend and API show a first-use welcome state, a seeded scan baseline, and a clear “Start Your First Skin Scan” action.
   Why now: Establishes the project’s runnable shell and assistant-first entry point before integrating external services.
   PRD ref: `prd.md > The Core Journey`, `prd.md > States and Boundaries`, `prd.md > What We're Building`
   Spec ref: `spec.md > Where It Runs and How Someone Tries It`, `spec.md > File Structure`, `spec.md > Data Model`, `spec.md > Look and Feel`
   Build: Create the monorepo and package scripts, scaffold the React client and Node.js API, add environment configuration, start PostgreSQL through Docker Compose, and provide a seeded local baseline with a testable camera fallback.
   Verify (mechanical): Run the development servers, confirm the API health endpoint and frontend load successfully, and verify the seeded baseline appears without requiring a live camera or external API.
-  Learner check: Open the app, confirm the assistant-first home experience, and identify the primary action for a first-time user.
+  Learner check: Open the app, confirm the assistant-first home experience, identify the primary action for a first-time user, and review the artistic organic scan visual.
   Commit: `Add runnable Alina baseline`
 
 - [ ] **2. A valid frame becomes a normalized YouCam scan**
