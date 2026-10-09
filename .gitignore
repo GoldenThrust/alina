@@ -6,3 +6,5 @@ devpost/learner-profile.md
 .env.*
 !.env.example
 node_modules
+server/.agents/
+.claude/
