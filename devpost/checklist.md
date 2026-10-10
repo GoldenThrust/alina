@@ -1,6 +1,6 @@
 ---
 doc: checklist
-status: draft
+status: approved
 ---
 
 # Build Checklist
@@ -9,15 +9,15 @@ Build mode: learn
 
 ## Slices
 
-- [x] **1. The app starts with a usable local skin baseline**
-  Becomes usable: A running frontend and API show a first-use welcome state, a seeded scan baseline, and a clear “Start Your First Skin Scan” action.
-  Why now: Establishes the project’s runnable shell and assistant-first entry point before integrating external services.
-  PRD ref: `prd.md > The Core Journey`, `prd.md > States and Boundaries`, `prd.md > What We're Building`
-  Spec ref: `spec.md > Where It Runs and How Someone Tries It`, `spec.md > File Structure`, `spec.md > Data Model`, `spec.md > Look and Feel`
-  Build: Create the monorepo and package scripts, scaffold the React client and Node.js API, add environment configuration, start PostgreSQL through Docker Compose, and provide a seeded local baseline with a testable camera fallback.
-  Verify (mechanical): Run the development servers, confirm the API health endpoint and frontend load successfully, and verify the seeded baseline appears without requiring a live camera or external API.
-  Learner check: Open the app, confirm the assistant-first home experience, identify the primary action for a first-time user, and review the artistic organic scan visual.
-  Commit: `Add runnable Alina baseline`
+- [ ] **1. All twelve Alina screens form a navigable visual prototype**
+  Becomes usable: The user can move through Landing, Login, Register, Dashboard, Scan, Scan Result, Progress, Recommendations, Chat, Routine, Profile, and a presentation-only Subscription screen in a responsive interface based on the supplied reference.
+  Why now: The active client entry currently renders a single baseline page; the Landing, Dashboard, and Scan page files checked are empty. A complete navigable prototype gives the learner an early, reviewable product and lets feedback shape the service integrations that follow.
+  PRD ref: `prd.md > Screens and Layout`, `prd.md > Look and Feel`, `prd.md > First-Use Experience`, `prd.md > What We're Building`, `prd.md > States and Boundaries`
+  Spec ref: `spec.md > Where It Runs and How Someone Tries It`, `spec.md > Look and Feel`, `spec.md > Components`, `spec.md > File Structure`
+  Build: Reuse the existing app/client setup. Add routing, the responsive public/app navigation shells, all twelve screens, consistent reference-led styling, and clearly labeled seeded demo content. Connect Login/Register to the existing mounted server auth routes with real validation and error states; do not simulate successful authentication. Subscription remains visual-only; do not add subscription billing. Do not scaffold another project or duplicate app/server setup.
+  Verify (mechanical): Run the client lint and production build; launch the client and visit all twelve screens through navigation, confirming each renders without runtime errors at desktop and mobile widths. Verify Login/Register form validation and the mounted auth API's response states without exposing credentials.
+  Learner check: Open the app, navigate through all twelve screens, try the visible actions, and tell me what feels closest to or furthest from the supplied reference.
+  Commit: `Build Alina's twelve-screen UI prototype`
 
 - [ ] **2. A valid frame becomes a normalized YouCam scan**
   Becomes usable: The user can capture or upload an image, the backend validates it with OpenCV, and a successful YouCam response becomes a persisted normalized scan.
@@ -61,7 +61,7 @@ Build mode: learn
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored — [slice 1 and the first complete scan path]
+- [ ] Early usable behavior explored — [all twelve screens after slice 1]
 - [ ] Qloo recommendation contract reviewed and accepted — [slice 4]
 - [ ] Final kick-the-tires exploration and feedback completed
 
@@ -82,3 +82,7 @@ Reflection: [offered/answered/declined/already covered — personal answer belon
 Activity mode: [live app and editor, explicit static fallback, focused alternative, prior practice, or recap]
 
 ## Revisions
+
+- Expanded the approved POC to include all twelve supplied reference screens; Subscription is presentation-only with no billing or subscription payment, as approved by the learner.
+- Reset the former Slice 1 completion because it described a different app shell; the active `app/client/src/App.tsx` is a single baseline screen, and the checked Landing, Dashboard, and Scan page files are empty placeholders.
+- The client Login/Register forms have native validation and surface API errors, but real account auth is blocked: the current server dev entry is a seed stub with no loaded Prisma binding, while the Fastify entry has unresolved generated Prisma imports.

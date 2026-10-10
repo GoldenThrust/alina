@@ -21,23 +21,31 @@ The product’s success is not measured by the amount of data displayed. It is m
 
 ## Screens and Layout
 
-The primary product surface is a single home screen. It is intentionally assistant-first: the user sees a personal summary and a clear next action rather than a dashboard full of charts or medical-style information.
+The product uses the supplied 12-screen reference as its page and navigation map. Public pages use a compact top navigation; signed-in pages share a persistent left navigation rail on desktop and a compact navigation treatment on narrow screens. Each page keeps one clear primary task, with shared spacing, typography, controls, and status styles.
 
-The home screen is organized in this order:
+The screen inventory is:
 
-1. **Present moment:** a greeting and a plain-language summary of the user's skin today.
-2. **Evidence:** a compact skin score and a short timeline showing the latest available scans.
-3. **Next step:** a contextual recommendation or prompt for the user to scan again, ask Alina, review progress, or view recommendations.
-4. **Secondary history:** a compact recent-scans section that can open the dedicated History view.
+- **Landing:** introduce Alina and offer clear sign-in and first-scan actions.
+- **Login and Register:** provide accessible, validated account forms and navigation between the two states.
+- **Dashboard:** show the current plain-language summary, supporting skin score and trends, latest recommendation, and quick actions.
+- **Scan:** show capture guidance, camera or test-image entry, progress, and retry states.
+- **Scan Result:** show the current scan summary, key attributes, and next actions.
+- **Progress:** show the scan timeline, comparisons, and confidence-aware trend summaries.
+- **Recommendations:** show a primary product recommendation, alternatives, explanation, and whether Qloo or the disclosed fallback supplied the result.
+- **Chat:** let the user ask about current and historical scan evidence and see qualified answers.
+- **Routine:** show saved routine items and allow a recommendation to be added.
+- **Profile:** show and edit the small preference profile and account details needed by the POC.
+- **Subscription:** present a visual plan comparison only. It must not initiate billing, subscription checkout, or payment.
 
-The layout should remain readable on a typical mobile or desktop viewport. There is no need for a separate analytics page in the MVP.
+Screens must be connected through working navigation and use clearly identified seeded demo data where live behavior has not yet been integrated. The layout must remain usable on mobile and desktop; the dashboard remains assistant-first rather than becoming a dense analytics page.
 
 ## Look and Feel
 
-The experience should feel calm, trusted, and conversational. It should not resemble a clinical dashboard or a generic AI app.
+The experience should follow the supplied reference's airy skincare-product interface while remaining calm, trusted, and conversational. It should not resemble a clinical dashboard or a generic AI app.
 
-- Use a modern, approachable visual style with clear hierarchy and generous spacing.
-- Prefer warm, neutral colors and a restrained accent color that communicates progress without appearing medical or alarming.
+- Use light neutral page surfaces, crisp readable text, generous spacing, and a restrained violet primary accent. Use distinct, quiet status colors for trends rather than letting violet dominate every surface.
+- Use a compact public top navigation and a consistent signed-in navigation rail; adapt navigation for narrow screens without hiding the current page or primary action.
+- Keep repeated information compact and scannable; do not nest framed cards or use large decorative dashboard panels.
 - Use plain-language labels such as “Your skin today,” “Your skin journey,” and “What’s next?”
 - Display skin scores and trend indicators as supporting evidence, not as the main message.
 - Use small, consistent visual indicators to show direction, such as improving, stable, or needing attention.
@@ -244,6 +252,8 @@ Alina should explain when it is using current evidence, previous scans, or user 
 - The skin score and compact trend indicators are supporting evidence.
 - The latest scans appear in a compact timeline, with a dedicated History view for deeper analysis.
 - The scan flow uses a simulated or test camera source in the MVP, while real YouCam results remain the analysis source.
+- The twelve reference screens form one connected POC experience. Until an integration slice is complete, seeded demo data must be identified as demo content rather than presented as a live service result.
+- Subscription is a presentation-only screen; it has no billing, plan enforcement, or subscription checkout.
 - Qloo is required for the MVP recommendation path and is the primary product-data source.
 - The curated catalog is a controlled fallback only when Qloo is unavailable, unauthenticated, or returns unusable data.
 - The user receives one primary recommendation and a small set of alternatives.

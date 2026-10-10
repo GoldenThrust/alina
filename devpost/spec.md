@@ -7,7 +7,7 @@ status: approved
 
 ## How This Works, In Plain Language
 
-Alina is a small local application with a visual frontend, a TypeScript API, and a PostgreSQL database. The browser captures a face image, the backend validates it with OpenCV, and the backend sends the approved frame to YouCam Skin Analysis. The returned skin attributes are stored with the scan, compared with earlier scans, and used to produce a plain-language summary and recommendation.
+Alina is a local application with a React frontend, a TypeScript API, and PostgreSQL persistence. The browser captures a face image, the backend validates it with OpenCV, and the backend sends the approved frame to YouCam Skin Analysis. The returned skin attributes are stored with the scan, compared with earlier scans, and used to produce a plain-language summary and recommendation.
 
 The AI agent coordinates those steps through tool calls. It does not replace the camera, analysis, history, or recommendation services; it decides which service to use and explains the result in the user’s language.
 
@@ -21,45 +21,44 @@ PRD ref: `prd.md > The Core Journey`.
 
 ## Stack
 
-- **Frontend:** React with TypeScript and a lightweight component library or CSS-based styling.
-- **Backend:** Node.js with TypeScript, Fastify or Express, and a typed request/response layer.
-- **Database:** PostgreSQL with Prisma or Node.js SQL migrations.
+- **Frontend:** React with TypeScript and Vite, using the existing `app/client` package and dependencies.
+- **Backend:** Node.js with TypeScript and the existing Fastify server in `app/server`.
+- **Database:** PostgreSQL through the existing Prisma configuration and migration workflow.
 - **Computer vision:** Backend OpenCV process for face detection, alignment, blur, and quality validation.
 - **Skin analysis:** YouCam Skin Analysis API through a dedicated client with explicit request and response contracts.
 - **AI agent:** A controlled tool-calling agent that receives the current scan, history, and user preferences and returns a concise explanation or recommendation.
-- **Persistence:** PostgreSQL stores scans, attributes, preferences, recommendations, conversation state, and routine actions.
-- **Testing:** Vitest or Jest for backend unit tests, Playwright for browser workflow tests, and a seeded local test camera or uploaded image for demo automation.
+- **Persistence:** PostgreSQL stores scans, attributes, preferences, recommendations, conversation state, routine actions, and checkout intent.
+- **Testing:** Reuse the existing client lint/build and server test/type-check scripts; add no new test framework solely for the visual prototype.
 
-The frontend and backend are separated so the UI can evolve independently from the agent and integration contracts. The learner selected Node.js + TypeScript for the backend; this keeps the full application in one programming language while preserving separate runtime boundaries.
-
-Documentation links will be added for each major dependency after the exact package versions and API access details are confirmed.
+The frontend and backend are separated so the UI can evolve independently from the agent and integration contracts. Reuse the installed package versions and scripts rather than scaffolding another application or replacing the chosen stack.
 
 ## Where It Runs and How Someone Tries It
 
-The application runs locally as two processes:
+The application runs locally as two processes, using the existing manifests:
 
-1. Start the Node.js API and PostgreSQL.
-2. Start the React development server.
-3. Open the frontend URL shown by the development server.
-4. Enter a display name and select the camera permission needed for live capture.
-5. Scan the face, review the current result, ask Alina a question, and review the recommendation.
-6. Show the latest scan, a second saved scan, a historical comparison, and a recommendation in the demo recording.
+1. Apply or verify the configured database migration from `app/server`.
+2. Start the API with `npm run dev` from `app/server`.
+3. Start the frontend with `npm run dev` from `app/client`.
+4. Open the Vite URL shown by the client development server.
+5. Navigate through the twelve screens, then try the scan, history, chat, and recommendation journeys as their real integrations are added.
+6. The Subscription page is a visual comparison only and does not start billing or payment.
 
-The minimum local prerequisites are Node.js 20 or later, PostgreSQL, a YouCam API credential, and an OpenCV-capable runtime. The OpenCV package will run on the backend, so the browser only captures and uploads the frame.
+The minimum local prerequisites are the Node.js version declared by the server package, the configured PostgreSQL service, and service credentials when an external integration is exercised. The frontend prototype must remain reviewable with its explicitly labeled seeded demo content.
 
 The submission requires a short demo video and a public GitHub repository. A hosted URL is optional and does not replace either requirement. Deployment can be deferred to `6-ship` unless the learner requests a direct sharing link.
 
 ## Look and Feel
 
-The interface follows the PRD’s calm, trusted, assistant-first direction.
+The interface follows the supplied reference’s airy skincare-product layout while keeping Alina’s language calm, trusted, and non-clinical.
 
-- Use a modern, warm neutral palette with a restrained green accent.
-- Use a clean sans-serif typeface with strong hierarchy and generous spacing.
-- Keep the current summary prominent and treat score and trend indicators as supporting evidence.
-- Use plain labels such as “Your skin today,” “Recent scans,” “What’s next?”, and “Your skin journey.”
-- Use compact cards and directional indicators rather than dense tables or charts.
-- Avoid clinical terminology, alarming language, and diagnostic claims in the home screen.
-- Keep the experience responsive on desktop and mobile.
+- Use light neutral surfaces, crisp readable text, generous spacing, and a restrained violet primary accent with distinct, quiet trend-status colors.
+- Use compact public navigation and a consistent signed-in navigation rail; adapt it for narrow screens.
+- Keep pages focused on one primary task and make active navigation obvious.
+- Keep the current skin summary prominent and use scores and trends only as supporting evidence.
+- Use compact repeated information rather than nested cards or dense analytics panels.
+- Avoid clinical terminology, alarming language, and diagnostic claims.
+- Clearly identify seeded content as demo data until it is connected to a live service.
+- Keep Subscription presentational, without billing, plan enforcement, or subscription checkout.
 
 The styling implementation must remain proportional to the POC and must not introduce a full design system.
 
@@ -130,7 +129,7 @@ PRD ref: `prd.md > Conversation State and Persistence`, `prd.md > States and Bou
 - `created_at`
 - `updated_at`
 
-The user is the single local account. Authentication is intentionally omitted for the POC.
+The existing server auth module owns registration and login. The POC keeps one personal skin journey per signed-in user and does not add household profiles or multi-user sharing.
 
 ### Scan
 
@@ -228,60 +227,40 @@ The checkout intent is a request to begin payment. It does not contain payment c
 
 ```text
 alina/
-├── client/
-│   ├── src/
-│   │   ├── App.tsx                         # Main assistant-first application
-│   │   ├── components/
-│   │   │   ├── HomeScreen.tsx              # Current summary and quick actions
-│   │   │   ├── ScanFlow.tsx               # Camera preparation and capture
-│   │   │   ├── ScanTimeline.tsx           # Recent scans
-│   │   │   ├── HistoryView.tsx             # Detailed historical comparison
-│   │   │   ├── RecommendationCard.tsx      # Recommendation and confidence
-│   │   │   └── CheckoutConfirmation.tsx   # Explicit payment request confirmation
-│   │   ├── features/
-│   │   │   ├── camera/                     # Camera capture abstraction
-│   │   │   ├── scans/                      # Scan, history, and result APIs
-│   │   │   ├── agent/                      # Conversation and recommendation tools
-│   │   │   └── preferences/                # Preference profile
-│   │   ├── api/                           # Typed frontend API clients
-│   │   ├── types/                         # Shared frontend contracts
-│   │   └── styles/                        # Component styling and design tokens
-│   ├── package.json
-│   └── vite.config.ts
-├── server/
-│   ├── src/
-│   │   ├── app.ts                         # Fastify or Express application setup
-│   │   ├── routes/
-│   │   │   ├── scans.ts                   # Scan capture and history endpoints
-│   │   │   ├── agent.ts                   # Conversation and recommendation endpoints
-│   │   │   ├── preferences.ts              # Preference endpoints
-│   │   │   └── checkout.ts                 # Checkout intent and confirmation endpoints
-│   │   ├── services/
-│   │   │   ├── cv/                        # OpenCV validation
-│   │   │   ├── youcam/                     # YouCam API client
-│   │   │   ├── history/                    # Scan comparison and trends
-│   │   │   ├── agent/                      # Agent orchestration and tool calls
-│   │   │   └── recommendations/             # Catalog matching and explanation
-│   │   ├── repositories/                   # Database query layer
-│   │   ├── migrations/                     # PostgreSQL migrations
-│   │   ├── config/                         # Environment configuration
-│   │   └── types/                          # Shared backend contracts
-│   ├── package.json
-│   └── tsconfig.json
+├── app/
+│   ├── client/
+│   │   ├── src/
+│   │   │   ├── App.tsx                     # Route tree and application shell
+│   │   │   ├── components/                 # Shared navigation and UI components
+│   │   │   ├── pages/                       # Twelve screen components
+│   │   │   ├── features/                    # Camera, scans, agent, preferences
+│   │   │   ├── services/                    # Typed API clients
+│   │   │   ├── stores/                      # Client interaction state
+│   │   │   ├── types/                       # Frontend contracts
+│   │   │   └── index.css                    # Global styles and design tokens
+│   │   ├── package.json
+│   │   └── vite.config.ts
+│   └── server/
+│       ├── src/
+│       │   ├── app.ts                       # Existing Fastify application
+│       │   ├── routes/                      # API route registration
+│       │   ├── modules/auth/                # Existing authentication module
+│       │   ├── services/                    # Integration and domain services
+│       │   ├── prisma/                      # Prisma Composer/PostgreSQL layer
+│       │   ├── config/                      # Environment and service configuration
+│       │   └── tests/                       # Unit and integration tests
+│       ├── package.json
+│       └── prisma.config.ts
 ├── devpost/
 │   ├── learner-profile.md
 │   ├── scope.md
 │   ├── prd.md
 │   ├── spec.md
 │   └── checklist.md
-├── package.json
-├── docker-compose.yml                      # Local PostgreSQL and API services
-├── .env.example
-├── README.md
 └── .gitignore
 ```
 
-Generated dependency directories, build outputs, and lockfiles are omitted from the conceptual tree. Exact files will be selected during the build.
+This map reflects the active `app/client` and `app/server` layout. Reuse their existing manifests, Vite setup, Fastify server, and Prisma configuration; do not scaffold a second project or assume root-level client/server directories. Generated dependency directories, build outputs, and lockfiles are omitted.
 
 ## External Services and Dependencies
 
@@ -350,7 +329,7 @@ The YouCam response must be normalized into the local schema before it reaches t
 - **Live camera capture with a seeded fallback** — this proves the full interaction without requiring a physical device or camera integration.
 - **A curated product catalog instead of a full commerce platform** — this tests recommendation quality and checkout intent without inventory, fulfillment, or payment completion.
 - **Confirmed PayPal checkout request instead of automatic payment** — this satisfies the user’s control requirement and avoids production payment infrastructure.
-- **A single-user profile instead of authentication and multi-user sync** — this keeps the first build focused on the one personal skin journey.
+- **One personal skin journey with the existing account auth module instead of household profiles and multi-user sharing** — this keeps the build focused on the POC user journey.
 - **Agent tool calls over a local API instead of a general-purpose agent platform** — this demonstrates orchestration without adding unrelated wellness tools or background services.
 
 ## Decisions and Open Issues

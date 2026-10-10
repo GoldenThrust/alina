@@ -25,7 +25,7 @@ The user can then choose to add the recommendation to their routine or start a P
 
 The experience should feel like a quiet, knowledgeable personal assistant rather than a conventional dashboard. It should make progress visible without overwhelming the user, use plain language for skin metrics, and remember conversations and scans over time.
 
-The visual direction should be modern, calm, and trustworthy. Historical trends should feel as important as the current result, and recommendations should explain why they match the user's skin and preferences.
+Use the supplied 12-screen reference as the visual and navigation direction: a light, airy interface, a compact public top navigation, a persistent app navigation rail, and focused page layouts with a restrained violet accent. Keep the product calm and trustworthy; historical trends should feel as important as the current result, and recommendations should explain why they match the user's skin and preferences.
 
 ## Why This Matters to the Learner
 
@@ -46,7 +46,10 @@ The proof should be convincing in a short demo: one real skin-analysis response,
 - Real YouCam Skin Analysis API integration
 - Persistent skin-history records and trend comparisons
 - An AI agent that calls the camera, analysis, history, and recommendation tools
+- A navigable frontend covering Landing, Login, Register, Dashboard, Scan, Scan Result, Progress, Recommendations, Chat, Routine, Profile, and Subscription
 - Dashboard with current results, recent history, trend summaries, and recommendations
+- Seeded demo content and working page navigation so all twelve screens can be reviewed before external services are connected
+- A presentation-only Subscription screen; it does not start billing or collect payment
 - Small user-preference profile for brand, routine, and lifestyle preferences
 - Required Qloo product lookup with a controlled local catalog fallback
 - Alexa-style voice entry through a button or accessible invocation path
@@ -71,6 +74,7 @@ The proof should be convincing in a short demo: one real skin-analysis response,
 
 - Full production-grade camera hardware and a real Ring integration
 - Live PayPal checkout completion rather than a confirmed checkout request
+- Subscription billing, plan enforcement, and subscription payment processing
 - Voice-first automation through Alexa+ rather than a dashboard fallback
 - Advanced product catalog, commerce, inventory, and fulfillment systems
 - Broad wellness data collection beyond skin history
