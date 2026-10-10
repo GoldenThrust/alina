@@ -6,7 +6,7 @@ import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
 import { fileTypeStream } from "file-type";
-import { env } from "../../../config/env.ts";
+import { env } from "../../config/env.ts";
 
 type File = {
   stream: Readable;

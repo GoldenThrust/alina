@@ -64,9 +64,9 @@ afterEach(async () => {
   redisStore.clear();
   vi.restoreAllMocks();
 
-  await prisma.oAuthAccount.deleteMany({});
-  await prisma.session.deleteMany({});
-  await prisma.user.deleteMany({});
+  await db.orm.public.oAuthAccount.deleteMany({});
+  await db.orm.public.session.deleteMany({});
+  await db.orm.public.user.deleteMany({});
 });
 
 function uniqueEmail(prefix: string) {
@@ -84,7 +84,7 @@ async function createUserRecord({
   password?: string;
   verified?: boolean;
 } = {}) {
-  return await prisma.user.create({
+  return await db.orm.public.user.create({
     data: {
       email,
       name,
@@ -148,7 +148,7 @@ describe("Auth Routes", () => {
       message: "User created. Verification email sent",
     });
 
-    const createdUser = await prisma.user.findUnique({
+    const createdUser = await db.orm.public.user.findUnique({
       where: {
         email,
       },
@@ -214,7 +214,7 @@ describe("Auth Routes", () => {
 
     expect(response.statusCode).toBe(200);
 
-    const updatedUser = await prisma.user.findUnique({
+    const updatedUser = await db.orm.public.user.findUnique({
       where: {
         email: user.email,
       },
@@ -265,7 +265,7 @@ describe("Auth Routes", () => {
       refreshToken: expect.any(String),
     });
 
-    const verifiedUser = await prisma.user.findUnique({
+    const verifiedUser = await db.orm.public.user.findUnique({
       where: {
         id: userRecord.id,
       },
@@ -386,7 +386,7 @@ describe("Auth Routes", () => {
 
     expect(response.statusCode).toBe(200);
 
-    const updatedUser = await prisma.user.findUnique({
+    const updatedUser = await db.orm.public.user.findUnique({
       where: {
         id: userRecord.id,
       },

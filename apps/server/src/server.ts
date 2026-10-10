@@ -15,7 +15,7 @@ const start = async () => {
     console.info(`Server running on http://${HOST}:${PORT} 🚀`);
   } catch (err) {
     console.error(err);
-    await prisma.$disconnect();
+    await db.orm.public.$disconnect();
     app.log.error(err);
     process.exit(1);
   }

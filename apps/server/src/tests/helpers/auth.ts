@@ -10,7 +10,7 @@ export async function createAuthenticatedUser(app: FastifyInstance) {
         password: "Password123@",
     };
 
-    const createdUser = await prisma.user.create({
+    const createdUser = await db.orm.public.user.create({
         data: {
             email: user.email,
             name: user.name,

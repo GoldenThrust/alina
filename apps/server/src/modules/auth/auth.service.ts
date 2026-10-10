@@ -22,7 +22,7 @@ export async function handleOAuthLogin(
   let user = null;
 
   if (profile.email) {
-    user = await prisma.user.findUnique({
+    user = await db.orm.public.user.findUnique({
       where: {
         email: profile.email,
       },
@@ -30,7 +30,7 @@ export async function handleOAuthLogin(
   }
 
   if (!user) {
-    user = await prisma.user.create({
+    user = await db.orm.public.user.create({
       data: {
         email: profile.email,
         name: profile.name,
@@ -38,7 +38,7 @@ export async function handleOAuthLogin(
     });
   }
 
-  await prisma.oAuthAccount.upsert({
+  await db.orm.public.oAuthAccount.upsert({
     where: {
       provider_providerId: {
         provider: profile.provider,
@@ -65,7 +65,7 @@ export default async function register(payload: {
   email: string;
   password: string;
 }) {
-  const existingUser = await prisma.user.findFirst({
+  const existingUser = await db.orm.public.user.findFirst({
     where: {
       email: payload.email,
     },
@@ -108,7 +108,7 @@ export default async function register(payload: {
 
   const hashPassword = await hash(payload.password);
 
-  const user = await prisma.user.upsert({
+  const user = await db.orm.public.user.upsert({
     where: {
       email: payload.email,
     },
@@ -148,7 +148,7 @@ export async function login(
   res: FastifyReply,
   payload: { email: string; password: string },
 ) {
-  const user = await prisma.user.findUnique({
+  const user = await db.orm.public.user.findUnique({
     where: {
       email: payload.email,
     },
@@ -210,7 +210,7 @@ export async function verifyAccountToken(
     throw new APIError("Invalid or expired verification link", 401);
   }
 
-  const user = await prisma.user.update({
+  const user = await db.orm.public.user.update({
     where: {
       id: userId,
     },
@@ -239,7 +239,7 @@ export async function verifyAccountToken(
 }
 
 export async function requestResetPassword(email: string) {
-  const user = await prisma.user.findFirst({
+  const user = await db.orm.public.user.findFirst({
     where: {
       email: email,
     },
@@ -287,7 +287,7 @@ export async function resetPassword(token: string, password: string) {
 
   const hashPassword = await hash(password);
 
-  const user = await prisma.user.update({
+  const user = await db.orm.public.user.update({
     where: {
       id: userId,
     },
@@ -319,7 +319,7 @@ export async function getNewToken(
 ) {
   const { payload, session } = await verifyRefreshToken(req, token);
 
-  const user = await prisma.user.findUnique({
+  const user = await db.orm.public.user.findUnique({
     where: {
       id: payload.sub,
     },
@@ -346,7 +346,7 @@ export async function revokeSession(
 ) {
   const { session } = await verifyRefreshToken(req, token);
 
-  await prisma.session.update({
+  await db.orm.public.session.update({
     where: {
       id: session.id,
     },
@@ -376,7 +376,7 @@ export async function revokeSession(
 }
 
 export async function updateProfile(jwt: JwtPayload, payload: UserUpdateInput) {
-  await prisma.user.update({
+  await db.orm.public.user.update({
     where: {
       id: jwt.sub,
     },
@@ -391,7 +391,7 @@ export async function requestResetEmail(
   email: string,
   password: string,
 ) {
-  const user = await prisma.user.findUnique({
+  const user = await db.orm.public.user.findUnique({
     where: {
       id: jwt.sub,
     },
@@ -407,7 +407,7 @@ export async function requestResetEmail(
     throw new APIError("Invalid password", 401);
   }
 
-  const existingUser = await prisma.user.findUnique({
+  const existingUser = await db.orm.public.user.findUnique({
     where: {
       email: email,
     },
@@ -476,7 +476,7 @@ export async function resetEmail(token: string) {
     throw new APIError("Invalid or expired email reset link", 401);
   }
 
-  const user = await prisma.user.findUnique({
+  const user = await db.orm.public.user.findUnique({
     where: {
       id: id,
     },
@@ -486,7 +486,7 @@ export async function resetEmail(token: string) {
     throw new APIError("User not found", 404);
   }
 
-  const existingUser = await prisma.user.findUnique({
+  const existingUser = await db.orm.public.user.findUnique({
     where: {
       email: email,
     },
@@ -496,7 +496,7 @@ export async function resetEmail(token: string) {
     if (existingUser.emailVerifiedAt) {
       throw new APIError("Email already in use", 400);
     } else {
-      await prisma.user.delete({
+      await db.orm.public.user.delete({
         where: {
           id: existingUser.id,
         },
@@ -504,7 +504,7 @@ export async function resetEmail(token: string) {
     }
   }
 
-  await prisma.user.update({
+  await db.orm.public.user.update({
     where: {
       id: id,
     },
@@ -547,7 +547,7 @@ export async function revertResetEmail(token: string, password: string) {
     throw new APIError("Invalid or expired email reset link", 401);
   }
 
-  const user = await prisma.user.findUnique({
+  const user = await db.orm.public.user.findUnique({
     where: {
       id: id,
     },
@@ -557,7 +557,7 @@ export async function revertResetEmail(token: string, password: string) {
     throw new APIError("User not found", 404);
   }
 
-  const existingUser = await prisma.user.findUnique({
+  const existingUser = await db.orm.public.user.findUnique({
     where: {
       email: email,
     },
@@ -567,7 +567,7 @@ export async function revertResetEmail(token: string, password: string) {
     if (existingUser.emailVerifiedAt) {
       throw new APIError("Email already in use", 400);
     } else {
-      await prisma.user.delete({
+      await db.orm.public.user.delete({
         where: {
           id: existingUser.id,
         },
@@ -577,7 +577,7 @@ export async function revertResetEmail(token: string, password: string) {
 
   const hashPassword = await hash(password);
 
-  await prisma.user.update({
+  await db.orm.public.user.update({
     where: {
       id: id,
     },
@@ -602,7 +602,7 @@ export async function revertResetEmail(token: string, password: string) {
 }
 
 export async function getUser(id: string) {
-  const user = await prisma.user.findUnique({
+  const user = await db.orm.public.user.findUnique({
     where: {
       id: id,
     },

@@ -32,7 +32,7 @@ export async function generateTokens(
 
   const refreshSecret = crypto.randomUUID();
 
-  const session = await prisma.session.upsert({
+  const session = await db.orm.public.session.upsert({
     where: {
       id: sessionId ?? "",
     },
@@ -53,7 +53,7 @@ export async function generateTokens(
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     },
   });
-  // const session = await prisma.session.create({
+  // const session = await db.orm.public.session.create({
   //   data: {
   //     userId: BigInt(user.id),
   //     refreshSecret,
@@ -109,7 +109,7 @@ export async function verifyRefreshToken(req: FastifyRequest, token: string) {
   try {
     const payload = req.server.jwt.verify<JwtPayload>(token);
 
-    const session = await prisma.session.findUnique({
+    const session = await db.orm.public.session.findUnique({
       where: {
         id: payload.sessionId!,
       },

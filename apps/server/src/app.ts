@@ -150,11 +150,11 @@ export function buildApp() {
 
   // Hooks
   app.addHook("onClose", async () => {
-    await prisma.$disconnect();
+    await db.orm.public.$disconnect();
   });
 
   app.addHook("onError", async () => {
-    await prisma.$disconnect();
+    await db.orm.public.$disconnect();
   });
 
   return app;
