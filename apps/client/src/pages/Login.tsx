@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useCallback, useState, type SubmitEventHandler } from 'react';
 import { ArrowLeft, ArrowRight, LockKeyhole } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { login } from '../services/auth';
@@ -12,7 +12,7 @@ export default function Login() {
 	const [error, setError] = useState('');
 	const [submitting, setSubmitting] = useState(false);
 
-	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+	const handleSubmit: SubmitEventHandler<HTMLFormElement>  = useCallback(async (event) => {
 		event.preventDefault();
 		setError('');
 		setSubmitting(true);
@@ -30,7 +30,7 @@ export default function Login() {
 		} finally {
 			setSubmitting(false);
 		}
-	}
+	}, [])
 
 	return (
 		<main className="auth-page">

@@ -12,7 +12,6 @@ import Routine from './pages/Routine';
 import Scan from './pages/Scan';
 import ScanResult from './pages/ScanResult';
 import Subscription from './pages/Subscription';
-import './alina.css';
 
 function App() {
   return (

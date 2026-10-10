@@ -1,5 +1,5 @@
 {
-  "name": "alina",
+  "name": "@alina/server",
   "private": true,
   "packageManager": "npm@12.2.0",
   "type": "module",

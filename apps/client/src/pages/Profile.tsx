@@ -1,18 +1,219 @@
-
-import { useState, type FormEvent } from 'react';
-import { Check, ChevronDown, CircleUserRound, Pencil, Plus, ShieldCheck, X } from 'lucide-react';
-import PageHeading from '../components/PageHeading';
-import { useSessionStore } from '../stores/session';
+import {
+  useCallback,
+  useState,
+  type SubmitEventHandler,
+} from "react";
+import {
+  Check,
+  ChevronDown,
+  CircleUserRound,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  X,
+} from "lucide-react";
+import PageHeading from "../components/PageHeading";
+import { useSessionStore } from "../stores/session";
 
 export default function Profile() {
-	const session = useSessionStore((state) => state.session);
-	const [editing, setEditing] = useState(false);
-	const [name, setName] = useState(session?.name ?? 'Sarah');
-	const [email, setEmail] = useState(session?.email ?? 'sarah@example.test');
-	const [saved, setSaved] = useState(false);
-	const [preferences, setPreferences] = useState(['Fragrance-free', 'Simple routine']);
-	const [preferenceInput, setPreferenceInput] = useState('');
-	function saveProfile(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setEditing(false); setSaved(true); }
-	function addPreference() { const value = preferenceInput.trim(); if (!value || preferences.includes(value)) return; setPreferences((current) => [...current, value]); setPreferenceInput(''); }
-	return <div className="page-content profile-page"><PageHeading eyebrow="The details that make it yours" title="Your profile" description="A few preferences can help Alina make more relevant suggestions." /><div className="profile-layout"><div className="profile-main-column"><section className="panel profile-card"><div className="section-heading"><div><p className="page-eyebrow">ABOUT YOU</p><h2>Personal details</h2></div><button className="icon-button edit-profile" type="button" onClick={() => { setEditing((value) => !value); setSaved(false); }} aria-label={editing ? 'Cancel editing' : 'Edit profile'}>{editing ? <X size={17} /> : <Pencil size={16} />}</button></div>{editing ? <form className="profile-form" onSubmit={saveProfile}><label htmlFor="profile-name">Display name</label><input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} required /><label htmlFor="profile-email">Email</label><input id="profile-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /><button className="button button-primary" type="submit"><Check size={15} /> Save changes</button></form> : <div className="profile-details"><span className="profile-avatar"><CircleUserRound size={31} /></span><div><strong>{name}</strong><span>{email}</span><small>{session?.mode === 'demo' ? 'Sample profile · edits are local to this session' : 'Account profile'}</small></div></div>}{saved ? <p className="inline-confirm"><Check size={14} /> Updated for this session.</p> : null}</section><section className="panel preference-card"><div className="section-heading"><div><p className="page-eyebrow">YOUR PREFERENCES</p><h2>What matters to you</h2></div><span className="demo-label">SAMPLE</span></div><div className="preference-row"><span><strong>Routine style</strong><small>Keep it minimal and manageable</small></span><button type="button" className="select-button">Simple <ChevronDown size={14} /></button></div><div className="preference-row"><span><strong>Price range</strong><small>Comfortable spend per product</small></span><button type="button" className="select-button">Under $30 <ChevronDown size={14} /></button></div><div className="preference-row"><span><strong>Ingredient notes</strong><small>Used to shape sample recommendations</small></span><div className="preference-tags">{preferences.map((preference) => <span className="preference-tag" key={preference}>{preference}<button type="button" aria-label={`Remove ${preference}`} onClick={() => setPreferences((current) => current.filter((item) => item !== preference))}><X size={12} /></button></span>)}<form className="tag-entry" onSubmit={(event) => { event.preventDefault(); addPreference(); }}><input aria-label="Add a preference" value={preferenceInput} onChange={(event) => setPreferenceInput(event.target.value)} placeholder="Add note" /><button type="submit" aria-label="Add preference"><Plus size={13} /></button></form></div></div></section></div><aside className="profile-side-column"><section className="panel privacy-card"><span className="privacy-icon"><ShieldCheck size={19} /></span><p className="page-eyebrow">YOUR INFORMATION</p><h2>Personal by design.</h2><p>Your profile and routine are kept in this prototype session. No sample scan image is uploaded or analyzed.</p><a href="#privacy">Privacy details <span>↗</span></a></section><section className="panel connected-card"><div className="section-heading"><div><p className="page-eyebrow">CONNECTED DEVICES</p><h2>Your setup</h2></div></div><div className="device-row"><span className="device-icon">◉</span><span><strong>Camera</strong><small>Not connected</small></span><span className="connection-status">Planned</span></div></section></aside></div></div>;
+  const session = useSessionStore((state) => state.session);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(session?.name ?? "Sarah");
+  const [email, setEmail] = useState(session?.email ?? "sarah@example.test");
+  const [saved, setSaved] = useState(false);
+  const [preferences, setPreferences] = useState([
+    "Fragrance-free",
+    "Simple routine",
+  ]);
+  const [preferenceInput, setPreferenceInput] = useState("");
+  const saveProfile: SubmitEventHandler<HTMLFormElement> = useCallback(
+    (event) => {
+      event.preventDefault();
+      setEditing(false);
+      setSaved(true);
+    },
+    [],
+  );
+
+  const addPreference = useCallback(() => {
+    const value = preferenceInput.trim();
+    if (!value || preferences.includes(value)) return;
+    setPreferences((current) => [...current, value]);
+    setPreferenceInput("");
+  }, [preferenceInput, preferences]);
+
+  return (
+    <div className="page-content profile-page">
+      <PageHeading
+        eyebrow="The details that make it yours"
+        title="Your profile"
+        description="A few preferences can help Alina make more relevant suggestions."
+      />
+      <div className="profile-layout">
+        <div className="profile-main-column">
+          <section className="panel profile-card">
+            <div className="section-heading">
+              <div>
+                <p className="page-eyebrow">ABOUT YOU</p>
+                <h2>Personal details</h2>
+              </div>
+              <button
+                className="icon-button edit-profile"
+                type="button"
+                onClick={() => {
+                  setEditing((value) => !value);
+                  setSaved(false);
+                }}
+                aria-label={editing ? "Cancel editing" : "Edit profile"}
+              >
+                {editing ? <X size={17} /> : <Pencil size={16} />}
+              </button>
+            </div>
+            {editing ? (
+              <form className="profile-form" onSubmit={saveProfile}>
+                <label htmlFor="profile-name">Display name</label>
+                <input
+                  id="profile-name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  required
+                />
+                <label htmlFor="profile-email">Email</label>
+                <input
+                  id="profile-email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  required
+                />
+                <button className="button button-primary" type="submit">
+                  <Check size={15} /> Save changes
+                </button>
+              </form>
+            ) : (
+              <div className="profile-details">
+                <span className="profile-avatar">
+                  <CircleUserRound size={31} />
+                </span>
+                <div>
+                  <strong>{name}</strong>
+                  <span>{email}</span>
+                  <small>
+                    {session?.mode === "demo"
+                      ? "Sample profile · edits are local to this session"
+                      : "Account profile"}
+                  </small>
+                </div>
+              </div>
+            )}
+            {saved ? (
+              <p className="inline-confirm">
+                <Check size={14} /> Updated for this session.
+              </p>
+            ) : null}
+          </section>
+          <section className="panel preference-card">
+            <div className="section-heading">
+              <div>
+                <p className="page-eyebrow">YOUR PREFERENCES</p>
+                <h2>What matters to you</h2>
+              </div>
+              <span className="demo-label">SAMPLE</span>
+            </div>
+            <div className="preference-row">
+              <span>
+                <strong>Routine style</strong>
+                <small>Keep it minimal and manageable</small>
+              </span>
+              <button type="button" className="select-button">
+                Simple <ChevronDown size={14} />
+              </button>
+            </div>
+            <div className="preference-row">
+              <span>
+                <strong>Price range</strong>
+                <small>Comfortable spend per product</small>
+              </span>
+              <button type="button" className="select-button">
+                Under $30 <ChevronDown size={14} />
+              </button>
+            </div>
+            <div className="preference-row">
+              <span>
+                <strong>Ingredient notes</strong>
+                <small>Used to shape sample recommendations</small>
+              </span>
+              <div className="preference-tags">
+                {preferences.map((preference) => (
+                  <span className="preference-tag" key={preference}>
+                    {preference}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${preference}`}
+                      onClick={() =>
+                        setPreferences((current) =>
+                          current.filter((item) => item !== preference),
+                        )
+                      }
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+                <form
+                  className="tag-entry"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    addPreference();
+                  }}
+                >
+                  <input
+                    aria-label="Add a preference"
+                    value={preferenceInput}
+                    onChange={(event) => setPreferenceInput(event.target.value)}
+                    placeholder="Add note"
+                  />
+                  <button type="submit" aria-label="Add preference">
+                    <Plus size={13} />
+                  </button>
+                </form>
+              </div>
+            </div>
+          </section>
+        </div>
+        <aside className="profile-side-column">
+          <section className="panel privacy-card">
+            <span className="privacy-icon">
+              <ShieldCheck size={19} />
+            </span>
+            <p className="page-eyebrow">YOUR INFORMATION</p>
+            <h2>Personal by design.</h2>
+            <p>
+              Your profile and routine are kept in this prototype session. No
+              sample scan image is uploaded or analyzed.
+            </p>
+            <a href="#privacy">
+              Privacy details <span>↗</span>
+            </a>
+          </section>
+          <section className="panel connected-card">
+            <div className="section-heading">
+              <div>
+                <p className="page-eyebrow">CONNECTED DEVICES</p>
+                <h2>Your setup</h2>
+              </div>
+            </div>
+            <div className="device-row">
+              <span className="device-icon">◉</span>
+              <span>
+                <strong>Camera</strong>
+                <small>Not connected</small>
+              </span>
+              <span className="connection-status">Planned</span>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
 }
