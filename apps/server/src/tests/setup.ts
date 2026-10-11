@@ -1,6 +1,6 @@
 import { afterAll } from "vitest";
-import { prisma } from "../config/prisma.ts";
+import { db } from "../prisma/db.ts";
 
 afterAll(async () => {
-    await db.orm.public.user.deleteMany({});
+    await db.orm.public.User.where({}).deleteAll();
 })

@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
-import { prisma } from "../../config/prisma.ts";
+import { db } from "../prisma/db.ts";
 
 export default fp(async (app) => {
-  app.decorate("prisma", prisma);
+  app.decorate("db", db);
 });

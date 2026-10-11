@@ -1,59 +1,108 @@
-import { prisma } from "../../../config/prisma.ts";
+import { db } from "../../prisma/db.ts";
 import { hash, verify } from "argon2";
 import APIError from "../../errors/APIError.ts";
-import { sendEmailJob } from "../../../queues/email/email.producer.ts";
-import { redisService } from "../../../services/redis.service.ts";
+import { sendEmailJob } from "../../queues/email/email.producer.ts";
+import { redisService } from "../../services/redis.service.ts";
 import crypto from "crypto";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { config } from "../../../config/index.ts";
+import { config } from "../../config/index.ts";
 import path from "path";
 import { generateTokens, verifyRefreshToken } from "./auth.token.ts";
-import type { UserUpdateInput } from "../../generated/prisma/models.ts";
-import { encodeToken } from "../../common/utils/crypto.ts";
 
-const EMAILTEMPLATEPATH = path.join(__dirname, "./modules/auth/emails");
+import { encodeToken } from "../../common/utils/crypto.ts";
+import type { Models } from "../../prisma/contract";
+
+// Templates live next to this file. (Use __dirname instead if the project is CommonJS.)
+const EMAIL_TEMPLATE_PATH = path.join(import.meta.dirname, "emails");
 const EMAIL_RESET_SEPARATOR = "|";
+
+// Verification + password reset tokens. Keep the TTL and the text shown in emails in sync.
+const TOKEN_TTL_SECONDS = 60 * 30;
+const TOKEN_TTL_MINUTES = TOKEN_TTL_SECONDS / 60;
+
+// Email change flow.
+const EMAIL_RESET_TTL_SECONDS = 60 * 15;
+const EMAIL_RESET_TTL_MINUTES = EMAIL_RESET_TTL_SECONDS / 60;
+const EMAIL_REVERT_TTL_SECONDS = 60 * 60 * 24 * 7;
+const EMAIL_REVERT_TTL_DAYS = EMAIL_REVERT_TTL_SECONDS / (60 * 60 * 24);
+
+// Only these fields can be changed through updateProfile.
+const UPDATABLE_PROFILE_FIELDS = [
+  "name",
+  "phoneNumber",
+  "image",
+  "gender",
+  "dateOfBirth",
+] as const;
+
+/** Never send the password hash to the client. */
+function toPublicUser<T extends { password?: string | null }>(user: T) {
+  const { password: _password, ...rest } = user;
+  return rest;
+}
+
+async function sendPasswordResetEmail(user: {
+  id: string;
+  email: string;
+  name?: string | null;
+}) {
+  const token = crypto.randomUUID();
+
+  await redisService.setAccountPasswordResetToken(
+    encodeToken(token),
+    user.id,
+    TOKEN_TTL_SECONDS,
+  );
+
+  await sendEmailJob({
+    to: user.email,
+    subject: "YummyHouse Account Password Reset",
+    template: path.join(EMAIL_TEMPLATE_PATH, "account-password-reset.mjml"),
+    payload: {
+      name: user.name,
+      reset_link: `${config.env.CLIENT_URL}/password-reset/${token}`,
+      expiry_minutes: TOKEN_TTL_MINUTES,
+    },
+  });
+}
 
 export async function handleOAuthLogin(
   req: FastifyRequest,
   res: FastifyReply,
   profile: OAuthProfile,
 ) {
-  let user = null;
-
-  if (profile.email) {
-    user = await db.orm.public.user.findUnique({
-      where: {
-        email: profile.email,
-      },
-    });
+  if (!profile.email) {
+    throw new APIError("OAuth provider did not return an email address", 400);
   }
+
+  let user = await db.orm.public.User.where({ email: profile.email }).first();
 
   if (!user) {
-    user = await db.orm.public.user.create({
-      data: {
-        email: profile.email,
-        name: profile.name,
-      },
+    user = await db.orm.public.User.create({
+      email: profile.email,
+      name: profile.name,
+      // The provider has already verified this email; without this, login() rejects OAuth users.
+      emailVerifiedAt: new Date(),
     });
   }
 
-  await db.orm.public.oAuthAccount.upsert({
-    where: {
-      provider_providerId: {
-        provider: profile.provider,
-        providerId: profile.providerId,
-      },
-    },
-    update: {
-      userId: user.id,
-    },
-    create: {
+  // Link (or re-link) the provider account to this user.
+  const account = await db.orm.public.OAuthAccount.where({
+    provider: profile.provider,
+    providerId: profile.providerId,
+  }).first();
+
+  if (!account) {
+    await db.orm.public.OAuthAccount.create({
       userId: user.id,
       provider: profile.provider,
       providerId: profile.providerId,
-    },
-  });
+    });
+  } else if (account.userId !== user.id) {
+    await db.orm.public.OAuthAccount.where({ id: account.id }).update({
+      userId: user.id,
+    });
+  }
 
   const tokens = await generateTokens(req, res, user);
 
@@ -65,78 +114,49 @@ export default async function register(payload: {
   email: string;
   password: string;
 }) {
-  const existingUser = await db.orm.public.user.findFirst({
-    where: {
-      email: payload.email,
-    },
-  });
+  const existingUser = await db.orm.public.User.where({
+    email: payload.email,
+  }).first();
 
   // TODO: set token in cookie header
 
-  if (existingUser && existingUser.emailVerifiedAt) {
+  if (existingUser?.emailVerifiedAt) {
     throw new APIError("User already exists. Please login.", 401);
   }
 
   const token = crypto.randomUUID();
-
   const tokenHash = encodeToken(token);
-
-  if (existingUser && existingUser.emailVerifiedAt) {
-    redisService.setAccountPasswordResetToken(
-      tokenHash,
-      existingUser.id.toString(),
-      60 * 30,
-    );
-
-    // Send reset password email.
-    await sendEmailJob({
-      to: payload.email,
-      subject: "YummyHouse Account Password Reset",
-      template: path.join(EMAILTEMPLATEPATH, "account-password-reset.mjml"),
-      payload: {
-        name: payload.name,
-        reset_link: `${config.env.CLIENT_URL}/password-reset/${token}`,
-        expiry_minutes: 15,
-      },
-    });
-
-    return {
-      message:
-        "Verification email re-sent. Please check your inbox to verify account and reset password",
-    };
-  }
 
   const hashPassword = await hash(payload.password);
 
-  const user = await db.orm.public.user.upsert({
-    where: {
-      email: payload.email,
-    },
-    update: {
-      name: payload.name,
-      password: hashPassword,
-    },
+  // Creates the user, or overwrites name/password on an unverified signup.
+  const user = await db.orm.public.User.upsert({
     create: {
       name: payload.name,
       email: payload.email,
       password: hashPassword,
     },
+    update: {
+      name: payload.name,
+      password: hashPassword,
+    },
+    conflictOn: { email: payload.email },
   });
 
   await redisService.setAccountVerificationToken(
     tokenHash,
-    user.id.toString(),
-    60 * 30,
+    user.id,
+    TOKEN_TTL_SECONDS,
   );
 
   await sendEmailJob({
     to: payload.email,
-    subject: "YummyHouse Acoount Verification",
-    template: path.join(EMAILTEMPLATEPATH, "account-verification.mjml"),
+    subject: "YummyHouse Account Verification",
+    template: path.join(EMAIL_TEMPLATE_PATH, "account-verification.mjml"),
     payload: {
       name: payload.name,
       verification_link: `${config.env.CLIENT_URL}/account-verification/${token}`,
-      expiry_minutes: 15,
+      expiry_minutes: TOKEN_TTL_MINUTES,
     },
   });
 
@@ -148,37 +168,17 @@ export async function login(
   res: FastifyReply,
   payload: { email: string; password: string },
 ) {
-  const user = await db.orm.public.user.findUnique({
-    where: {
-      email: payload.email,
-    },
-  });
+  const user = await db.orm.public.User.where({
+    email: payload.email,
+  }).first();
 
   if (!user || !user.emailVerifiedAt) {
     throw new APIError("Invalid email or password", 401);
   }
 
+  // Account created through OAuth: no password yet, so send a reset link to set one.
   if (!user.password) {
-    const token = crypto.randomUUID();
-
-    const tokenHash = encodeToken(token);
-    redisService.setAccountPasswordResetToken(
-      tokenHash,
-      user.id.toString(),
-      60 * 30,
-    );
-
-    // Send reset password email.
-    await sendEmailJob({
-      to: payload.email,
-      subject: "YummyHouse Account Password Reset",
-      template: path.join(EMAILTEMPLATEPATH, "account-password-reset.mjml"),
-      payload: {
-        name: user.name,
-        reset_link: `${config.env.CLIENT_URL}/password-reset/${token}`,
-        expiry_minutes: 15,
-      },
-    });
+    await sendPasswordResetEmail(user);
 
     return {
       message:
@@ -186,7 +186,7 @@ export async function login(
     };
   }
 
-  const isMatch = await verify(user.password!, payload.password);
+  const isMatch = await verify(user.password, payload.password);
 
   if (!isMatch) {
     throw new APIError("Invalid email or password", 401);
@@ -194,7 +194,7 @@ export async function login(
 
   const tokens = await generateTokens(req, res, user);
 
-  return { message: "Login successful", user, ...tokens };
+  return { message: "Login successful", user: toPublicUser(user), ...tokens };
 }
 
 export async function verifyAccountToken(
@@ -210,15 +210,13 @@ export async function verifyAccountToken(
     throw new APIError("Invalid or expired verification link", 401);
   }
 
-  const user = await db.orm.public.user.update({
-    where: {
-      id: userId,
-    },
-
-    data: {
-      emailVerifiedAt: new Date(),
-    },
+  const user = await db.orm.public.User.where({ id: userId }).update({
+    emailVerifiedAt: new Date(),
   });
+
+  if (!user) {
+    throw new APIError("User not found", 404);
+  }
 
   const tokens = await generateTokens(req, res, user);
 
@@ -226,7 +224,7 @@ export async function verifyAccountToken(
   await sendEmailJob({
     to: user.email,
     subject: "Welcome to YummyHouse. A Home for all thing yummy.",
-    template: path.join(EMAILTEMPLATEPATH, "welcome.mjml"),
+    template: path.join(EMAIL_TEMPLATE_PATH, "welcome.mjml"),
     payload: {
       name: user.name,
     },
@@ -239,41 +237,17 @@ export async function verifyAccountToken(
 }
 
 export async function requestResetPassword(email: string) {
-  const user = await db.orm.public.user.findFirst({
-    where: {
-      email: email,
-    },
-  });
+  const user = await db.orm.public.User.where({ email }).first();
 
-  const token = crypto.randomUUID();
-
-  const tokenHash = encodeToken(token);
-
-  if (user && user.emailVerifiedAt) {
-    redisService.setAccountPasswordResetToken(
-      tokenHash,
-      user.id.toString(),
-      60 * 30,
-    );
-
-    // Send reset password email.
-    await sendEmailJob({
-      to: user.email,
-      subject: "YummyHouse Account Password Reset",
-      template: path.join(EMAILTEMPLATEPATH, "account-password-reset.mjml"),
-      payload: {
-        name: user.name,
-        reset_link: `${config.env.CLIENT_URL}/password-reset/${token}`,
-        expiry_minutes: 15,
-      },
-    });
-
-    return {
-      message: "Password reset email sent. Please check your inbox.",
-    };
-  } else {
+  if (!user || !user.emailVerifiedAt) {
     throw new APIError("User does not exist. Please register", 401);
   }
+
+  await sendPasswordResetEmail(user);
+
+  return {
+    message: "Password reset email sent. Please check your inbox.",
+  };
 }
 
 export async function resetPassword(token: string, password: string) {
@@ -287,28 +261,28 @@ export async function resetPassword(token: string, password: string) {
 
   const hashPassword = await hash(password);
 
-  const user = await db.orm.public.user.update({
-    where: {
-      id: userId,
-    },
-
-    data: {
-      password: hashPassword,
-    },
+  const user = await db.orm.public.User.where({ id: userId }).update({
+    password: hashPassword,
   });
 
-  // Send Welcome Email
+  if (!user) {
+    throw new APIError("User not found", 404);
+  }
+
   await sendEmailJob({
     to: user.email,
     subject: "Password Reset Successfully",
-    template: path.join(EMAILTEMPLATEPATH, "successfully-reset-password.mjml"),
+    template: path.join(
+      EMAIL_TEMPLATE_PATH,
+      "successfully-reset-password.mjml",
+    ),
     payload: {
       name: user.name,
     },
   });
 
   return {
-    message: "Account verified successfully",
+    message: "Password reset successfully",
   };
 }
 
@@ -319,11 +293,7 @@ export async function getNewToken(
 ) {
   const { payload, session } = await verifyRefreshToken(req, token);
 
-  const user = await db.orm.public.user.findUnique({
-    where: {
-      id: payload.sub,
-    },
-  });
+  const user = await db.orm.public.User.where({ id: payload.sub }).first();
 
   if (!user) {
     throw new APIError("User not found", 404);
@@ -346,14 +316,8 @@ export async function revokeSession(
 ) {
   const { session } = await verifyRefreshToken(req, token);
 
-  await db.orm.public.session.update({
-    where: {
-      id: session.id,
-    },
-
-    data: {
-      revokedAt: new Date(),
-    },
+  await db.orm.public.Session.where({ id: session.id }).update({
+    revokedAt: new Date(),
   });
 
   res.clearCookie("accessToken", {
@@ -375,13 +339,19 @@ export async function revokeSession(
   };
 }
 
-export async function updateProfile(jwt: JwtPayload, payload: UserUpdateInput) {
-  await db.orm.public.user.update({
-    where: {
-      id: jwt.sub,
-    },
-    data: payload,
-  });
+export async function updateProfile(jwt: JwtPayload, payload: Models.public_User) {
+  // Whitelist fields so a client can't set password, email or emailVerifiedAt here.
+  const data = Object.fromEntries(
+    UPDATABLE_PROFILE_FIELDS.filter((key) => payload[key] !== undefined).map(
+      (key) => [key, payload[key]],
+    ),
+  );
+
+  const user = await db.orm.public.User.where({ id: jwt.sub }).update(data);
+
+  if (!user) {
+    throw new APIError("User not found", 404);
+  }
 
   return { message: "Profile updated successfully" };
 }
@@ -391,27 +361,24 @@ export async function requestResetEmail(
   email: string,
   password: string,
 ) {
-  const user = await db.orm.public.user.findUnique({
-    where: {
-      id: jwt.sub,
-    },
-  });
+  const user = await db.orm.public.User.where({ id: jwt.sub }).first();
 
   if (!user) {
     throw new APIError("User not found", 404);
   }
 
-  const isMatch = await verify(user.password!, password);
+  // OAuth-only accounts have no password to confirm with.
+  if (!user.password) {
+    throw new APIError("Set a password before changing your email", 400);
+  }
+
+  const isMatch = await verify(user.password, password);
 
   if (!isMatch) {
     throw new APIError("Invalid password", 401);
   }
 
-  const existingUser = await db.orm.public.user.findUnique({
-    where: {
-      email: email,
-    },
-  });
+  const existingUser = await db.orm.public.User.where({ email }).first();
 
   if (existingUser && existingUser.emailVerifiedAt) {
     throw new APIError("Email already in use", 400);
@@ -420,43 +387,39 @@ export async function requestResetEmail(
   const token = crypto.randomUUID();
   const revertToken = crypto.randomUUID();
 
-  const tokenHash = encodeToken(token);
-  const revertTokenHash = crypto
-    .createHash("sha256")
-    .update(revertToken)
-    .digest("hex");
-
-  redisService.setAccountEmail(
-    tokenHash,
-    `${user.id.toString()}${EMAIL_RESET_SEPARATOR}${email}`,
-    60 * 15,
+  // Confirm token -> change to the NEW email.
+  await redisService.setAccountEmail(
+    encodeToken(token),
+    `${user.id}${EMAIL_RESET_SEPARATOR}${email}`,
+    EMAIL_RESET_TTL_SECONDS,
   );
 
-  redisService.setAccountEmail(
-    revertTokenHash,
-    `${user.id.toString()}${EMAIL_RESET_SEPARATOR}${email}`,
-    60 * 60 * 24 * 7,
+  // Revert token -> restore the OLD email.
+  await redisService.setAccountEmail(
+    encodeToken(revertToken),
+    `${user.id}${EMAIL_RESET_SEPARATOR}${user.email}`,
+    EMAIL_REVERT_TTL_SECONDS,
   );
 
   await sendEmailJob({
     to: email,
     subject: "YummyHouse Account Email Reset",
-    template: path.join(EMAILTEMPLATEPATH, "email-reset-request.mjml"),
+    template: path.join(EMAIL_TEMPLATE_PATH, "email-reset-request.mjml"),
     payload: {
       name: user.name,
       reset_link: `${config.env.CLIENT_URL}/email-reset/${token}`,
-      expiry_minutes: 15,
+      expiry_minutes: EMAIL_RESET_TTL_MINUTES,
     },
   });
 
   await sendEmailJob({
     to: user.email,
     subject: "YummyHouse Account Email Reset Warning",
-    template: path.join(EMAILTEMPLATEPATH, "email-reset-warning.mjml"),
+    template: path.join(EMAIL_TEMPLATE_PATH, "email-reset-warning.mjml"),
     payload: {
       name: user.name,
       revert_link: `${config.env.CLIENT_URL}/email-reset/${revertToken}/revert`,
-      expiry_days: 7,
+      expiry_days: EMAIL_REVERT_TTL_DAYS,
     },
   });
 
@@ -476,56 +439,39 @@ export async function resetEmail(token: string) {
     throw new APIError("Invalid or expired email reset link", 401);
   }
 
-  const user = await db.orm.public.user.findUnique({
-    where: {
-      id: id,
-    },
-  });
+  const user = await db.orm.public.User.where({ id }).first();
 
   if (!user) {
     throw new APIError("User not found", 404);
   }
 
-  const existingUser = await db.orm.public.user.findUnique({
-    where: {
-      email: email,
-    },
-  });
+  const existingUser = await db.orm.public.User.where({ email }).first();
 
   if (existingUser) {
     if (existingUser.emailVerifiedAt) {
       throw new APIError("Email already in use", 400);
     } else {
-      await db.orm.public.user.delete({
-        where: {
-          id: existingUser.id,
-        },
-      });
+      // Free the email held by an unverified signup.
+      await db.orm.public.User.where({ id: existingUser.id }).delete();
     }
   }
 
-  await db.orm.public.user.update({
-    where: {
-      id: id,
-    },
-    data: {
-      email: email,
-    },
-  });
+  await db.orm.public.User.where({ id }).update({ email });
 
   await sendEmailJob({
     to: email,
     subject: "YummyHouse Account Email Reset Successfully",
-    template: path.join(EMAILTEMPLATEPATH, "email-reset.mjml"),
+    template: path.join(EMAIL_TEMPLATE_PATH, "email-reset.mjml"),
     payload: {
       name: user.name,
     },
   });
 
+  // `user.email` still holds the previous address here.
   await sendEmailJob({
     to: user.email,
     subject: "YummyHouse Account Email Reset Successfully",
-    template: path.join(EMAILTEMPLATEPATH, "email-reset.mjml"),
+    template: path.join(EMAIL_TEMPLATE_PATH, "email-reset.mjml"),
     payload: {
       name: user.name,
     },
@@ -547,50 +493,33 @@ export async function revertResetEmail(token: string, password: string) {
     throw new APIError("Invalid or expired email reset link", 401);
   }
 
-  const user = await db.orm.public.user.findUnique({
-    where: {
-      id: id,
-    },
-  });
+  const user = await db.orm.public.User.where({ id }).first();
 
   if (!user) {
     throw new APIError("User not found", 404);
   }
 
-  const existingUser = await db.orm.public.user.findUnique({
-    where: {
-      email: email,
-    },
-  });
+  const existingUser = await db.orm.public.User.where({ email }).first();
 
-  if (existingUser) {
+  if (existingUser && existingUser.id !== id) {
     if (existingUser.emailVerifiedAt) {
       throw new APIError("Email already in use", 400);
     } else {
-      await db.orm.public.user.delete({
-        where: {
-          id: existingUser.id,
-        },
-      });
+      await db.orm.public.User.where({ id: existingUser.id }).delete();
     }
   }
 
   const hashPassword = await hash(password);
 
-  await db.orm.public.user.update({
-    where: {
-      id: id,
-    },
-    data: {
-      email: email,
-      password: hashPassword,
-    },
+  await db.orm.public.User.where({ id }).update({
+    email,
+    password: hashPassword,
   });
 
   await sendEmailJob({
     to: email,
     subject: "YummyHouse Account Email Reset Reverted",
-    template: path.join(EMAILTEMPLATEPATH, "email-revert.html"),
+    template: path.join(EMAIL_TEMPLATE_PATH, "email-revert.html"),
     payload: {
       name: user.name,
     },
@@ -602,18 +531,14 @@ export async function revertResetEmail(token: string, password: string) {
 }
 
 export async function getUser(id: string) {
-  const user = await db.orm.public.user.findUnique({
-    where: {
-      id: id,
-    },
-  });
+  const user = await db.orm.public.User.where({ id }).first();
 
   if (!user) {
     throw new APIError("User not found", 404);
   }
 
   return {
-      message: "User retrieved successfully",
-      user,
-    }
+    message: "User retrieved successfully",
+    user: toPublicUser(user),
+  };
 }

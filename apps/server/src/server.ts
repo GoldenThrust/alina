@@ -1,5 +1,4 @@
-
-import { prisma } from './config/prisma.ts';
+import { db } from './prisma/db.ts';
 import { buildApp } from "./app.ts";
 import { env } from './config/env.ts';
 
@@ -15,7 +14,7 @@ const start = async () => {
     console.info(`Server running on http://${HOST}:${PORT} 🚀`);
   } catch (err) {
     console.error(err);
-    await db.orm.public.$disconnect();
+    await db.close();
     app.log.error(err);
     process.exit(1);
   }

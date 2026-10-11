@@ -2,7 +2,7 @@ import { afterEach, describe, expect, vi } from "vitest";
 import crypto, { createHash } from "node:crypto";
 import { hash } from "argon2";
 
-import { prisma } from "../../config/prisma.ts";
+import { db } from "../../prisma/db.ts";
 import {
   FacebookCallbackHandler,
   GoogleCallbackHandler,
@@ -64,9 +64,9 @@ afterEach(async () => {
   redisStore.clear();
   vi.restoreAllMocks();
 
-  await db.orm.public.oAuthAccount.deleteMany({});
-  await db.orm.public.session.deleteMany({});
-  await db.orm.public.user.deleteMany({});
+  await db.orm.public.OAuthAccount.where({}).deleteAll();
+  await db.orm.public.Session.where({}).deleteAll();
+  await db.orm.public.User.where({}).deleteAll();
 });
 
 function uniqueEmail(prefix: string) {
@@ -84,13 +84,11 @@ async function createUserRecord({
   password?: string;
   verified?: boolean;
 } = {}) {
-  return await db.orm.public.user.create({
-    data: {
+  return await db.orm.public.User.create({
       email,
       name,
       password: await hash(password),
       emailVerifiedAt: verified ? new Date() : null,
-    },
   });
 }
 
@@ -148,11 +146,9 @@ describe("Auth Routes", () => {
       message: "User created. Verification email sent",
     });
 
-    const createdUser = await db.orm.public.user.findUnique({
-      where: {
+    const createdUser = await db.orm.public.User.where({
         email,
-      },
-    });
+    }).first();
 
     expect(createdUser).toBeTruthy();
     expect(createdUser?.emailVerifiedAt).toBeNull();
@@ -214,11 +210,9 @@ describe("Auth Routes", () => {
 
     expect(response.statusCode).toBe(200);
 
-    const updatedUser = await db.orm.public.user.findUnique({
-      where: {
+    const updatedUser = await db.orm.public.User.where({
         email: user.email,
-      },
-    });
+    }).first();
 
     expect(updatedUser?.name).toBe(updatedName);
   });
@@ -265,11 +259,9 @@ describe("Auth Routes", () => {
       refreshToken: expect.any(String),
     });
 
-    const verifiedUser = await db.orm.public.user.findUnique({
-      where: {
+    const verifiedUser = await db.orm.public.User.where({
         id: userRecord.id,
-      },
-    });
+    }).first();
 
     expect(verifiedUser?.emailVerifiedAt).toBeTruthy();
   });
@@ -386,11 +378,9 @@ describe("Auth Routes", () => {
 
     expect(response.statusCode).toBe(200);
 
-    const updatedUser = await db.orm.public.user.findUnique({
-      where: {
+    const updatedUser = await db.orm.public.User.where({
         id: userRecord.id,
-      },
-    });
+    }).first();
 
     expect(updatedUser?.email).toBe(pendingEmail);
   });

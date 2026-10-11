@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import { prisma } from "./config/prisma.ts";
+import { db } from "./prisma/db.ts";
 import {
   serializerCompiler,
   validatorCompiler,
@@ -150,11 +150,11 @@ export function buildApp() {
 
   // Hooks
   app.addHook("onClose", async () => {
-    await db.orm.public.$disconnect();
+    await db.close();
   });
 
   app.addHook("onError", async () => {
-    await db.orm.public.$disconnect();
+    await db.close();
   });
 
   return app;

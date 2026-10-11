@@ -3,8 +3,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import APIError from "../../errors/APIError.ts";
 
 import crypto from "node:crypto";
-import { prisma } from "../../../config/prisma.ts";
-import type { User } from "../../generated/prisma/client.ts";
+import { db } from "../../prisma/db.ts";
+import type { Models } from "../../prisma/contract";
 
 /**
  * Generate JWT access and refresh tokens with session management
@@ -23,7 +23,6 @@ export async function generateTokens(
   const accessPayload = {
     sub: user.id.toString(),
     email: user.email,
-    role: user.role,
   };
 
   const accessToken = req.server.jwt.sign(accessPayload, {
@@ -32,8 +31,8 @@ export async function generateTokens(
 
   const refreshSecret = crypto.randomUUID();
 
-  const session = await db.orm.public.session.upsert({
-    where: {
+  const session = await db.orm.public.Session.upsert({
+    conflictOn: {
       id: sessionId ?? "",
     },
     update: {
@@ -109,11 +108,9 @@ export async function verifyRefreshToken(req: FastifyRequest, token: string) {
   try {
     const payload = req.server.jwt.verify<JwtPayload>(token);
 
-    const session = await db.orm.public.session.findUnique({
-      where: {
-        id: payload.sessionId!,
-      },
-    });
+    const session = await db.orm.public.Session.where({
+      id: payload.sessionId!,
+    }).first();
 
     if (!session) {
       throw new APIError("Session not found", 401);
