@@ -1,3 +1,5 @@
+import axios, { AxiosError } from "axios";
+
 export type AuthPayload = {
   name?: string;
   email: string;
@@ -13,19 +15,19 @@ export type AuthResponse = {
 };
 
 async function submitAuth(path: 'login' | 'register', payload: AuthPayload): Promise<AuthResponse> {
-  const response = await fetch(`/api/auth/${path}`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  const result = await response.json().catch(() => ({})) as AuthResponse;
+  try {
+    console.log(`Submitting auth request to /auth/${path} with payload:`, payload);
+    const response = await axios.post(`/auth/${path}`, payload);
 
-  if (!response.ok) {
-    throw new Error(result.message ?? result.error ?? `Request failed (${response.status})`);
+    const data = response.data as AuthResponse | undefined;
+    
+    return data as AuthResponse;
+  } catch (error: AxiosError | any) {
+    console.error('Auth request failed', error.response?.data?.message ?? error.message);
+    throw new Error(error?.response?.data?.message ?? error?.message ?? `Request failed (${error.status})`);
+    
   }
 
-  return result;
 }
 
 export function login(payload: AuthPayload) {

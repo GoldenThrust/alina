@@ -14,6 +14,8 @@ import { useEffect } from "react";
 import { useLocation } from "react-router";
 import { useSessionStore } from "../stores/session";
 
+import { logout } from "../lib/api";
+
 const navigation = [
   { to: "/dashboard", label: "Home", icon: House },
   { to: "/scan", label: "Scan", icon: ScanFace },
@@ -30,16 +32,29 @@ export default function AppLayout() {
   const clearSession = useSessionStore((state) => state.clearSession);
   const navigate = useNavigate();
   const location = useLocation();
+  const authReady = useSessionStore((state) => state.authReady);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
+  if (!authReady) {
+    return (
+      <div className="app-frame" aria-busy="true">
+        <div className="app-main">
+          <main className="workspace">Loading your space…</main>
+        </div>
+      </div>
+    );
+  }
   if (!session) return <Navigate to="/login" replace />;
-  function signOut() {
-    clearSession();
+
+  async function signOut() {
+    if (session?.mode === "account") await logout();
+    else clearSession();
     navigate("/");
   }
+
   return (
     <div className="app-frame">
       <aside className="app-sidebar">

@@ -27,6 +27,10 @@ import {
 } from "./auth.controller.ts";
 
 export default async function authRoutes(fastify: FastifyInstance) {
+  fastify.get("/", async (request, reply) => {
+    return { message: "Auth route is working!" };
+  });
+  
   fastify.get(
     "/user",
     {
@@ -44,7 +48,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     updateProfileHandler,
   );
 
-  fastify.get(
+  fastify.post(
     "/refresh",
     {
       preHandler: [fastify.authenticate],

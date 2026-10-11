@@ -25,7 +25,6 @@ import register, {
 } from "./auth.service.ts";
 import APIError from "../../errors/APIError.ts";
 import { fileManager } from "../../common/files/file.ts";
-import type { UserUpdateInput } from "../../generated/prisma/models.ts";
 
 /**
  * OAuth2 callback handler for Google sign-in
@@ -149,6 +148,8 @@ export async function registerHandler(
       });
     }
 
+    console.error("User registration failed", error);
+
     res.status(500).send({ message: "User registration failed" });
   }
 }
@@ -178,6 +179,8 @@ export async function loginHandler(
         message: error.message,
       });
     }
+
+    // console.error("Login failed", error);
 
     res.status(500).send({ message: "User Login failed" });
   }
@@ -388,12 +391,12 @@ export async function updateProfileHandler(
       imagePath = await fileManager.uploadFile(req, "image");
     } catch (error) {}
 
-    const payload: ProfileUpdate = {
+    const payload = {
       ...req.body,
       image: imagePath,
     };
 
-    const response = await updateProfile(user, payload as UserUpdateInput);
+    const response = await updateProfile(user, payload);
 
     return res.send(response);
   } catch (error: any) {

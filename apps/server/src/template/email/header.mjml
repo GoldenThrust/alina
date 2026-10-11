@@ -1,0 +1,21 @@
+<mj-section
+  background-url="{{advert-img}}"
+  background-size="cover"
+  background-repeat="no-repeat"
+  border-radius="8px 8px 0 0"
+>
+  <mj-column>
+    <!-- Logo -->
+    <mj-image
+      src="{{logo}}"
+      alt="YummyHouse Logo"
+      width="60px"
+      padding="20px 0 10px"
+    />
+    <mj-image
+      src="{{logo-text}}"
+      alt="YummyHouse Logo Lettermark"
+      width="155px"
+    />
+  </mj-column>
+</mj-section>

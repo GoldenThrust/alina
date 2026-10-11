@@ -13,11 +13,13 @@ import superjson from "superjson";
 import multipart from "@fastify/multipart";
 
 import { env } from "./config/env.ts";
+import fs from "fs";
 
 const { GOOGLE_CONFIGURATION, FACEBOOK_CONFIGURATION, X_CONFIGURATION } =
   fastifyOauth2;
 
 export function buildApp() {
+  fs.mkdir("log", ()=> {});
   const app = Fastify({
     logger: {
       file: "log/server.txt",

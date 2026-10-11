@@ -3,8 +3,8 @@ import path from "path";
 
 import { fileURLToPath } from "url";
 export const __filename = fileURLToPath(import.meta.url);
-__dirname = process.cwd();
-// __dirname = path.dirname(__filename);
+// const __dirname = process.cwd();
+const __dirname = path.dirname(__filename);
 
 function getEnv(key: string, defaultValue?: string): string {
   const value = process.env[key] || defaultValue;

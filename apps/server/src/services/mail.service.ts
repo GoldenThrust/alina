@@ -53,7 +53,7 @@ class MailService {
    * @private
    */
   private registerPartialTemplate() {
-    const header = fs.readFileSync("./template/email/header.mjml", "utf-8");
+    const header = fs.readFileSync("./src/template/email/header.mjml", "utf-8");
     handlebars.registerPartial("header", header);
   }
 

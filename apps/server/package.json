@@ -15,7 +15,7 @@
     "db:update": "prisma db update",
     "db:verify": "prisma db verify",
     "deploy": "npm run build && npm run composer:deploy",
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch src/index.ts",
     "dev:composer": "npm run build && npm run composer:dev",
     "migrate": "prisma db migrate",
     "migration:plan": "prisma migration plan",

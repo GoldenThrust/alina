@@ -1,19 +1,25 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
-import AppLayout from './components/AppLayout';
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Chat from './pages/Chat';
-import Dashboard from './pages/Dashboard';
-import Recommendation from './pages/Recomendation';
-import Progress from './pages/Progress';
-import Profile from './pages/Profile';
-import Routine from './pages/Routine';
-import Scan from './pages/Scan';
-import ScanResult from './pages/ScanResult';
-import Subscription from './pages/Subscription';
+import { useEffect } from "react";
+import { bootstrapAuth } from "./lib/api";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import AppLayout from "./components/AppLayout";
+import Landing from "./pages/Landing";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Chat from "./pages/Chat";
+import Dashboard from "./pages/Dashboard";
+import Recommendation from "./pages/Recomendation";
+import Progress from "./pages/Progress";
+import Profile from "./pages/Profile";
+import Routine from "./pages/Routine";
+import Scan from "./pages/Scan";
+import ScanResult from "./pages/ScanResult";
+import Subscription from "./pages/Subscription";
 
 function App() {
+  useEffect(() => {
+    void bootstrapAuth();
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>

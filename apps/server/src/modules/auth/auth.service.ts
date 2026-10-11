@@ -339,7 +339,7 @@ export async function revokeSession(
   };
 }
 
-export async function updateProfile(jwt: JwtPayload, payload: Models.public_User) {
+export async function updateProfile(jwt: JwtPayload, payload: any) {
   // Whitelist fields so a client can't set password, email or emailVerifiedAt here.
   const data = Object.fromEntries(
     UPDATABLE_PROFILE_FIELDS.filter((key) => payload[key] !== undefined).map(

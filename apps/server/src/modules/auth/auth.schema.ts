@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { Gender, UserRole } from "../../generated/prisma/enums.ts";
 
 /**
  * --------------------------------------------------------------------------
@@ -73,9 +72,8 @@ export const LoginBody = z.object({
 
 export const UpdateBody = z.object({
   name: nameSchema.optional(),
-  gender: z.enum(Gender).optional(),
+  gender: z.enum(["male", "female", "none"]).optional(),
   dateOfBirth: dateOfBirthSchema.optional(),
-  phoneNumber: phoneNumberSchema.optional(),
 });
 
 export const RequestResetPasswordBody = z.object({
