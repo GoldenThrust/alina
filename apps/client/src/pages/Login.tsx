@@ -30,7 +30,7 @@ export default function Login() {
 		} finally {
 			setSubmitting(false);
 		}
-	}, [])
+	}, [email, password, navigate, setSession]);
 
 	return (
 		<main className="auth-page">

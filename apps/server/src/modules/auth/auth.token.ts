@@ -5,6 +5,7 @@ import APIError from "../../errors/APIError.ts";
 import crypto from "node:crypto";
 import { db } from "../../prisma/db.ts";
 import type { Models } from "../../prisma/contract";
+import { Temporal } from "@js-temporal/polyfill";
 
 /**
  * Generate JWT access and refresh tokens with session management
@@ -39,7 +40,7 @@ export async function generateTokens(
       refreshSecret,
       ipAddress: req.ip,
       userAgent: req.headers["user-agent"] as string,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: Temporal.Now.instant().add({ hours: 7 * 24 }),
     },
     create: {
       userId: user.id,
@@ -49,21 +50,9 @@ export async function generateTokens(
 
       userAgent: req.headers["user-agent"] as string,
 
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: Temporal.Now.instant().add({ hours: 7 * 24 }),
     },
   });
-  // const session = await db.orm.public.session.create({
-  //   data: {
-  //     userId: BigInt(user.id),
-  //     refreshSecret,
-
-  //     ipAddress: req.ip,
-
-  //     userAgent: req.headers["user-agent"] as string,
-
-  //     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  //   },
-  // });
 
   const refreshPayload = {
     sub: user.id.toString(),
@@ -120,7 +109,8 @@ export async function verifyRefreshToken(req: FastifyRequest, token: string) {
       throw new APIError("Session has been revoked", 401);
     }
 
-    if (session.expiresAt < new Date()) {
+    const tokenExpiry = Temporal.Instant.from(session.expiresAt);
+    if (Temporal.Instant.compare(tokenExpiry, Temporal.Now.instant()) < 0) {
       throw new APIError("Session expired", 401);
     }
 

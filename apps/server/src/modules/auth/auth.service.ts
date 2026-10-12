@@ -8,7 +8,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { config } from "../../config/index.ts";
 import path from "path";
 import { generateTokens, verifyRefreshToken } from "./auth.token.ts";
-
+import { Temporal } from "@js-temporal/polyfill";
 import { encodeToken } from "../../common/utils/crypto.ts";
 import type { Models } from "../../prisma/contract";
 
@@ -82,7 +82,7 @@ export async function handleOAuthLogin(
       email: profile.email,
       name: profile.name,
       // The provider has already verified this email; without this, login() rejects OAuth users.
-      emailVerifiedAt: new Date(),
+      emailVerifiedAt: Temporal.Now.instant(),
     });
   }
 
@@ -216,7 +216,7 @@ export async function verifyAccountToken(
   }
 
   const user = await db.orm.public.User.where({ id: userId }).update({
-    emailVerifiedAt: new Date(),
+    emailVerifiedAt: Temporal.Now.instant(),
   });
 
   if (!user) {
@@ -228,7 +228,7 @@ export async function verifyAccountToken(
   // Send Welcome Email
   await sendEmailJob({
     to: user.email,
-    subject: "Welcome to Alina. A Home for all thing yummy.",
+    subject: "Welcome to Alina",
     template: path.join(EMAIL_TEMPLATE_PATH, "welcome.mjml"),
     payload: {
       firstName: user.name?.split(" ")[0] ?? user.email.split("@")[0] ?? "Alina member",
@@ -236,13 +236,17 @@ export async function verifyAccountToken(
       scanIconUrl: `${config.env.CLIENT_URL}/images/camera-icon.png`,
       trackIconUrl: `${config.env.CLIENT_URL}/images/chart-icon.png`,
       adviceIconUrl: `${config.env.CLIENT_URL}/images/messages-icon.png`,
-      productIconUrl: `${config.env.CLIENT_URL}/images/product-icon.png`,
+      productsIconUrl: `${config.env.CLIENT_URL}/images/products-icon.png`,
       shieldIconUrl: `${config.env.CLIENT_URL}/images/shield-icon.png`,
     },
   });
 
   return {
     message: "Account verified successfully",
+    user: {
+      name: user.name ?? user.email.split("@")[0] ?? "Alina member",
+      email: user.email,
+    },
     ...tokens,
   };
 }
@@ -328,7 +332,7 @@ export async function revokeSession(
   const { session } = await verifyRefreshToken(req, token);
 
   await db.orm.public.Session.where({ id: session.id }).update({
-    revokedAt: new Date(),
+    revokedAt: Temporal.Now.instant(),
   });
 
   res.clearCookie("accessToken", {

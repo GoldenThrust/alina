@@ -211,6 +211,8 @@ export async function verifyAccountHandler(
       });
     }
 
+    console.error("Account verification failed", error);
+
     res.status(500).send({ message: "Account verification failed" });
   }
 }

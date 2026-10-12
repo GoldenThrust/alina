@@ -21,7 +21,7 @@ class RedisService {
 
   async getAccountVerificationToken(key: string): Promise<string | null> {
     const userId = await this.redis.get(`account_verification_token:${key}`);
-  
+    
     await this.redis.del(`account_verification_token:${key}`);
 
     return userId;

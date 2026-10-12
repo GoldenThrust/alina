@@ -58,8 +58,15 @@ function scheduleRefresh(token: string, overrideDelay?: number) {
 /** Single-flight refresh: concurrent callers share one request. */
 export function refreshAccessToken(): Promise<string> {
   if (!refreshPromise) {
+    const startedWith = useSessionStore.getState().session;
+    const stored = localStorage.getItem("refreshToken");
+
     refreshPromise = authClient
-      .post<RefreshResponse>("/auth/refresh")
+      .post<RefreshResponse>(
+        "/auth/refresh",
+        {},
+        { headers: stored ? { Authorization: `Bearer ${stored}` } : undefined },
+      )
       .then(({ data }) => {
         const { session, setSession } = useSessionStore.getState();
         if (session?.mode === "account") {
@@ -69,7 +76,11 @@ export function refreshAccessToken(): Promise<string> {
       })
       .catch((error: AxiosError) => {
         const status = error.response?.status;
-        if (status === 401 || status === 403) {
+        // Only clear if nobody replaced the session while this was in flight.
+        if (
+          (status === 401 || status === 403) &&
+          useSessionStore.getState().session === startedWith
+        ) {
           useSessionStore.getState().clearSession();
         }
         throw error;
@@ -115,25 +126,47 @@ export async function logout() {
   } catch {
     // Best effort: still clear local state.
   }
+
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
   useSessionStore.getState().clearSession();
 }
 
-// Attach the access token to every request made while signed in.
-axios.interceptors.request.use((config) => {
+// Shared request interceptor: attaches the access token if signed in.
+const attachAccessToken = (config: InternalAxiosRequestConfig) => {
   const { session } = useSessionStore.getState();
-  if (session?.mode === "account" && session.accessToken && !config.headers.Authorization) {
-    config.headers.Authorization = `Bearer ${session.accessToken}`;
+  console.log(session);
+
+  if (
+    session?.mode === "account" &&
+    session.accessToken &&
+    !config.headers.Authorization
+  ) {
+    config.headers.Authorization = `Bearer ${config.url !== "/auth/logout" ? session.accessToken : localStorage.getItem("refreshToken")}`;
   }
+
   return config;
-});
+};
+
+axios.interceptors.request.use(attachAccessToken);
+authClient.interceptors.request.use(attachAccessToken);
 
 // On 401, refresh once and retry the original request.
 axios.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (
+      response.status === 200 &&
+      response.data?.refreshToken &&
+      response.data?.accessToken
+    ) {
+      localStorage.setItem("accessToken", response.data.accessToken);
+      localStorage.setItem("refreshToken", response.data.refreshToken);
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const original = error.config as
-      | (InternalAxiosRequestConfig & { _retry?: boolean })
-      | undefined;
+      (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
     const { session } = useSessionStore.getState();
 
     if (
@@ -148,14 +181,17 @@ axios.interceptors.response.use(
       original.headers.Authorization = `Bearer ${token}`;
       return axios(original);
     }
+
     return Promise.reject(error);
   },
 );
 
 // Background refresh scheduling follows the session: start on sign-in / new token, stop on sign-out or demo.
 useSessionStore.subscribe((state, prev) => {
-  const token = state.session?.mode === "account" ? state.session.accessToken : undefined;
-  const prevToken = prev.session?.mode === "account" ? prev.session.accessToken : undefined;
+  const token =
+    state.session?.mode === "account" ? state.session.accessToken : undefined;
+  const prevToken =
+    prev.session?.mode === "account" ? prev.session.accessToken : undefined;
   if (!token) {
     clearTimeout(timer);
   } else if (token !== prevToken) {

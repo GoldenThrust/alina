@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { bootstrapAuth } from "./lib/api";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
-import AppLayout from "./components/AppLayout";
+import AppLayout from "./layouts/AppLayout";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -14,6 +14,8 @@ import Routine from "./pages/Routine";
 import Scan from "./pages/Scan";
 import ScanResult from "./pages/ScanResult";
 import Subscription from "./pages/Subscription";
+import AccountVerification from "./pages/AccountVerification";
+import AuthLayout from "./layouts/AuthLayout";
 
 function App() {
   useEffect(() => {
@@ -24,10 +26,16 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/account-verification/:token"
+            element={<AccountVerification />}
+          />
+        </Route>
         <Route element={<AppLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} index />
           <Route path="/scan" element={<Scan />} />
           <Route path="/scan-result" element={<ScanResult />} />
           <Route path="/progress" element={<Progress />} />

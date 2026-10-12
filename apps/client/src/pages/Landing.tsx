@@ -1,14 +1,29 @@
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { useSessionStore } from "../stores/session";
+import toast from "react-hot-toast";
+import { logout } from "../lib/api";
 
 export default function Landing() {
+  const session = useSessionStore((state) => state.session);
+  const clearSession = useSessionStore((state) => state.clearSession);
   const navigate = useNavigate();
-  const startDemo = useSessionStore((state) => state.startDemo);
 
   function openDemo() {
-    startDemo();
-    navigate("/dashboard");
+    toast("Coming soon! You can explore the app with a demo account.", {
+      icon: "✨",
+      iconTheme: {
+        primary: "#fcd34d",
+        secondary: "#fff",
+      },
+      duration: 5000,
+    });
+  }
+
+  async function signOut() {
+    if (session?.mode === "account") await logout();
+    else clearSession();
+    navigate("/");
   }
 
   return (
@@ -21,10 +36,24 @@ export default function Landing() {
         <nav aria-label="Main navigation" className="public-links">
           <a href="#how-it-works">How it works</a>
           <a href="#your-journey">Your journey</a>
-          <Link to="/login">Log in</Link>
-          <Link className="button button-primary nav-cta" to="/register">
-            Get started
-          </Link>
+          {session ? (
+            <>
+              <Link to="/dashboard">Dashboard</Link>
+              <button
+                className="button button-primary nav-cta"
+                onClick={signOut}
+              >
+                Log Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">Log in</Link>
+              <Link className="button button-primary nav-cta" to="/register">
+                Get started
+              </Link>
+            </>
+          )}
         </nav>
       </header>
 
@@ -54,7 +83,7 @@ export default function Landing() {
               type="button"
               onClick={openDemo}
             >
-              Explore sample app
+              Watch a demo
             </button>
           </div>
           <div className="landing-proof" id="how-it-works">

@@ -73,7 +73,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   fastify.get("/facebook/callback", FacebookCallbackHandler);
 
   fastify.get(
-    "/account-verify/:token",
+    "/verify-account/:token",
     { schema: tokenParamSchema },
     verifyAccountHandler,
   );
@@ -126,7 +126,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     revertResetEmailHandler,
   );
 
-  fastify.get(
+  fastify.post(
     "/logout", 
     {
       preHandler: [fastify.authenticate],
