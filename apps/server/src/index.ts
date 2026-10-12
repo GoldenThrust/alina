@@ -15,7 +15,7 @@ const start = async () => {
     console.info(`Server running on http://${HOST}:${PORT} 🚀`);
   } catch (err) {
     console.error(err);
-    await db.close();
+    // await db.close();
     app.log.error(err);
     process.exit(1);
   }

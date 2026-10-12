@@ -1,6 +1,6 @@
 <mjml>
   <mj-head>
-    <mj-title>YummyHouse Email Change Cancelled</mj-title>
+    <mj-title>Alina Email Change Cancelled</mj-title>
     <mj-preview
       >Your email change request has been successfully cancelled</mj-preview
     >
@@ -35,7 +35,7 @@
         </mj-text>
 
         <mj-text>
-          The pending email change for your YummyHouse account has been
+          The pending email change for your Alina account has been
           successfully cancelled.
         </mj-text>
 
@@ -56,7 +56,7 @@
     <mj-section padding="10px">
       <mj-column>
         <mj-text align="center" font-size="12px" color="#aaaaaa">
-          © {{ year }} YummyHouse. All rights reserved.
+          © {{ year }} Alina. All rights reserved.
         </mj-text>
       </mj-column>
     </mj-section>

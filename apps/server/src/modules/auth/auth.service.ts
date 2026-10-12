@@ -3,7 +3,7 @@ import { hash, verify } from "argon2";
 import APIError from "../../errors/APIError.ts";
 import { sendEmailJob } from "../../queues/email/email.producer.ts";
 import { redisService } from "../../services/redis.service.ts";
-import crypto from "crypto";
+import crypto, { sign } from "crypto";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { config } from "../../config/index.ts";
 import path from "path";
@@ -56,7 +56,7 @@ async function sendPasswordResetEmail(user: {
 
   await sendEmailJob({
     to: user.email,
-    subject: "YummyHouse Account Password Reset",
+    subject: "Alina Account Password Reset",
     template: path.join(EMAIL_TEMPLATE_PATH, "account-password-reset.mjml"),
     payload: {
       name: user.name,
@@ -151,12 +151,17 @@ export default async function register(payload: {
 
   await sendEmailJob({
     to: payload.email,
-    subject: "YummyHouse Account Verification",
+    subject: "Alina Account Verification",
     template: path.join(EMAIL_TEMPLATE_PATH, "account-verification.mjml"),
     payload: {
       name: payload.name,
-      verification_link: `${config.env.CLIENT_URL}/account-verification/${token}`,
-      expiry_minutes: TOKEN_TTL_MINUTES,
+      firstName: payload.name?.split(" ")[0] ?? payload.email.split("@")[0] ?? "Alina member",
+      verifyIllustrationUrl: `${config.env.CLIENT_URL}/images/verify-illustration.png`,
+      verifyUrl: `${config.env.CLIENT_URL}/account-verification/${token}`,
+      expiryMinutes: TOKEN_TTL_MINUTES,
+      bulbIconUrl: `${config.env.CLIENT_URL}/images/bulb-icon.png`,
+      checkIconUrl: `${config.env.CLIENT_URL}/images/check-icon.png`,
+      signatureUrl: `${config.env.CLIENT_URL}/images/signature.png`,
     },
   });
 
@@ -223,10 +228,16 @@ export async function verifyAccountToken(
   // Send Welcome Email
   await sendEmailJob({
     to: user.email,
-    subject: "Welcome to YummyHouse. A Home for all thing yummy.",
+    subject: "Welcome to Alina. A Home for all thing yummy.",
     template: path.join(EMAIL_TEMPLATE_PATH, "welcome.mjml"),
     payload: {
-      name: user.name,
+      firstName: user.name?.split(" ")[0] ?? user.email.split("@")[0] ?? "Alina member",
+      heroImageUrl: `${config.env.CLIENT_URL}/images/main.png`,
+      scanIconUrl: `${config.env.CLIENT_URL}/images/camera-icon.png`,
+      trackIconUrl: `${config.env.CLIENT_URL}/images/chart-icon.png`,
+      adviceIconUrl: `${config.env.CLIENT_URL}/images/messages-icon.png`,
+      productIconUrl: `${config.env.CLIENT_URL}/images/product-icon.png`,
+      shieldIconUrl: `${config.env.CLIENT_URL}/images/shield-icon.png`,
     },
   });
 
@@ -383,7 +394,7 @@ export async function requestResetEmail(
   if (existingUser && existingUser.emailVerifiedAt) {
     throw new APIError("Email already in use", 400);
   }
-
+sendEmailJob
   const token = crypto.randomUUID();
   const revertToken = crypto.randomUUID();
 
@@ -403,7 +414,7 @@ export async function requestResetEmail(
 
   await sendEmailJob({
     to: email,
-    subject: "YummyHouse Account Email Reset",
+    subject: "Alina Account Email Reset",
     template: path.join(EMAIL_TEMPLATE_PATH, "email-reset-request.mjml"),
     payload: {
       name: user.name,
@@ -414,7 +425,7 @@ export async function requestResetEmail(
 
   await sendEmailJob({
     to: user.email,
-    subject: "YummyHouse Account Email Reset Warning",
+    subject: "Alina Account Email Reset Warning",
     template: path.join(EMAIL_TEMPLATE_PATH, "email-reset-warning.mjml"),
     payload: {
       name: user.name,
@@ -460,7 +471,7 @@ export async function resetEmail(token: string) {
 
   await sendEmailJob({
     to: email,
-    subject: "YummyHouse Account Email Reset Successfully",
+    subject: "Alina Account Email Reset Successfully",
     template: path.join(EMAIL_TEMPLATE_PATH, "email-reset.mjml"),
     payload: {
       name: user.name,
@@ -470,7 +481,7 @@ export async function resetEmail(token: string) {
   // `user.email` still holds the previous address here.
   await sendEmailJob({
     to: user.email,
-    subject: "YummyHouse Account Email Reset Successfully",
+    subject: "Alina Account Email Reset Successfully",
     template: path.join(EMAIL_TEMPLATE_PATH, "email-reset.mjml"),
     payload: {
       name: user.name,
@@ -518,7 +529,7 @@ export async function revertResetEmail(token: string, password: string) {
 
   await sendEmailJob({
     to: email,
-    subject: "YummyHouse Account Email Reset Reverted",
+    subject: "Alina Account Email Reset Reverted",
     template: path.join(EMAIL_TEMPLATE_PATH, "email-revert.html"),
     payload: {
       name: user.name,

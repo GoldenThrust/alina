@@ -1,73 +1,137 @@
 <mjml>
   <mj-head>
-    <mj-title>Verify your YummyHouse account</mj-title>
-    <mj-preview>Confirm your email to start using YummyHouse</mj-preview>
-
+    <mj-title>Verify your Alina account</mj-title>
+    <mj-preview>Confirm your email address to get started with Alina. This link expires in {{ expiryMinutes }} minutes.</mj-preview>
+    <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
     <mj-attributes>
-      <mj-all font-family="Helvetica, Arial, sans-serif" />
-      <mj-text font-size="14px" color="#555555" line-height="1.6" />
-      <mj-button
-        background-color="#ff6b6b"
-        color="#ffffff"
-        border-radius="6px"
-      />
+      <mj-all font-family="Inter, Helvetica, Arial, sans-serif" />
+      <mj-text font-size="14px" line-height="1.7" color="#5B5F77" padding="0" />
+      <mj-section padding="0" />
+      <mj-column padding="0" />
+      <mj-image padding="0" />
     </mj-attributes>
-
-    <mj-style inline="inline"> .container { max-width: 500px; } </mj-style>
+    <mj-style>
+      @media only screen and (max-width: 480px) {
+        .verify-title { font-size: 26px !important; }
+      }
+    </mj-style>
   </mj-head>
 
-  <mj-body background-color="#f5f5f5">
-    <!-- Header -->
-    {{> header }}
+    <mj-spacer height="24px" />
+  <mj-body background-color="#F4F6FC" width="640px">
 
-    <!-- Main Card -->
-    <mj-section
-      css-class="container"
-      background-color="#ffffff"
-      padding="20px"
-      border-radius="8px"
-    >
+    <mj-wrapper background-color="#FFFFFF" border-radius="16px 16px 0 0" padding="0 40px">
+      <!-- Header -->
+      <mj-section padding="32px 0 0 0">
+        <mj-column width="50%" vertical-align="middle">
+          <mj-image href="{{ appUrl }}" src="{{ logoUrl }}" alt="Alina" width="110px" align="left" />
+        </mj-column>
+        <mj-column width="50%" vertical-align="middle">
+          <mj-text align="right" font-size="12px" color="#8A8DA6">Your Skin. Our AI.</mj-text>
+        </mj-column>
+      </mj-section>
+
+      <!-- Illustration -->
+      <mj-section padding="32px 0 0 0">
+        <mj-column>
+          <mj-image src="{{ verifyIllustrationUrl }}" alt="Verify your email" width="190px" align="center" />
+        </mj-column>
+      </mj-section>
+
+      <!-- Title + copy -->
+      <mj-section padding="8px 0 0 0">
+        <mj-column>
+          <mj-text css-class="verify-title" align="center" font-size="32px" line-height="42px" font-weight="700" color="#1B1A4B">
+            Verify Your Account
+          </mj-text>
+          <mj-text align="center" font-size="15px" line-height="26px" padding-top="28px" color="#3A3D5C">
+            Hi {{ firstName }},
+          </mj-text>
+          <mj-text align="center" font-size="15px" line-height="26px" padding="4px 8px 0 8px" color="#4A4D6A">
+            Thanks for creating your Alina account! To get started, please verify your email address by clicking the button below.
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+      <!-- CTA -->
+      <mj-section padding="32px 0 0 0">
+        <mj-column>
+          <mj-button href="{{ verifyUrl }}" background-color="#6D3FE0" color="#FFFFFF" font-size="16px" font-weight="600" border-radius="10px" inner-padding="18px 56px" padding="0">
+            Verify Email Address
+          </mj-button>
+          <mj-text align="center" font-size="12.5px" padding-top="16px">
+            This link will expire in {{ expiryMinutes }} minutes.
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+      <!-- Why verify box -->
+      <mj-section padding="32px 0 0 0" border-radius="12px">
+        <mj-group background-color="#F3EFFF">
+          <mj-column width="14%" vertical-align="top" padding="22px 0 22px 20px">
+            <mj-image src="{{ bulbIconUrl }}" alt="" width="36px" align="left" />
+          </mj-column>
+          <mj-column width="86%" vertical-align="top" padding="22px 20px 22px 0">
+            <mj-text font-size="13px" font-weight="600" color="#1B1A4B" line-height="20px">Why verify your email?</mj-text>
+            <mj-table padding="8px 0 0 0" font-size="13px" color="#5B5F77" line-height="20px" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="22" style="padding:3px 0;vertical-align:middle;"><img src="{{ checkIconUrl }}" width="14" height="14" alt="&#10003;" style="display:block;" /></td>
+                <td style="padding:3px 0;">Keep your account secure</td>
+              </tr>
+              <tr>
+                <td width="22" style="padding:3px 0;vertical-align:middle;"><img src="{{ checkIconUrl }}" width="14" height="14" alt="&#10003;" style="display:block;" /></td>
+                <td style="padding:3px 0;">Get important updates and notifications</td>
+              </tr>
+              <tr>
+                <td width="22" style="padding:3px 0;vertical-align:middle;"><img src="{{ checkIconUrl }}" width="14" height="14" alt="&#10003;" style="display:block;" /></td>
+                <td style="padding:3px 0;">Access all Alina features</td>
+              </tr>
+            </mj-table>
+          </mj-column>
+        </mj-group>
+      </mj-section>
+
+      <!-- Sign-off -->
+      <mj-section padding="32px 0 0 0">
+        <mj-column>
+          <mj-text align="center" font-size="13.5px" font-weight="500" color="#1B1A4B">We're so happy to have you here!</mj-text>
+          <mj-image src="{{ signatureUrl }}" alt="The Alina Team" width="140px" align="center" padding-top="12px" />
+        </mj-column>
+      </mj-section>
+
+      <!-- Footer -->
+      <mj-section padding="32px 0 0 0" border-top="1px solid #ECEAF5" css-class="footer">
+        <mj-column width="50%" vertical-align="middle" padding="20px 0 0 0">
+          <mj-image src="{{ logoUrl }}" alt="Alina" width="84px" align="left" href="{{ appUrl }}" />
+          <mj-text font-size="11px" color="#8A8DA6" padding-top="4px">AI Skincare Assistant</mj-text>
+        </mj-column>
+        <mj-column width="50%" vertical-align="middle" padding="20px 0 0 0">
+          <mj-social mode="horizontal" align="right" icon-size="20px" inner-padding="0 0 0 14px" padding="0">
+            <mj-social-element name="twitter" src="{{ xIconUrl }}" href="{{ twitterUrl }}" background-color="transparent" padding="0" />
+            <mj-social-element name="instagram" src="{{ instagramIconUrl }}" href="{{ instagramUrl }}" background-color="transparent" padding="0" />
+            <mj-social-element name="youtube" src="{{ youtubeIconUrl }}" href="{{ youtubeUrl }}" background-color="transparent" padding="0" />
+          </mj-social>
+        </mj-column>
+      </mj-section>
+
+      <mj-section padding="24px 0 32px 0">
+        <mj-column>
+          <mj-text align="center" font-size="11px" color="#9A9DB3" line-height="18px">
+            If you didn't create this account, you can safely ignore this email.
+          </mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <mj-wrapper background-color="#FFFFFF" border-radius="0 0 16px 16px" padding="0">
+      <mj-section padding="0"><mj-column><mj-spacer height="4px" /></mj-column></mj-section>
+    </mj-wrapper>
+
+    <mj-section padding="20px 0 0 0">
       <mj-column>
-        <mj-text> Hello {{name}}, </mj-text>
-
-        <mj-text> Welcome to YummyHouse! 🎉 </mj-text>
-
-        <mj-text>
-          Please confirm your email address by clicking the button below:
-        </mj-text>
-
-        <mj-button href="{{verification_link}}" width="100%">
-          Verify Account
-        </mj-button>
-
-        <mj-text>
-          This link will expire in <strong>{{expiry_minutes}} minutes</strong>.
-        </mj-text>
-
-        <mj-text>
-          If you didn't create an account, you can safely ignore this email.
-        </mj-text>
-
-        <mj-divider border-color="#eeeeee" />
-
-        <mj-text font-size="12px" color="#999999">
-          If the button doesn’t work, copy and paste this link into your
-          browser:
-        </mj-text>
-
-        <mj-text font-size="12px" color="#ff7a00">
-          {{verification_link}}
-        </mj-text>
-      </mj-column>
-    </mj-section>
-
-    <!-- Footer -->
-    <mj-section padding="10px">
-      <mj-column>
-        <mj-text align="center" font-size="12px" color="#aaaaaa">
-          © {{year}} YummyHouse. All rights reserved.
-        </mj-text>
+        <mj-text align="center" font-size="11px" color="#9A9DB3">&copy; {{ year }} Alina. All rights reserved.</mj-text>
       </mj-column>
     </mj-section>
   </mj-body>
+    <mj-spacer height="24px" />
 </mjml>

@@ -1,6 +1,6 @@
 <mjml>
   <mj-head>
-    <mj-title>YummyHouse Account Email Change Warning</mj-title>
+    <mj-title>Alina Account Email Change Warning</mj-title>
     <mj-preview>Someone is trying to change your account email</mj-preview>
 
     <mj-attributes>
@@ -37,7 +37,7 @@
 
         <mj-text>
           Someone has requested to change the email address associated with your
-          YummyHouse account.
+          Alina account.
         </mj-text>
 
         <mj-text>
@@ -73,7 +73,7 @@
     <mj-section padding="10px">
       <mj-column>
         <mj-text align="center" font-size="12px" color="#aaaaaa">
-          © {{ year }} YummyHouse. All rights reserved.
+          © {{ year }} Alina. All rights reserved.
         </mj-text>
       </mj-column>
     </mj-section>

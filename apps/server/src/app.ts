@@ -151,13 +151,13 @@ export function buildApp() {
   });
 
   // Hooks
-  app.addHook("onClose", async () => {
-    await db.close();
-  });
+  // app.addHook("onClose", async () => {
+  //   await db.close();
+  // });
 
-  app.addHook("onError", async () => {
-    await db.close();
-  });
+  // app.addHook("onError", async () => {
+  //   await db.close();
+  // });
 
   return app;
 }

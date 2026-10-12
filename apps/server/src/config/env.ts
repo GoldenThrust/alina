@@ -38,7 +38,7 @@ export const env = {
   MAIL_HOST: getEnv("MAIL_HOST"),
   MAIL_USERNAME: getEnv("MAIL_USERNAME"),
   MAIL_PASSWORD: getEnv("MAIL_PASSWORD"),
-  MAIL_FROM: getEnv("MAIL_FROM", "customersupport@yummyhouse.com"),
+  MAIL_FROM: getEnv("MAIL_FROM", "customersupport@Alina.com"),
 
   GOOGLE_CLIENT_ID: getEnv("GOOGLE_CLIENT_ID"),
   GOOGLE_CLIENT_SECRET: getEnv("GOOGLE_CLIENT_SECRET"),

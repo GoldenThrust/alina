@@ -113,7 +113,8 @@ export default function Register() {
       </section>
       <aside className="auth-aside">
         <img
-          src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1100&q=85"
+          // src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1100&q=85"
+          src="/images/main.png"
           alt="Portrait in soft natural light"
         />
         <div className="auth-aside-copy">

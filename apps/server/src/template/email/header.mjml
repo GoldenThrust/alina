@@ -8,13 +8,13 @@
     <!-- Logo -->
     <mj-image
       src="{{logo}}"
-      alt="YummyHouse Logo"
+      alt="Alina Logo"
       width="60px"
       padding="20px 0 10px"
     />
     <mj-image
       src="{{logo-text}}"
-      alt="YummyHouse Logo Lettermark"
+      alt="Alina Logo Lettermark"
       width="155px"
     />
   </mj-column>

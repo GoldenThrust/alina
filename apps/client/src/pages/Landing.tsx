@@ -71,7 +71,8 @@ export default function Landing() {
         <div className="landing-image-wrap" id="your-journey">
           <img
             className="landing-image"
-            src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1100&q=85"
+            src="/images/main.png"
+            // src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1100&q=85"
             alt="Portrait of a woman in soft natural light"
           />
           <div className="image-caption">

@@ -1,67 +1,339 @@
 <mjml>
   <mj-head>
-    <mj-title>Welcome to YummyHouse</mj-title>
-    <mj-preview>Welcome! Your account is ready to use</mj-preview>
-
+    <mj-title>Welcome to Alina, {{ firstName }}!</mj-title>
+    <mj-preview
+      >Your AI-powered skincare assistant is ready. Here's what you can
+      do.</mj-preview
+    >
+    <mj-font
+      name="Inter"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    />
     <mj-attributes>
-      <mj-all font-family="Helvetica, Arial, sans-serif" />
-      <mj-text font-size="14px" color="#555555" line-height="1.6" />
-      <mj-button
-        background-color="#ff6b6b"
-        color="#ffffff"
-        border-radius="6px"
-      />
+      <mj-all font-family="Inter, Helvetica, Arial, sans-serif" />
+      <mj-text font-size="14px" line-height="1.7" color="#6B6F85" padding="0" />
+      <mj-section padding="0" />
+      <mj-column padding="0" />
+      <mj-image padding="0" />
     </mj-attributes>
-
-    <mj-style inline="inline"> .container { max-width: 500px; } </mj-style>
+    <mj-style>
+      .link-purple { color: #6D3FE0 !important; text-decoration: none;
+      font-weight: 600; } @media only screen and (max-width: 480px) {
+      .hero-title { font-size: 28px !important; line-height: 36px !important; }
+      }
+    </mj-style>
   </mj-head>
 
-  <mj-body background-color="#f5f5f5">
-    <!-- Header -->
-    {{> header }}
-
-    <!-- Main Card -->
-    <mj-section
-      css-class="container"
-      background-color="#ffffff"
-      padding="20px"
-      border-radius="8px"
+  <mj-spacer height="24px" />
+  <mj-body background-color="#F4F6FC" width="640px">
+    <!-- CARD: HERO -->
+    <mj-wrapper
+      background-color="#FFFFFF"
+      border-radius="16px 16px 0 0"
+      padding="16px 16px 0 16px"
     >
+      <mj-section background-color="#F3EEFF" border-radius="16px" padding="0">
+        <!-- Header row -->
+        <mj-column width="50%" padding="24px 0 0 32px">
+          <mj-image
+            href="{{ appUrl }}"
+            src="{{ logoUrl }}"
+            alt="Alina"
+            width="110px"
+            align="left"
+          />
+        </mj-column>
+        <mj-column width="50%" padding="32px 32px 0 0">
+          <mj-text align="right" font-size="12px" color="#8A8DA6"
+            >Your Skin. Our AI.</mj-text
+          >
+        </mj-column>
+      </mj-section>
+      <mj-section
+        background-color="#F3EEFF"
+        border-radius="0 0 16px 16px"
+        padding="0 0 0 0"
+      >
+        <mj-column
+          width="62%"
+          vertical-align="middle"
+          padding="16px 0 32px 32px"
+        >
+          <mj-text
+            css-class="hero-title"
+            font-size="34px"
+            line-height="44px"
+            font-weight="700"
+            color="#1B1A4B"
+          >
+            Welcome to Alina,<br />
+            <span style="color: #6d3fe0">{{ firstName }}!</span> 👋
+          </mj-text>
+          <mj-text
+            padding-top="16px"
+            font-size="14px"
+            line-height="24px"
+            color="#5B5F77"
+          >
+            We're so excited to have you on board! Alina is your AI-powered
+            skincare assistant, designed to help you understand your skin, build
+            better habits, and achieve your glow — one scan at a time.
+          </mj-text>
+        </mj-column>
+        <mj-column width="38%" vertical-align="bottom" padding="0">
+          <!-- Tip: bake the "Healthy skin happier you" badge into this image -->
+          <mj-image
+            src="{{ heroImageUrl }}"
+            alt="Healthy skin, happier you"
+            width="230px"
+            border-radius="0 0 16px 0"
+            align="right"
+          />
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <!-- CARD: FEATURES -->
+    <mj-wrapper background-color="#FFFFFF" padding="0 32px">
+      <mj-section padding="32px 0 8px 0">
+        <mj-column>
+          <mj-text font-size="18px" font-weight="600" color="#1B1A4B"
+            >Here's what you can do with Alina:</mj-text
+          >
+        </mj-column>
+      </mj-section>
+
+      <mj-section padding="16px 0 0 0">
+        <mj-group width="50%">
+          <mj-column width="24%" padding="0 0 24px 0">
+            <mj-image
+              src="{{ scanIconUrl }}"
+              alt=""
+              width="52px"
+              align="left"
+            />
+          </mj-column>
+          <mj-column width="76%" padding="0 12px 24px 0">
+            <mj-text
+              font-size="15px"
+              font-weight="600"
+              color="#1B1A4B"
+              line-height="22px"
+              >Scan Your Skin</mj-text
+            >
+            <mj-text font-size="12.5px" line-height="20px" padding-top="4px"
+              >Get detailed analysis using advanced AI and computer
+              vision.</mj-text
+            >
+          </mj-column>
+        </mj-group>
+        <mj-group width="50%">
+          <mj-column width="24%" padding="0 0 24px 0">
+            <mj-image
+              src="{{ trackIconUrl }}"
+              alt=""
+              width="52px"
+              align="left"
+            />
+          </mj-column>
+          <mj-column width="76%" padding="0 0 24px 0">
+            <mj-text
+              font-size="15px"
+              font-weight="600"
+              color="#1B1A4B"
+              line-height="22px"
+              >Track Your Progress</mj-text
+            >
+            <mj-text font-size="12.5px" line-height="20px" padding-top="4px"
+              >See how your skin changes over time with easy-to-read insights
+              and trends.</mj-text
+            >
+          </mj-column>
+        </mj-group>
+      </mj-section>
+
+      <mj-section padding="0">
+        <mj-group width="50%">
+          <mj-column width="24%" padding="0 0 24px 0">
+            <mj-image
+              src="{{ adviceIconUrl }}"
+              alt=""
+              width="52px"
+              align="left"
+            />
+          </mj-column>
+          <mj-column width="76%" padding="0 12px 24px 0">
+            <mj-text
+              font-size="15px"
+              font-weight="600"
+              color="#1B1A4B"
+              line-height="22px"
+              >Get Personalized Advice</mj-text
+            >
+            <mj-text font-size="12.5px" line-height="20px" padding-top="4px"
+              >Ask Alina anything — from skincare tips to product
+              recommendations.</mj-text
+            >
+          </mj-column>
+        </mj-group>
+        <mj-group width="50%">
+          <mj-column width="24%" padding="0 0 24px 0">
+            <mj-image
+              src="{{ productsIconUrl }}"
+              alt=""
+              width="52px"
+              align="left"
+            />
+          </mj-column>
+          <mj-column width="76%" padding="0 0 24px 0">
+            <mj-text
+              font-size="15px"
+              font-weight="600"
+              color="#1B1A4B"
+              line-height="22px"
+              >Discover Your Best Products</mj-text
+            >
+            <mj-text font-size="12.5px" line-height="20px" padding-top="4px"
+              >Find skincare products that match your unique needs and
+              preferences.</mj-text
+            >
+          </mj-column>
+        </mj-group>
+      </mj-section>
+
+      <!-- CTA -->
+      <mj-section padding="8px 0 0 0">
+        <mj-column>
+          <mj-button
+            href="{{ dashboardUrl }}"
+            background-color="#6D3FE0"
+            color="#FFFFFF"
+            font-size="15px"
+            font-weight="600"
+            border-radius="10px"
+            inner-padding="16px 44px"
+            padding="0"
+          >
+            Explore Your Dashboard &rarr;
+          </mj-button>
+          <mj-text align="center" font-size="12.5px" padding-top="14px">
+            Or visit
+            <a class="link-purple" href="{{ appUrl }}">{{ appDisplayUrl }}</a>
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+      <!-- Privacy box -->
+      <mj-section padding="32px 0 24px 0" border-radius="10px">
+        <mj-group background-color="#F3EFFF">
+          <mj-column
+            width="12%"
+            vertical-align="middle"
+            padding="16px 0 16px 16px"
+          >
+            <mj-image
+              src="{{ shieldIconUrl }}"
+              alt=""
+              width="28px"
+              align="left"
+            />
+          </mj-column>
+          <mj-column
+            width="88%"
+            vertical-align="middle"
+            padding="16px 16px 16px 0"
+          >
+            <mj-text
+              font-size="12px"
+              font-weight="600"
+              color="#1B1A4B"
+              line-height="18px"
+              >Your privacy matters to us.</mj-text
+            >
+            <mj-text font-size="11.5px" line-height="18px" padding-top="2px">
+              We keep your data safe and secure. Learn more about our
+              <a class="link-purple" href="{{ privacyUrl }}">privacy policy</a>.
+            </mj-text>
+          </mj-column>
+        </mj-group>
+      </mj-section>
+
+      <!-- Footer -->
+      <mj-section padding="0 0 24px 0" border-top="1px solid #ECEAF5">
+        <mj-column width="50%" vertical-align="middle" padding="20px 0 0 0">
+          <mj-image
+            src="{{ logoUrl }}"
+            alt="Alina"
+            width="84px"
+            align="left"
+            href="{{ appUrl }}"
+          />
+          <mj-text font-size="11px" color="#8A8DA6" padding-top="4px"
+            >AI Skincare Assistant</mj-text
+          >
+        </mj-column>
+        <mj-column width="50%" vertical-align="middle" padding="20px 0 0 0">
+          <mj-social
+            mode="horizontal"
+            align="right"
+            icon-size="20px"
+            inner-padding="0 0 0 14px"
+            padding="0"
+          >
+            <mj-social-element
+              name="twitter"
+              src="{{ xIconUrl }}"
+              href="{{ twitterUrl }}"
+              background-color="transparent"
+              padding="0"
+            />
+            <mj-social-element
+              name="instagram"
+              src="{{ instagramIconUrl }}"
+              href="{{ instagramUrl }}"
+              background-color="transparent"
+              padding="0"
+            />
+            <mj-social-element
+              name="youtube"
+              src="{{ youtubeIconUrl }}"
+              href="{{ youtubeUrl }}"
+              background-color="transparent"
+              padding="0"
+            />
+          </mj-social>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <!-- Rounded bottom -->
+    <mj-wrapper
+      background-color="#FFFFFF"
+      border-radius="0 0 16px 16px"
+      padding="0"
+    >
+      <mj-section padding="0"
+        ><mj-column><mj-spacer height="8px" /></mj-column
+      ></mj-section>
+    </mj-wrapper>
+
+    <mj-section padding="20px 0 0 0">
       <mj-column>
-        <mj-text> Hello {{ name }}, </mj-text>
-
-        <mj-text> Welcome to YummyHouse! 🎉 </mj-text>
-
-        <mj-text>
-          We're excited to have you join our community. A home for all things
-          yummy. You can now explore our platform, discover recipes, and connect
-          with other food enthusiasts.
-        </mj-text>
-
-        <mj-button href="{{app_url}}" width="100%"> Get Started </mj-button>
-
-        <mj-text>
-          If you have any questions, feel free to reach out to our support team.
-        </mj-text>
-
-        <mj-divider border-color="#eeeeee" />
-
-        <mj-text font-size="12px" color="#999999">
-          If the button doesn't work, copy and paste this link into your
-          browser:
-        </mj-text>
-
-        <mj-text font-size="12px" color="#ff7a00"> {{app_url}} </mj-text>
-      </mj-column>
-    </mj-section>
-
-    <!-- Footer -->
-    <mj-section padding="10px">
-      <mj-column>
-        <mj-text align="center" font-size="12px" color="#aaaaaa">
-          © {{year}} YummyHouse. All rights reserved.
+        <mj-text
+          align="center"
+          font-size="11px"
+          color="#9A9DB3"
+          line-height="18px"
+        >
+          &copy; {{ year }} Alina. All rights reserved. {{#if
+          unsubscribeUrl}}<br /><a
+            href="{{ unsubscribeUrl }}"
+            style="color: #9a9db3"
+            >Unsubscribe</a
+          >{{/if}}
         </mj-text>
       </mj-column>
     </mj-section>
   </mj-body>
+  <mj-spacer height="24px" />
 </mjml>

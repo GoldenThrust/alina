@@ -75,10 +75,18 @@ class MailService {
     if (!cache) await redisService.setEmailTemplate(templateLocation, template);
 
     data["year"] = new Date().getFullYear();
-    data["logo"] = `${clientURL}/logo.svg`;
-    data["logo-text"] = `${clientURL}/logo-text.svg`;
-    data["advert-img"] = `${clientURL}/advert-img.jpg`;
-
+    data["appUrl"] = clientURL;
+    data["appDisplayUrl"] = clientURL;
+    data["privacyUrl"] = `${clientURL}/privacy`;
+    data["twitterUrl"] = "https://twitter.com/alinaapp";
+    data["instagramUrl"] = "https://instagram.com/alinaapp";
+    data["youtubeUrl"] = "https://youtube.com/alinaapp";
+    data["xIconUrl"] = "https://cdn.simpleicons.org/x/000000";
+    data["instagramIconUrl"] = "https://cdn.simpleicons.org/instagram/000000";
+    data["youtubeIconUrl"] = "https://cdn.simpleicons.org/youtube/000000";
+    data["logoUrl"] = `${clientURL}/alina.svg`;
+    data["unsubscribeUrl"] = `${clientURL}/unsubscribe`;
+    data["dashboardUrl"] = `${clientURL}/dashboard`;
     // 2. Compile with Handlebars
     const compiled = handlebars.compile(template);
     const mjml = compiled(data);
@@ -115,7 +123,7 @@ class MailService {
       const html = await this.renderTemplate(template, data);
 
       const info = await this.transporter.sendMail({
-        from: `"Yummy House" <${config.env.MAIL_FROM}>`,
+        from: `"Alina" <${config.env.MAIL_FROM}>`,
         to,
         subject,
         html,

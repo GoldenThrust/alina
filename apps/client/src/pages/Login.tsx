@@ -59,7 +59,9 @@ export default function Login() {
 				<p className="auth-privacy">Your skin information is personal and handled with care.</p>
 			</section>
 			<aside className="auth-aside">
-				<img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1100&q=85" alt="Portrait in soft natural light" />
+				<img 
+				// src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1100&q=85"
+				 src="/images/main.png" alt="Portrait in soft natural light" />
 				<div className="auth-aside-copy"><span>ALINA / YOUR SKIN JOURNAL</span><h2>Understand the little changes.</h2><p>Come back to a clearer view of your skin, one scan at a time.</p></div>
 			</aside>
 		</main>
