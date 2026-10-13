@@ -7,6 +7,7 @@ import { pipeline } from "stream/promises";
 import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
 import { fileTypeStream } from "file-type";
 import { env } from "../../config/env.ts";
+import { mkdir } from "node:fs/promises";
 
 type File = {
   stream: Readable;
@@ -44,11 +45,12 @@ export default class FileManager {
   }
 
   private safeFilename(ext: string): string {
-    return `${crypto.randomUUID()}${ext}`;
+    return `${crypto.randomUUID()}.${ext}`;
   }
 
   async uploadFile(req: FastifyRequest, type: string, directory = ""): Promise<string> {
     const data = await req.file();
+
 
     if (!data) {
       throw new Error("No file uploaded");
@@ -61,7 +63,10 @@ export default class FileManager {
     const { stream, ext } = await this.validateFileType(data.file, type);
 
     const filename = this.safeFilename(ext);
-    const filePath = path.join(this.filePath, type, directory, filename);
+    const folderPath = path.join(this.filePath, type, directory);
+    const filePath = path.join(folderPath, filename);
+    
+    await mkdir(folderPath, { recursive: true });
 
     await pipeline(stream, fs.createWriteStream(filePath));
 

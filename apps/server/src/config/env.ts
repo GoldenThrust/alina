@@ -1,9 +1,9 @@
 import "dotenv/config";
-import path from "path";
 
-import { fileURLToPath } from "url";
-export const __filename = fileURLToPath(import.meta.url);
-// const __dirname = process.cwd();
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 function getEnv(key: string, defaultValue?: string): string {
@@ -51,5 +51,5 @@ export const env = {
   FACEBOOK_CLIENT_ID: getEnv("FACEBOOK_CLIENT_ID"),
   FACEBOOK_CLIENT_SECRET: getEnv("FACEBOOK_CLIENT_SECRET"),
   FACEBOOK_CALLBACK_URL: getEnv("FACEBOOK_CALLBACK_URL"),
-  UPLOAD_DIR: path.join(__dirname, getEnv("UPLOAD_DIR")),
+  UPLOAD_DIR: path.join(__dirname,"..", getEnv("UPLOAD_DIR")),
 };

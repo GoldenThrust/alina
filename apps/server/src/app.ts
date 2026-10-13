@@ -15,6 +15,11 @@ import multipart from "@fastify/multipart";
 import { env } from "./config/env.ts";
 import fs from "fs";
 import { fileManager } from "./common/files/file.ts";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const { GOOGLE_CONFIGURATION, FACEBOOK_CONFIGURATION, X_CONFIGURATION } =
   fastifyOauth2;
@@ -158,13 +163,9 @@ export function buildApp() {
     //   // preHandler: [fastify.authenticate],
     // },
     async (request, reply) => {
-      const file = await request.file();
-
-      if (!file) {
-        return reply.status(400).send({ error: "No file uploaded" });
-      }
       try {
         const imagePath = await fileManager.uploadFile(request, "image");
+        console.log("File uploaded successfully:", imagePath);
       } catch (error) {
         console.error("Error uploading file:", error);
         return reply.status(500).send({ error: "Failed to upload file" });
@@ -172,7 +173,6 @@ export function buildApp() {
 
       return reply.send({
         message: "File received successfully",
-        filename: file.filename,
       });
     },
   );
