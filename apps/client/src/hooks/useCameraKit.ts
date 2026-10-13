@@ -134,7 +134,9 @@ export function useCameraKit(onCapture: (blob: Blob) => void) {
       }),
 
       ymk.addEventListener("unsupportedResolution", () => {
-        setError("Your camera resolution is too low for skin analysis.");
+        setError(
+          "Your camera can't capture HD photos. Try another device or choose a photo instead.",
+        );
         close();
       }),
 
@@ -148,12 +150,13 @@ export function useCameraKit(onCapture: (blob: Blob) => void) {
     ];
 
     ymk.init({
-      faceDetectionMode: "skincare",
+      faceDetectionMode: "hdskincare",
       imageFormat: "blob",
       language: "enu",
       qualityLevel: "moderate", // face ratio >= 0.65
       countingDuration: 1500, // hold-still time before auto-capture
       hideFlipCameraButton: true,
+      videoQuality: "1920p", // 2560 x 1920, needed for HD
     });
 
     openRef.current = true;

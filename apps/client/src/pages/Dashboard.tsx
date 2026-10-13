@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 import PageHeading from "../components/PageHeading";
-import { getDateInfo } from "../util/date";
+import { getDateInfo } from "../utils/date";
 import { useSessionStore } from "../stores/session";
 
 const recentScans = [

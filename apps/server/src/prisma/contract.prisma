@@ -17,7 +17,7 @@ model User {
   skinType      String?
   skinTone      String?
 
-  lastScanImagePath String?
+  lastScanImage String?
 
   scans         SkinScan[]
   routines      Routine[]
@@ -65,7 +65,7 @@ model OAuthAccount {
 
 
 model SkinScan {
-  id              String   @id @default(cuid())
+  id              String   @id @default(uuid())
 
   userId          String
   user            User @relation(fields:[userId], references:[id])
@@ -84,33 +84,13 @@ model SkinScan {
 
   createdAt       DateTime @default(now())
 
-  // image           ScanImage?
-
   analysis        SkinAnalysis?
 
-  // metrics         SkinMetric[]
 }
-
-
-// model ScanImage {
-
-//   id              String @id @default(cuid())
-
-//   scanId          String @unique
-
-//   scan            SkinScan @relation(fields:[scanId], references:[id])
-
-//   originalUrl     String
-
-//   alignedUrl      String?
-
-//   annotatedUrl    String?
-
-// }
 
 model SkinAnalysis {
 
-  id                 String @id @default(cuid())
+  id                 String @id @default(uuid())
 
   scanId             String @unique
 
@@ -149,53 +129,33 @@ model SkinAnalysis {
   tearThrough          Float?
 
   skinType          String?
-
-  rawResult          Json?
-
 }
-
-// model SkinMetric {
-
-//   id            String @id @default(cuid())
-
-//   scanId        String
-
-//   scan          SkinScan @relation(fields:[scanId], references:[id])
-
-//   name          String
-
-//   value         Float
-
-//   unit          String?
-// }
-
-// model Routine {
-
-//   id            String @id @default(cuid())
-
-//   userId        String
-
-//   user          User @relation(fields:[userId], references:[id])
-
-//   title         String
-
-//   accepted       Boolean @default(false)
-
-//   createdAt     DateTime @default(now())
-
-//   steps         RoutineStep[]
-
-// }
 
 model Routine {
 
-  id            String @id @default(cuid())
+  id            String @id @default(uuid())
 
   userId        String
 
   user          User @relation(fields:[userId], references:[id])
 
   title         String
+
+  accepted       Boolean @default(false)
+
+  createdAt     DateTime @default(now())
+
+  steps         RoutineStep[]
+
+}
+
+model RoutineStep {
+
+  id            String @id @default(uuid())
+
+  routineId     String
+
+  routine       Routine @relation(fields:[routineId], references:[id])
 
   period        RoutinePeriod
 
@@ -204,33 +164,11 @@ model Routine {
   instruction   String
 
   position      Int
-
-  accepted       Boolean @default(false)
-
-  createdAt     DateTime @default(now())
-
 }
-
-// model RoutineStep {
-
-//   id            String @id @default(cuid())
-
-//   routineId     String
-
-//   routine       Routine @relation(fields:[routineId], references:[id])
-
-//   period        RoutinePeriod
-
-//   title         String
-
-//   instruction   String
-
-//   position      Int
-// }
 
 model RoutineLog {
 
-  id            String @id @default(cuid())
+  id            String @id @default(uuid())
 
   userId        String
 
@@ -242,7 +180,7 @@ model RoutineLog {
 
 model Product {
 
-  id              String @id @default(cuid())
+  id              String @id @default(uuid())
 
   name            String
 
@@ -256,11 +194,12 @@ model Product {
 
   affiliateUrl    String?
 
+  price           Float?
 }
 
 model Recommendation {
 
-  id              String @id @default(cuid())
+  id              String @id @default(uuid())
 
   userId          String
 
@@ -282,7 +221,7 @@ model Recommendation {
 
 model Conversation {
 
-  id            String @id @default(cuid())
+  id            String @id @default(uuid())
 
   userId        String
 
@@ -296,7 +235,7 @@ model Conversation {
 
 model Message {
 
-  id            String @id @default(cuid())
+  id            String @id @default(uuid())
 
   conversationId String
 
@@ -312,7 +251,7 @@ model Message {
 
 model Preference {
 
-  id                String @id @default(cuid())
+  id                String @id @default(uuid())
 
   userId            String @unique
 
@@ -330,7 +269,7 @@ model Preference {
 
 model Order {
 
-  id              String @id @default(cuid())
+  id              String @id @default(uuid())
 
   userId          String
 
@@ -347,7 +286,7 @@ model Order {
 
 model OrderItem {
 
-  id            String @id @default(cuid())
+  id            String @id @default(uuid())
 
   orderId       String
 
@@ -363,7 +302,7 @@ model OrderItem {
 
 model ConnectedDevice {
 
-  id            String @id @default(cuid())
+  id            String @id @default(uuid())
 
   userId        String
 
@@ -379,7 +318,7 @@ model ConnectedDevice {
 
 model Subscription {
 
-  id              String @id @default(cuid())
+  id              String @id @default(uuid())
 
   userId          String
 
@@ -412,6 +351,7 @@ enum RoutinePeriod {
   AFTERNOON
   EVENING
   NIGHT
+  HABIT
 }
 
 enum RecommendationType {
@@ -422,7 +362,7 @@ enum RecommendationType {
 
 enum Sender {
   USER
-  AI
+  ALINA
 }
 
 enum DeviceType {
@@ -450,4 +390,5 @@ enum ProductCategory {
   MOISTURIZER
   SUNSCREEN
   TREATMENT
+  OTHER
 }

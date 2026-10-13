@@ -19,6 +19,10 @@ import PageHeading from "../components/PageHeading";
 import toast from "react-hot-toast";
 import { requestScan } from "../services/scan";
 import { useCameraKit } from "../hooks/useCameraKit";
+import {
+  prepareImageForSkinAnalysis,
+  ImageSizeError,
+} from "../utils/prepareImage";
 
 export default function Scan() {
   const [fileName, setFileName] = useState("");
@@ -84,12 +88,18 @@ export default function Scan() {
 
         if (!previewUrl || !fileName) return;
 
+        setUploadError("");
+
         try {
-          const blob = await fetch(previewUrl).then((r) => r.blob());
+          const original = await fetch(previewUrl).then((r) => r.blob());
+
+          // Step 1: resize to the supported HD dimensions.
+          const blob = await prepareImageForSkinAnalysis(original);
+
           const scanId = await requestScan(blob);
 
           keepPreviewUrlRef.current = true;
-          navigate(`/scan-result/${scanId}`, {
+          navigate("/scan-result", {
             state: {
               scanId,
               fileName,
@@ -98,7 +108,11 @@ export default function Scan() {
             },
           });
           toast.success("Analysis complete! You can view your scan result.");
-        } catch (error) {
+        } catch (error: any) {
+          if (error instanceof ImageSizeError) {
+            setUploadError(error.message);
+            return;
+          }
           console.error("Scan failed:", error);
           toast.error("Failed to complete the scan.");
         }
@@ -141,7 +155,10 @@ export default function Scan() {
               <span>02</span>
               <div>
                 <strong>Keep it natural</strong>
-                <small>Remove glasses and move hair away from your face.</small>
+                <small>
+                  Remove glasses and makeup, keep bangs off your forehead, and
+                  leave your hair down over your chest.
+                </small>
               </div>
             </li>
 
