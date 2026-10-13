@@ -47,7 +47,7 @@ export default class FileManager {
     return `${crypto.randomUUID()}${ext}`;
   }
 
-  async uploadFile(req: FastifyRequest, type: string): Promise<string> {
+  async uploadFile(req: FastifyRequest, type: string, directory = ""): Promise<string> {
     const data = await req.file();
 
     if (!data) {
@@ -61,7 +61,7 @@ export default class FileManager {
     const { stream, ext } = await this.validateFileType(data.file, type);
 
     const filename = this.safeFilename(ext);
-    const filePath = path.join(this.filePath, type, filename);
+    const filePath = path.join(this.filePath, type, directory, filename);
 
     await pipeline(stream, fs.createWriteStream(filePath));
 

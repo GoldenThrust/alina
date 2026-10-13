@@ -37,7 +37,7 @@ function App() {
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} index />
           <Route path="/scan" element={<Scan />} />
-          <Route path="/scan-result" element={<ScanResult />} />
+          <Route path="/scan-result/:scanId" element={<ScanResult />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/recommendations" element={<Recommendation />} />
           <Route path="/chat" element={<Chat />} />

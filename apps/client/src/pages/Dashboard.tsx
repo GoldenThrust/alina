@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 import PageHeading from "../components/PageHeading";
+import { getDateInfo } from "../util/date";
+import { useSessionStore } from "../stores/session";
 
 const recentScans = [
   {
@@ -35,12 +37,16 @@ const recentScans = [
   },
 ];
 
+const { date, period } = getDateInfo();
+
 export default function Dashboard() {
+  const session = useSessionStore((state) => state.session);
+  
   return (
     <div className="page-content dashboard-page">
       <PageHeading
-        eyebrow="Thursday, October 9"
-        title="Good morning, Sarah"
+        eyebrow={date}
+        title={`Good ${period}, ${session?.name?.split(" ")[0] || "there"}!`}
         description="A small check-in can make your routine feel a little more personal."
         action={
           <Link className="button button-primary" to="/scan">
@@ -75,7 +81,7 @@ export default function Dashboard() {
               <small>vs. previous sample</small>
             </span>
             <Link to="/scan-result">
-              View sample result <ArrowRight size={15} />
+              View last result <ArrowRight size={15} />
             </Link>
           </div>
         </div>

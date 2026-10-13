@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { fastify } from "fastify";
 import { db } from "./prisma/db.ts";
 import {
   serializerCompiler,
@@ -14,12 +14,13 @@ import multipart from "@fastify/multipart";
 
 import { env } from "./config/env.ts";
 import fs from "fs";
+import { fileManager } from "./common/files/file.ts";
 
 const { GOOGLE_CONFIGURATION, FACEBOOK_CONFIGURATION, X_CONFIGURATION } =
   fastifyOauth2;
 
 export function buildApp() {
-  fs.mkdir("log", ()=> {});
+  fs.mkdir("log", () => {});
   const app = Fastify({
     logger: {
       file: "log/server.txt",
@@ -145,10 +146,36 @@ export function buildApp() {
   app.get("/", function (_, reply) {
     reply.send("Welcome to Alina API! Visit /api for API routes.");
   });
-  
+
   app.get("/hello", function (_, reply) {
     reply.send("Hello from Alina API! Visit /api for API routes.");
   });
+
+  // Test Route here
+  app.post(
+    "/api/scan",
+    //     {
+    //   // preHandler: [fastify.authenticate],
+    // },
+    async (request, reply) => {
+      const file = await request.file();
+
+      if (!file) {
+        return reply.status(400).send({ error: "No file uploaded" });
+      }
+      try {
+        const imagePath = await fileManager.uploadFile(request, "image");
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        return reply.status(500).send({ error: "Failed to upload file" });
+      }
+
+      return reply.send({
+        message: "File received successfully",
+        filename: file.filename,
+      });
+    },
+  );
 
   // Hooks
   // app.addHook("onClose", async () => {

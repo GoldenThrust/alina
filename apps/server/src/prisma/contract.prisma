@@ -3,15 +3,29 @@
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
-  name      String?
+  fullName      String
   password  String?
   phoneNumber         String?              
-  image               String?             
   emailVerifiedAt     DateTime?            
   gender              Gender?
   dateOfBirth         DateTime? 
   createdAt TimestamptzString @default(now())
   updatedAt temporal.updatedAtString()
+
+  avatar        String?
+
+  skinType      String?
+  skinTone      String?
+
+  lastScanImagePath String?
+
+  scans         SkinScan[]
+  routines      Routine[]
+  conversations Conversation[]
+  preferences   Preference?
+  subscriptions Subscription[]
+  orders        Order[]
+  devices       ConnectedDevice[]
 
   sessions  Session[]
   oauthAccounts       OAuthAccount[]
@@ -49,7 +63,391 @@ model OAuthAccount {
   @@index([userId])
 }
 
+
+model SkinScan {
+  id              String   @id @default(cuid())
+
+  userId          String
+  user            User @relation(fields:[userId], references:[id])
+
+  status          ScanStatus
+
+  score           Float?
+
+  aiSummary       String?
+
+  aiShortSummary  String?
+
+  aiObservation   String?
+
+  aiShortObservation String?
+
+  createdAt       DateTime @default(now())
+
+  // image           ScanImage?
+
+  analysis        SkinAnalysis?
+
+  // metrics         SkinMetric[]
+}
+
+
+// model ScanImage {
+
+//   id              String @id @default(cuid())
+
+//   scanId          String @unique
+
+//   scan            SkinScan @relation(fields:[scanId], references:[id])
+
+//   originalUrl     String
+
+//   alignedUrl      String?
+
+//   annotatedUrl    String?
+
+// }
+
+model SkinAnalysis {
+
+  id                 String @id @default(cuid())
+
+  scanId             String @unique
+
+  scan               SkinScan @relation(fields:[scanId], references:[id])
+
+  score               Float?
+
+  skinAge              Int?
+
+  redness          Float?
+
+  ageSpot          Float?
+
+  radiance          Float?
+
+  moisture          Float?
+
+  darkCircle         Float?
+
+  eyeBag        Float?
+
+  droopyUpperEyelid    Float?
+
+  droopyLowerEyelid    Float?
+
+  firmness          Float?
+
+  texture          Json?
+
+  acne          Float?
+
+  pore              Json?
+
+  wrinkle          Json?
+
+  tearThrough          Float?
+
+  skinType          String?
+
+  rawResult          Json?
+
+}
+
+// model SkinMetric {
+
+//   id            String @id @default(cuid())
+
+//   scanId        String
+
+//   scan          SkinScan @relation(fields:[scanId], references:[id])
+
+//   name          String
+
+//   value         Float
+
+//   unit          String?
+// }
+
+// model Routine {
+
+//   id            String @id @default(cuid())
+
+//   userId        String
+
+//   user          User @relation(fields:[userId], references:[id])
+
+//   title         String
+
+//   accepted       Boolean @default(false)
+
+//   createdAt     DateTime @default(now())
+
+//   steps         RoutineStep[]
+
+// }
+
+model Routine {
+
+  id            String @id @default(cuid())
+
+  userId        String
+
+  user          User @relation(fields:[userId], references:[id])
+
+  title         String
+
+  period        RoutinePeriod
+
+  title         String
+
+  instruction   String
+
+  position      Int
+
+  accepted       Boolean @default(false)
+
+  createdAt     DateTime @default(now())
+
+}
+
+// model RoutineStep {
+
+//   id            String @id @default(cuid())
+
+//   routineId     String
+
+//   routine       Routine @relation(fields:[routineId], references:[id])
+
+//   period        RoutinePeriod
+
+//   title         String
+
+//   instruction   String
+
+//   position      Int
+// }
+
+model RoutineLog {
+
+  id            String @id @default(cuid())
+
+  userId        String
+
+  routineId     String
+
+  completedAt   DateTime
+
+}
+
+model Product {
+
+  id              String @id @default(cuid())
+
+  name            String
+
+  brand           String
+
+  category        ProductCategory
+
+  description     String
+
+  image           String?
+
+  affiliateUrl    String?
+
+}
+
+model Recommendation {
+
+  id              String @id @default(cuid())
+
+  userId          String
+
+  user            User @relation(fields:[userId], references:[id])
+
+  scanId          String?
+
+  type            RecommendationType
+
+  explanation     String
+
+  productId       String?
+
+  product         Product? @relation(fields:[productId], references:[id])
+
+  createdAt       DateTime @default(now())
+
+}
+
+model Conversation {
+
+  id            String @id @default(cuid())
+
+  userId        String
+
+  user          User @relation(fields:[userId], references:[id])
+
+  createdAt     DateTime @default(now())
+
+  messages      Message[]
+
+}
+
+model Message {
+
+  id            String @id @default(cuid())
+
+  conversationId String
+
+  conversation Conversation @relation(fields:[conversationId], references:[id])
+
+  sender        Sender
+
+  content       String
+
+  createdAt     DateTime @default(now())
+
+}
+
+model Preference {
+
+  id                String @id @default(cuid())
+
+  userId            String @unique
+
+  user              User @relation(fields:[userId], references:[id])
+
+  favoriteBrands    String[]
+
+  favoriteIngredients String[]
+
+  avoidedIngredients String[]
+
+  budget            Int?
+
+}
+
+model Order {
+
+  id              String @id @default(cuid())
+
+  userId          String
+
+  user            User @relation(fields:[userId], references:[id])
+
+  total           Float
+
+  paypalOrderId   String?
+
+  createdAt       DateTime @default(now())
+
+  items           OrderItem[]
+}
+
+model OrderItem {
+
+  id            String @id @default(cuid())
+
+  orderId       String
+
+  order         Order @relation(fields:[orderId], references:[id])
+
+  productId     String
+
+  product       Product @relation(fields:[productId], references:[id])
+
+  quantity      Int
+
+}
+
+model ConnectedDevice {
+
+  id            String @id @default(cuid())
+
+  userId        String
+
+  user          User @relation(fields:[userId], references:[id])
+
+  type          DeviceType
+
+  externalId    String
+
+  name          String
+
+}
+
+model Subscription {
+
+  id              String @id @default(cuid())
+
+  userId          String
+
+  user            User @relation(fields:[userId], references:[id])
+
+  plan            SubscriptionPlan
+
+  status          SubscriptionStatus
+
+  startedAt       DateTime
+
+  expiresAt       DateTime?
+}
+
+
 enum Gender {
-  male
-  female
+  MALE
+  FEMALE
+}
+
+enum ScanStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum RoutinePeriod {
+  MORNING
+  AFTERNOON
+  EVENING
+  NIGHT
+}
+
+enum RecommendationType {
+  PRODUCT
+  ROUTINE
+  HABIT
+}
+
+enum Sender {
+  USER
+  AI
+}
+
+enum DeviceType {
+  RING
+  MOBILE
+  WEB
+}
+
+enum SubscriptionPlan {
+  FREE
+  PLUS
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+enum ProductCategory {
+  CLEANSER
+  TONER
+  SERUM
+  MOISTURIZER
+  SUNSCREEN
+  TREATMENT
 }

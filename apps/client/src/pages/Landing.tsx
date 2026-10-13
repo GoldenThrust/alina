@@ -16,6 +16,7 @@ export default function Landing() {
         primary: "#fcd34d",
         secondary: "#fff",
       },
+      position: "top-center",
       duration: 5000,
     });
   }
