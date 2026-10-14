@@ -12,6 +12,10 @@ export interface ToolCall {
 export interface Tool {
     readonly name: string;
 
+    abstract readonly description: string;
+
+    abstract readonly schema: z.ZodType<TInput>;
+
     execute(
         args: Record<string, unknown>,
         context: ToolContext

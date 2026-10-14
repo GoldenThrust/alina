@@ -4,7 +4,7 @@ import Websocket from "../../websocket.service";
 import type { ToolExecutor } from "../tools/tool.executor";
 import type { GemmaClient } from "./gemma.service";
 
-const MAX_TURNS = 10;
+const MAX_TURNS = 30;
 
 interface FunctionCall {
   id: string;

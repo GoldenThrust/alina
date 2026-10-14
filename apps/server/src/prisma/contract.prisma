@@ -83,6 +83,8 @@ model SkinScan {
 
   aiShortObservation String?
 
+  image          String?
+
   createdAt       DateTime @default(now())
 
   analysis        SkinAnalysis?
@@ -231,6 +233,8 @@ model Conversation {
   userId        String
 
   user          User @relation(fields:[userId], references:[id])
+
+  lastInteractionId String?
 
   createdAt     DateTime @default(now())
 

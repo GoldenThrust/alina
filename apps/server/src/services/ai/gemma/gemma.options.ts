@@ -1,12 +1,6 @@
-import {} from "@google/genai";
+import { analyserTools, streamTools } from "./gemma.tools";
+import { analyserSystemInstruction, streamSystemInstruction } from "./gemma.instructions";
 
-const baseTools = [{ type: "google_search" }];
-const analyserTools = [...baseTools];
-
-const streamTools = [...baseTools];
-
-const analyserSystemInstruction = ``;
-const streamSystemInstruction = ``;
 
 const baseOptions = {
   model: "gemma-4-31b-it",
@@ -26,4 +20,5 @@ export const streamOptions = {
   ...baseOptions,
   tools: streamTools,
   stream: true,
+  system_instruction: streamSystemInstruction,
 };
