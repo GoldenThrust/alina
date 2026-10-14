@@ -1493,6 +1493,13 @@
                   "kind": "scalar"
                 }
               },
+              "oiliness": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/float8@1",
+                  "kind": "scalar"
+                }
+              },
               "pore": {
                 "nullable": true,
                 "type": {
@@ -1521,28 +1528,14 @@
                   "kind": "scalar"
                 }
               },
-              "score": {
-                "nullable": true,
-                "type": {
-                  "codecId": "pg/float8@1",
-                  "kind": "scalar"
-                }
-              },
-              "skinAge": {
-                "nullable": true,
-                "type": {
-                  "codecId": "pg/int4@1",
-                  "kind": "scalar"
-                }
-              },
               "skinType": {
                 "nullable": true,
                 "type": {
-                  "codecId": "pg/text@1",
+                  "codecId": "pg/json@1",
                   "kind": "scalar"
                 }
               },
-              "tearThrough": {
+              "tearTrough": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/float8@1",
@@ -1611,6 +1604,9 @@
                 "moisture": {
                   "column": "moisture"
                 },
+                "oiliness": {
+                  "column": "oiliness"
+                },
                 "pore": {
                   "column": "pore"
                 },
@@ -1623,17 +1619,11 @@
                 "scanId": {
                   "column": "scanId"
                 },
-                "score": {
-                  "column": "score"
-                },
-                "skinAge": {
-                  "column": "skinAge"
-                },
                 "skinType": {
                   "column": "skinType"
                 },
-                "tearThrough": {
-                  "column": "tearThrough"
+                "tearTrough": {
+                  "column": "tearTrough"
                 },
                 "texture": {
                   "column": "texture"
@@ -1694,6 +1684,13 @@
                 "nullable": true,
                 "type": {
                   "codecId": "pg/float8@1",
+                  "kind": "scalar"
+                }
+              },
+              "skinAge": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
                   "kind": "scalar"
                 }
               },
@@ -1774,6 +1771,9 @@
                 },
                 "score": {
                   "column": "score"
+                },
+                "skinAge": {
+                  "column": "skinAge"
                 },
                 "status": {
                   "column": "status"
@@ -3132,6 +3132,11 @@
                   "dataType": "pg/float8",
                   "nullable": true
                 },
+                "oiliness": {
+                  "codecId": "pg/float8@1",
+                  "dataType": "pg/float8",
+                  "nullable": true
+                },
                 "pore": {
                   "codecId": "pg/json@1",
                   "dataType": "pg/json",
@@ -3152,22 +3157,12 @@
                   "dataType": "pg/text",
                   "nullable": false
                 },
-                "score": {
-                  "codecId": "pg/float8@1",
-                  "dataType": "pg/float8",
-                  "nullable": true
-                },
-                "skinAge": {
-                  "codecId": "pg/int4@1",
-                  "dataType": "pg/int4",
-                  "nullable": true
-                },
                 "skinType": {
-                  "codecId": "pg/text@1",
-                  "dataType": "pg/text",
+                  "codecId": "pg/json@1",
+                  "dataType": "pg/json",
                   "nullable": true
                 },
-                "tearThrough": {
+                "tearTrough": {
                   "codecId": "pg/float8@1",
                   "dataType": "pg/float8",
                   "nullable": true
@@ -3261,6 +3256,11 @@
                 "score": {
                   "codecId": "pg/float8@1",
                   "dataType": "pg/float8",
+                  "nullable": true
+                },
+                "skinAge": {
+                  "codecId": "pg/int4@1",
+                  "dataType": "pg/int4",
                   "nullable": true
                 },
                 "status": {
@@ -3693,7 +3693,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "b0f2e13b86498a9d36484578fc4e8c23655df13018b012f57bb7cde8d7a3b4e2"
+    "storageHash": "6b1f6a031bcd5467a53b33b079dcf19044e1c4b30249ff37f0d6de488dbf1dca"
   },
   "execution": {
     "executionHash": "26720611d035c046a271a573516128f05d3184c4eff2037c3e5f0d1decd43653",

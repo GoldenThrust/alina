@@ -52,6 +52,7 @@ interface SkinAnalysisOutputItem {
   ui_score?: number;
   score?: number;
   mask_urls?: string[];
+  skin_type?: string;
 }
 
 interface SkinConcernScore {
@@ -64,9 +65,10 @@ interface SkinAnalysisResult {
   /** General skin condition (1-100), taken from whichever output item carries `score`. */
   overallScore?: number;
   /** concerns[type][region], e.g. concerns.hd_pore.forehead. Region defaults to "whole". */
-  concerns: Record<string, Record<string, SkinConcernScore>>;
+  concerns: Record<string, Record<string, number | string>>;
   /** The unmodified `output` array. */
   output: SkinAnalysisOutputItem[];
+  skinAge?: number;
 }
 
 interface SkinToneResult {
@@ -95,7 +97,7 @@ interface FitzpatrickResult {
   processingSeconds?: number;
 }
 
-type Settled<T> = { ok: true; data: T } | { ok: false; error: YouCamError };
+type Settled<T> = { ok: true; data: T; } | { ok: false; error: YouCamError };
 
 interface AnalyzeImageOptions {
   skinAnalysis?: SkinAnalysisOptions;
@@ -161,6 +163,7 @@ type HdSkinAction = (typeof HD_SKIN_ACTIONS)[number];
 type analysisType = "all" | "skin" | "skin_tone" | "fitzpatrick";
 
 type YouCamAnalysisData = {
+  userId: string;
   type: analysisType;
   source: string | Buffer;
   options: AnalyzeImageOptions | {};

@@ -1,0 +1,535 @@
+--- Streaming interaction (previous: null) ---
+
+[stream event] interaction.created
+{
+  interaction: {
+    id: 'v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIXaW9mUGFvWFNJYjNxa2RVUHVPS2cyQUU',
+    object: 'interaction',
+    model: 'gemma-4-31b-it'
+  },
+  event_type: 'interaction.created'
+}
+
+[stream event] interaction.status_update
+{
+  interaction_id: 'v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIXaW9mUGFvWFNJYjNxa2RVUHVPS2cyQUU',
+  status: 'in_progress',
+  event_type: 'interaction.status_update'
+}
+
+[stream event] step.start
+{ index: 0, step: { type: 'thought' }, event_type: 'step.start' }
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: 'The user wants to perform three distinct tasks:\n1.  Find',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: ' the northernmost city in the US.\n' +
+        '2.  Get the current weather for that city.\n' +
+        '3.  ',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: 'Convert 100 USD to NGN.\n' +
+        '4.  Log the events after completing these.\n' +
+        '\n' +
+        'First,',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: ' I need to find the northernmost city in the US using `google_search`.\n' +
+        'Then, once I have the',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: ' city name, I will use `get_weather` for that city.\n' +
+        'Simultaneously or sequentially, I will',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: ' use `convert_currency` for 100 USD to NGN.\nFinally, I will use `log',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: '_event` to record the actions.\n' +
+        '\n' +
+        'Step 1: Search for the northernmost city in the US.',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.stop
+{ index: 0, event_type: 'step.stop' }
+
+[stream event] step.start
+{
+  index: 1,
+  step: {
+    id: 'call_1070500',
+    signature: '',
+    type: 'google_search_call',
+    search_type: 'web_search'
+  },
+  event_type: 'step.start'
+}
+
+[stream event] step.delta
+{
+  index: 1,
+  delta: {
+    signature: 'CAISnAEBaRR9E6TqvCs7k7B9Jr2W89oh4kFMW1KUQBG0QvqKr+zCuDUQXcYE8cda2tU2siA2U4VWeIQdTp+opbXJ6bvtOMVzj5gj2WsXNXklwoNkgqWVRcHTMSPpR3poaFqyT4RE7sk1U+mtg2LSnFrX3OX/HbUPFO0o+/2s2Ycum/0Isd8yOchcQSM+brogogiysfwXX6ZTWGaDywl/yaU=',
+    type: 'google_search_call',
+    arguments: { queries: [Array] }
+  },
+  event_type: 'step.delta'
+}
+
+[searching: ["northernmost city in the US"]]
+
+[stream event] step.stop
+{ index: 1, event_type: 'step.stop' }
+
+[stream event] step.start
+{
+  index: 2,
+  step: {
+    id: 'call_1070512',
+    type: 'function_call',
+    name: 'convert_currency',
+    arguments: {}
+  },
+  event_type: 'step.start'
+}
+
+[stream event] step.delta
+{
+  index: 2,
+  delta: {
+    arguments: '{"to_currency":"NGN","from_currency":"USD","amount":100}',
+    type: 'arguments_delta'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.stop
+{ index: 2, event_type: 'step.stop' }
+
+[stream event] step.start
+{
+  index: 3,
+  step: {
+    call_id: 'call_1070500',
+    signature: '',
+    type: 'google_search_result'
+  },
+  event_type: 'step.start'
+}
+
+[stream event] step.delta
+{
+  index: 3,
+  delta: {
+    signature: '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'... 18880 more characters,
+    type: 'google_search_result',
+    result: [ [Object] ],
+    is_error: false
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.stop
+{ index: 3, event_type: 'step.stop' }
+
+[stream event] interaction.completed
+{
+  interaction: {
+    id: 'v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIXaW9mUGFvWFNJYjNxa2RVUHVPS2cyQUU',
+    status: 'requires_action',
+    usage: {
+      total_tokens: 477,
+      total_input_tokens: 270,
+      input_tokens_by_modality: [Array],
+      total_cached_tokens: 0,
+      total_output_tokens: 50,
+      total_tool_use_tokens: 0,
+      total_thought_tokens: 157,
+      grounding_tool_count: [Array]
+    },
+    created: '2026-10-14T13:45:55Z',
+    updated: '2026-10-14T13:45:55Z',
+    service_tier: 'standard',
+    object: 'interaction',
+    model: 'gemma-4-31b-it'
+  },
+  event_type: 'interaction.completed'
+}
+
+--- Streaming interaction (previous: v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIXaW9mUGFvWFNJYjNxa2RVUHVPS2cyQUU) ---
+
+[stream event] interaction.created
+{
+  interaction: {
+    id: 'v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIWeElmUGFwSzZJcTNqdmRJUGhmMkdPQQ',
+    object: 'interaction',
+    model: 'gemma-4-31b-it'
+  },
+  event_type: 'interaction.created'
+}
+
+[stream event] interaction.status_update
+{
+  interaction_id: 'v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIWeElmUGFwSzZJcTNqdmRJUGhmMkdPQQ',
+  status: 'in_progress',
+  event_type: 'interaction.status_update'
+}
+
+[stream event] step.start
+{ index: 0, step: { type: 'thought' }, event_type: 'step.start' }
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: 'The user wants to know the northernmost city in the US, the',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: ' current weather there, the conversion of 100 USD to NGN, and a log of these actions.\n' +
+        '\n',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: '1.  **Northernmost City**: The search results consistently identify **Utqiaġvik** (formerly Barrow),',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: ' Alaska, as the northernmost city in the US.\n' +
+        "2.  **Weather**: I haven't fetched the",
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: ' weather for Utqiaġvik yet. I need to call `get_weather(city="Utqiaġ',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: 'vik, Alaska")`.\n' +
+        '3.  **Currency Conversion**: The tool `convert_currency` already returned that ',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: { text: '100 USD = 150,000 NGN (rate 1500).\n', type: 'text' },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: '4.  **Logging**: I need to call `log_event` at the end.\n\nPlan:\n1',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: '. Call `get_weather` for Utqiaġvik, Alaska.\n2. Synthesize the answer.',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: { text: '\n3. Call `log_event`.', type: 'text' },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    signature: 'EiYKJGUyNDgzMGE3LTVjZDYtNDJmZS05OThiLWVlNTM5ZTcyYjljMw==',
+    type: 'thought_signature'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.stop
+{ index: 0, event_type: 'step.stop' }
+
+[stream event] step.start
+{
+  index: 1,
+  step: {
+    id: 'call_1327697',
+    signature: 'ZTI0ODMwYTctNWNkNi00MmZlLTk5OGItZWU1MzllNzJiOWMz',
+    type: 'function_call',
+    name: 'get_weather',
+    arguments: {}
+  },
+  event_type: 'step.start'
+}
+
+[stream event] step.delta
+{
+  index: 1,
+  delta: {
+    arguments: '{"city":"Utqiaġvik, Alaska"}',
+    type: 'arguments_delta'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.stop
+{ index: 1, event_type: 'step.stop' }
+
+[stream event] interaction.completed
+{
+  interaction: {
+    id: 'v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIWeElmUGFwSzZJcTNqdmRJUGhmMkdPQQ',
+    status: 'requires_action',
+    usage: {
+      total_tokens: 481,
+      total_input_tokens: 244,
+      input_tokens_by_modality: [Array],
+      total_cached_tokens: 0,
+      total_output_tokens: 22,
+      total_tool_use_tokens: 0,
+      total_thought_tokens: 215
+    },
+    created: '2026-10-14T13:46:53Z',
+    updated: '2026-10-14T13:46:53Z',
+    service_tier: 'standard',
+    object: 'interaction',
+    model: 'gemma-4-31b-it'
+  },
+  event_type: 'interaction.completed'
+}
+
+--- Streaming interaction (previous: v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIWeElmUGFwSzZJcTNqdmRJUGhmMkdPQQ) ---
+
+[stream event] interaction.created
+{
+  interaction: {
+    id: 'v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIXOG9mUGF0R05Fc2FGa2RVUHhOMksyQTA',
+    object: 'interaction',
+    model: 'gemma-4-31b-it'
+  },
+  event_type: 'interaction.created'
+}
+
+[stream event] interaction.status_update
+{
+  interaction_id: 'v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIXOG9mUGF0R05Fc2FGa2RVUHhOMksyQTA',
+  status: 'in_progress',
+  event_type: 'interaction.status_update'
+}
+
+[stream event] step.start
+{ index: 0, step: { type: 'thought' }, event_type: 'step.start' }
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: 'The user wants three things:\n1. The northernmost city in',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    content: {
+      text: ' the US. (Found via search: Utqiaġvik, Alaska).\n' +
+        '2. The weather in that city',
+      type: 'text'
+    },
+    type: 'thought_summary'
+  },
+  event_type: 'step.delta'
+}
+
+
+--- follow-up (stateful, nothing re-sent) ---
+
+--- Streaming interaction (previous: v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIXOG9mUGF0R05Fc2FGa2RVUHhOMksyQTA) ---
+
+[stream event] interaction.created
+{
+  interaction: {
+    id: 'v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIXLUlmUGFvN1RMWVg3bnNFUHlfZUR3QWc',
+    object: 'interaction',
+    model: 'gemma-4-31b-it'
+  },
+  event_type: 'interaction.created'
+}
+
+[stream event] interaction.status_update
+{
+  interaction_id: 'v1_Chdpb2ZQYW9YU0liM3FrZFVQdU9LZzJBRRIXLUlmUGFvN1RMWVg3bnNFUHlfZUR3QWc',
+  status: 'in_progress',
+  event_type: 'interaction.status_update'
+}
+
+[stream event] step.start
+{ index: 0, step: { type: 'thought' }, event_type: 'step.start' }
+
+[stream event] step.delta
+{
+  index: 0,
+  delta: {
+    signature: 'EiYKJGUyNDgzMGE3LTVjZDYtNDJmZS05OThiLWVlNTM5ZTcyYjljMw==',
+    type: 'thought_signature'
+  },
+  event_type: 'step.delta'
+}
+
+[stream event] step.stop
+{ index: 0, event_type: 'step.stop' }
+
+[stream event] step.start
+{ index: 1, step: { type: 'model_output' }, event_type: 'step.start' }
+
+[stream event] step.delta
+{
+  index: 1,
+  delta: { text: ' Now', type: 'text' },
+  event_type: 'step.delta'
+}

@@ -18,7 +18,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'b0f2e13b86498a9d36484578fc4e8c23655df13018b012f57bb7cde8d7a3b4e2'>;
+  StorageHashBase<'6b1f6a031bcd5467a53b33b079dcf19044e1c4b30249ff37f0d6de488dbf1dca'>;
 export type ExecutionHash =
   ExecutionHashBase<'26720611d035c046a271a573516128f05d3184c4eff2037c3e5f0d1decd43653'>;
 export type ProfileHash =
@@ -344,14 +344,13 @@ export type FieldOutputTypes = {
       readonly firmness: CodecTypes['pg/float8@1']['output'] | null;
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly moisture: CodecTypes['pg/float8@1']['output'] | null;
+      readonly oiliness: CodecTypes['pg/float8@1']['output'] | null;
       readonly pore: CodecTypes['pg/json@1']['output'] | null;
       readonly radiance: CodecTypes['pg/float8@1']['output'] | null;
       readonly redness: CodecTypes['pg/float8@1']['output'] | null;
       readonly scanId: CodecTypes['pg/text@1']['output'];
-      readonly score: CodecTypes['pg/float8@1']['output'] | null;
-      readonly skinAge: CodecTypes['pg/int4@1']['output'] | null;
-      readonly skinType: CodecTypes['pg/text@1']['output'] | null;
-      readonly tearThrough: CodecTypes['pg/float8@1']['output'] | null;
+      readonly skinType: CodecTypes['pg/json@1']['output'] | null;
+      readonly tearTrough: CodecTypes['pg/float8@1']['output'] | null;
       readonly texture: CodecTypes['pg/json@1']['output'] | null;
       readonly wrinkle: CodecTypes['pg/json@1']['output'] | null;
     };
@@ -363,6 +362,7 @@ export type FieldOutputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly score: CodecTypes['pg/float8@1']['output'] | null;
+      readonly skinAge: CodecTypes['pg/int4@1']['output'] | null;
       readonly status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
@@ -504,14 +504,13 @@ export type FieldInputTypes = {
       readonly firmness: CodecTypes['pg/float8@1']['input'] | null;
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly moisture: CodecTypes['pg/float8@1']['input'] | null;
+      readonly oiliness: CodecTypes['pg/float8@1']['input'] | null;
       readonly pore: CodecTypes['pg/json@1']['input'] | null;
       readonly radiance: CodecTypes['pg/float8@1']['input'] | null;
       readonly redness: CodecTypes['pg/float8@1']['input'] | null;
       readonly scanId: CodecTypes['pg/text@1']['input'];
-      readonly score: CodecTypes['pg/float8@1']['input'] | null;
-      readonly skinAge: CodecTypes['pg/int4@1']['input'] | null;
-      readonly skinType: CodecTypes['pg/text@1']['input'] | null;
-      readonly tearThrough: CodecTypes['pg/float8@1']['input'] | null;
+      readonly skinType: CodecTypes['pg/json@1']['input'] | null;
+      readonly tearTrough: CodecTypes['pg/float8@1']['input'] | null;
       readonly texture: CodecTypes['pg/json@1']['input'] | null;
       readonly wrinkle: CodecTypes['pg/json@1']['input'] | null;
     };
@@ -523,6 +522,7 @@ export type FieldInputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly score: CodecTypes['pg/float8@1']['input'] | null;
+      readonly skinAge: CodecTypes['pg/int4@1']['input'] | null;
       readonly status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
@@ -664,14 +664,13 @@ export type StorageColumnTypes = {
       readonly firmness: CodecTypes['pg/float8@1']['output'] | null;
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly moisture: CodecTypes['pg/float8@1']['output'] | null;
+      readonly oiliness: CodecTypes['pg/float8@1']['output'] | null;
       readonly pore: CodecTypes['pg/json@1']['output'] | null;
       readonly radiance: CodecTypes['pg/float8@1']['output'] | null;
       readonly redness: CodecTypes['pg/float8@1']['output'] | null;
       readonly scanId: CodecTypes['pg/text@1']['output'];
-      readonly score: CodecTypes['pg/float8@1']['output'] | null;
-      readonly skinAge: CodecTypes['pg/int4@1']['output'] | null;
-      readonly skinType: CodecTypes['pg/text@1']['output'] | null;
-      readonly tearThrough: CodecTypes['pg/float8@1']['output'] | null;
+      readonly skinType: CodecTypes['pg/json@1']['output'] | null;
+      readonly tearTrough: CodecTypes['pg/float8@1']['output'] | null;
       readonly texture: CodecTypes['pg/json@1']['output'] | null;
       readonly wrinkle: CodecTypes['pg/json@1']['output'] | null;
     };
@@ -683,6 +682,7 @@ export type StorageColumnTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly score: CodecTypes['pg/float8@1']['output'] | null;
+      readonly skinAge: CodecTypes['pg/int4@1']['output'] | null;
       readonly status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
@@ -824,14 +824,13 @@ export type StorageColumnInputTypes = {
       readonly firmness: CodecTypes['pg/float8@1']['input'] | null;
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly moisture: CodecTypes['pg/float8@1']['input'] | null;
+      readonly oiliness: CodecTypes['pg/float8@1']['input'] | null;
       readonly pore: CodecTypes['pg/json@1']['input'] | null;
       readonly radiance: CodecTypes['pg/float8@1']['input'] | null;
       readonly redness: CodecTypes['pg/float8@1']['input'] | null;
       readonly scanId: CodecTypes['pg/text@1']['input'];
-      readonly score: CodecTypes['pg/float8@1']['input'] | null;
-      readonly skinAge: CodecTypes['pg/int4@1']['input'] | null;
-      readonly skinType: CodecTypes['pg/text@1']['input'] | null;
-      readonly tearThrough: CodecTypes['pg/float8@1']['input'] | null;
+      readonly skinType: CodecTypes['pg/json@1']['input'] | null;
+      readonly tearTrough: CodecTypes['pg/float8@1']['input'] | null;
       readonly texture: CodecTypes['pg/json@1']['input'] | null;
       readonly wrinkle: CodecTypes['pg/json@1']['input'] | null;
     };
@@ -843,6 +842,7 @@ export type StorageColumnInputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly score: CodecTypes['pg/float8@1']['input'] | null;
+      readonly skinAge: CodecTypes['pg/int4@1']['input'] | null;
       readonly status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
@@ -1012,14 +1012,13 @@ export namespace Models {
     firmness: CodecTypes['pg/float8@1']['output'] | null;
     id: CodecTypes['pg/text@1']['output'];
     moisture: CodecTypes['pg/float8@1']['output'] | null;
+    oiliness: CodecTypes['pg/float8@1']['output'] | null;
     pore: CodecTypes['pg/json@1']['output'] | null;
     radiance: CodecTypes['pg/float8@1']['output'] | null;
     redness: CodecTypes['pg/float8@1']['output'] | null;
     scanId: CodecTypes['pg/text@1']['output'];
-    score: CodecTypes['pg/float8@1']['output'] | null;
-    skinAge: CodecTypes['pg/int4@1']['output'] | null;
-    skinType: CodecTypes['pg/text@1']['output'] | null;
-    tearThrough: CodecTypes['pg/float8@1']['output'] | null;
+    skinType: CodecTypes['pg/json@1']['output'] | null;
+    tearTrough: CodecTypes['pg/float8@1']['output'] | null;
     texture: CodecTypes['pg/json@1']['output'] | null;
     wrinkle: CodecTypes['pg/json@1']['output'] | null;
     scan: public_SkinScan;
@@ -1033,6 +1032,7 @@ export namespace Models {
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     id: CodecTypes['pg/text@1']['output'];
     score: CodecTypes['pg/float8@1']['output'] | null;
+    skinAge: CodecTypes['pg/int4@1']['output'] | null;
     status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
     userId: CodecTypes['pg/text@1']['output'];
     analysis: public_SkinAnalysis | null;
@@ -1990,6 +1990,12 @@ type ContractBase = Omit<
                   readonly nullable: true;
                   readonly many: false;
                 };
+                readonly oiliness: {
+                  readonly dataType: 'pg/float8';
+                  readonly codecId: 'pg/float8@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
                 readonly pore: {
                   readonly dataType: 'pg/json';
                   readonly codecId: 'pg/json@1';
@@ -2014,25 +2020,13 @@ type ContractBase = Omit<
                   readonly nullable: false;
                   readonly many: false;
                 };
-                readonly score: {
-                  readonly dataType: 'pg/float8';
-                  readonly codecId: 'pg/float8@1';
-                  readonly nullable: true;
-                  readonly many: false;
-                };
-                readonly skinAge: {
-                  readonly dataType: 'pg/int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: true;
-                  readonly many: false;
-                };
                 readonly skinType: {
-                  readonly dataType: 'pg/text';
-                  readonly codecId: 'pg/text@1';
+                  readonly dataType: 'pg/json';
+                  readonly codecId: 'pg/json@1';
                   readonly nullable: true;
                   readonly many: false;
                 };
-                readonly tearThrough: {
+                readonly tearTrough: {
                   readonly dataType: 'pg/float8';
                   readonly codecId: 'pg/float8@1';
                   readonly nullable: true;
@@ -2111,6 +2105,12 @@ type ContractBase = Omit<
                 readonly score: {
                   readonly dataType: 'pg/float8';
                   readonly codecId: 'pg/float8@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly skinAge: {
+                  readonly dataType: 'pg/int4';
+                  readonly codecId: 'pg/int4@1';
                   readonly nullable: true;
                   readonly many: false;
                 };
@@ -3176,6 +3176,10 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
               };
+              readonly oiliness: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
+              };
               readonly pore: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
@@ -3192,19 +3196,11 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
-              readonly score: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
-              };
-              readonly skinAge: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
               readonly skinType: {
                 readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
               };
-              readonly tearThrough: {
+              readonly tearTrough: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
               };
@@ -3244,14 +3240,13 @@ type ContractBase = Omit<
                 readonly firmness: { readonly column: 'firmness' };
                 readonly id: { readonly column: 'id' };
                 readonly moisture: { readonly column: 'moisture' };
+                readonly oiliness: { readonly column: 'oiliness' };
                 readonly pore: { readonly column: 'pore' };
                 readonly radiance: { readonly column: 'radiance' };
                 readonly redness: { readonly column: 'redness' };
                 readonly scanId: { readonly column: 'scanId' };
-                readonly score: { readonly column: 'score' };
-                readonly skinAge: { readonly column: 'skinAge' };
                 readonly skinType: { readonly column: 'skinType' };
-                readonly tearThrough: { readonly column: 'tearThrough' };
+                readonly tearTrough: { readonly column: 'tearTrough' };
                 readonly texture: { readonly column: 'texture' };
                 readonly wrinkle: { readonly column: 'wrinkle' };
               };
@@ -3289,6 +3284,10 @@ type ContractBase = Omit<
               readonly score: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
+              };
+              readonly skinAge: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
               readonly status: {
                 readonly nullable: false;
@@ -3333,6 +3332,7 @@ type ContractBase = Omit<
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly id: { readonly column: 'id' };
                 readonly score: { readonly column: 'score' };
+                readonly skinAge: { readonly column: 'skinAge' };
                 readonly status: { readonly column: 'status' };
                 readonly userId: { readonly column: 'userId' };
               };

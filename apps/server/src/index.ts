@@ -1,12 +1,15 @@
 import { connectDatabase, db } from "./prisma/db.ts";
 import { buildApp } from "./app.ts";
 import { env } from "./config/env.ts";
+import Websocket from "./services/websocket.service.ts";
 
 const PORT = Number(env.PORT);
 const HOST = env.HOST;
 
 const start = async () => {
   const app = buildApp();
+  Websocket.run(app.server);
+
 
   try {
     await connectDatabase();

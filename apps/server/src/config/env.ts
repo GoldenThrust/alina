@@ -53,4 +53,5 @@ export const env = {
   FACEBOOK_CALLBACK_URL: getEnv("FACEBOOK_CALLBACK_URL"),
   UPLOAD_DIR: path.join(__dirname,"..", getEnv("UPLOAD_DIR")),
   YOUCAM_API_KEY: getEnv("YOUCAM_API_KEY"),
+  GOOGLE_API_KEY: getEnv("GOOGLE_API_KEY"),
 };

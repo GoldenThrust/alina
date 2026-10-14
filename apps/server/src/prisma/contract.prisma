@@ -73,6 +73,7 @@ model SkinScan {
   status          ScanStatus
 
   score           Float?
+  skinAge         Int?
 
   aiSummary       String?
 
@@ -96,10 +97,6 @@ model SkinAnalysis {
 
   scan               SkinScan @relation(fields:[scanId], references:[id])
 
-  score               Float?
-
-  skinAge              Int?
-
   redness          Float?
 
   ageSpot          Float?
@@ -107,6 +104,8 @@ model SkinAnalysis {
   radiance          Float?
 
   moisture          Float?
+
+  oiliness          Float?
 
   darkCircle         Float?
 
@@ -126,9 +125,9 @@ model SkinAnalysis {
 
   wrinkle          Json?
 
-  tearThrough          Float?
+  tearTrough          Float?
 
-  skinType          String?
+  skinType          Json?
 }
 
 model Routine {
@@ -211,9 +210,15 @@ model Recommendation {
 
   explanation     String
 
+  accepted       Boolean @default(false)
+
   productId       String?
 
   product         Product? @relation(fields:[productId], references:[id])
+
+  routineId       String?
+
+  routine         Routine? @relation(fields:[routineId], references:[id])
 
   createdAt       DateTime @default(now())
 

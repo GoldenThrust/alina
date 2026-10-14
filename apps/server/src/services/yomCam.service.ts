@@ -28,7 +28,10 @@ export const HD_SKIN_ACTIONS = [
   "hd_tear_trough",
 ] as const;
 
-const FITZPATRICK_INFO: Record<FitzpatrickType, { label: string; sunReaction: string }> = {
+const FITZPATRICK_INFO: Record<
+  FitzpatrickType,
+  { label: string; sunReaction: string }
+> = {
   I: { label: "White", sunReaction: "Almost always burns, never tans" },
   II: { label: "Beige", sunReaction: "Usually burns, tans minimally" },
   III: { label: "Light Brown", sunReaction: "Sometimes burns, gradually tans" },
@@ -44,19 +47,26 @@ const FITZPATRICK_INFO: Record<FitzpatrickType, { label: string; sunReaction: st
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // File API limit for images
 const MAX_RATE_LIMIT_RETRIES = 3;
 
-
 /** Identifies JPEG / PNG from magic bytes (the File API needs an accurate content_type). */
-function detectImageType(buf: Buffer): { contentType: "image/jpg" | "image/png"; ext: "jpg" | "png" } {
+function detectImageType(buf: Buffer): {
+  contentType: "image/jpg" | "image/png";
+  ext: "jpg" | "png";
+} {
   if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
     return { contentType: "image/jpg", ext: "jpg" };
   }
   if (
     buf.length > 8 &&
-    buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    buf
+      .subarray(0, 8)
+      .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
   ) {
     return { contentType: "image/png", ext: "png" };
   }
-  throw new YouCamError("Only JPEG and PNG images are supported.", "unsupported_image_format");
+  throw new YouCamError(
+    "Only JPEG and PNG images are supported.",
+    "unsupported_image_format",
+  );
 }
 
 async function settle<T>(fn: () => Promise<T>): Promise<Settled<T>> {
@@ -110,7 +120,11 @@ export class YouCamService {
   /* ------------------------------ transport ------------------------------ */
 
   /** Authenticated JSON request. Throws YouCamError on non-2xx. Retries 429s. */
-  private static async request<T>(method: Method, url: string, body?: unknown): Promise<T> {
+  private static async request<T>(
+    method: Method,
+    url: string,
+    body?: unknown,
+  ): Promise<T> {
     const headers = {
       Authorization: `Bearer ${env.YOUCAM_API_KEY}`,
       "Content-Type": "application/json",
@@ -124,31 +138,49 @@ export class YouCamService {
 
       if (res.status === 429 && attempt < MAX_RATE_LIMIT_RETRIES) {
         const retryAfter = Number(res.headers["retry-after"]);
-        await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1000 * 2 ** attempt);
+        await sleep(
+          Number.isFinite(retryAfter) && retryAfter > 0
+            ? retryAfter * 1000
+            : 1000 * 2 ** attempt,
+        );
         continue;
       }
 
-      if (!res.ok) throw YouCamError.fromResponse(res.status, res.json, res.text);
+      if (!res.ok)
+        throw YouCamError.fromResponse(res.status, res.json, res.text);
       return res.json as T;
     }
   }
 
-  private static async createTask(url: string, payload: Record<string, unknown>): Promise<string> {
-    const res = await this.request<TaskEnvelope<unknown> & { data?: { task_id?: string } }>(
-      "POST",
-      url,
-      payload,
-    );
+  private static async createTask(
+    url: string,
+    payload: Record<string, unknown>,
+  ): Promise<string> {
+    const res = await this.request<
+      TaskEnvelope<unknown> & { data?: { task_id?: string } }
+    >("POST", url, payload);
     const taskId = res.data?.task_id;
     if (!taskId) {
-      throw new YouCamError("Response did not include a task_id", "invalid_response", undefined, res);
+      throw new YouCamError(
+        "Response did not include a task_id",
+        "invalid_response",
+        undefined,
+        res,
+      );
     }
     return taskId;
   }
 
   /** Polls a task until success/error. Throws YouCamError on error or timeout. */
-  private static async pollTask<R>(url: string, poll: PollOptions = {}): Promise<TaskData<R>> {
-    const { intervalMs = 2000, maxIntervalMs = 10_000, timeoutMs = 180_000 } = poll;
+  private static async pollTask<R>(
+    url: string,
+    poll: PollOptions = {},
+  ): Promise<TaskData<R>> {
+    const {
+      intervalMs = 2000,
+      maxIntervalMs = 10_000,
+      timeoutMs = 180_000,
+    } = poll;
     const startedAt = Date.now();
     let delay = intervalMs;
 
@@ -174,7 +206,10 @@ export class YouCamService {
       }
 
       if (Date.now() - startedAt + delay > timeoutMs) {
-        throw new YouCamError("Timed out waiting for the task to finish", "poll_timeout");
+        throw new YouCamError(
+          "Timed out waiting for the task to finish",
+          "poll_timeout",
+        );
       }
 
       await sleep(delay);
@@ -196,29 +231,42 @@ export class YouCamService {
     const { contentType, ext } = detectImageType(buffer);
 
     if (buffer.length >= MAX_IMAGE_BYTES) {
-      throw new YouCamError("Image must be smaller than 10MB.", "exceed_max_filesize");
+      throw new YouCamError(
+        "Image must be smaller than 10MB.",
+        "exceed_max_filesize",
+      );
     }
 
-    const created = await this.request<FileApiResponse>("POST", this.imageUploadUrl, {
-      files: [
-        {
-          content_type: contentType,
-          file_name: fileName ?? `scan-${Date.now()}.${ext}`,
-          file_size: buffer.length,
-        },
-      ],
-    });
+    const created = await this.request<FileApiResponse>(
+      "POST",
+      this.imageUploadUrl,
+      {
+        files: [
+          {
+            content_type: contentType,
+            file_name: fileName ?? `scan-${Date.now()}.${ext}`,
+            file_size: buffer.length,
+          },
+        ],
+      },
+    );
 
     const file = (created.data?.files ?? created.files)?.[0];
     const target = file?.requests?.[0];
     if (!file?.file_id || !target?.url) {
-      throw new YouCamError("File API response was missing file_id or upload url", "invalid_response", undefined, created);
+      throw new YouCamError(
+        "File API response was missing file_id or upload url",
+        "invalid_response",
+        undefined,
+        created,
+      );
     }
 
     // Use the headers the API gives us. Content-Length is derived from the body.
     const uploadHeaders: Record<string, string> = {};
     for (const [key, value] of Object.entries(target.headers ?? {})) {
-      if (key.toLowerCase() !== "content-length") uploadHeaders[key] = String(value);
+      if (key.toLowerCase() !== "content-length")
+        uploadHeaders[key] = String(value);
     }
 
     const put = await fetch(target.url, {
@@ -240,28 +288,40 @@ export class YouCamService {
   }
 
   /** Uploads an image (file path or Buffer) and returns its file_id. */
-  static async uploadImage(source: string | Buffer, fileName?: string): Promise<string> {
+  static async uploadImage(
+    source: string | Buffer,
+    fileName?: string,
+  ): Promise<string> {
     return (await this.uploadImageDetailed(source, fileName)).fileId;
   }
 
   /* ---------------------------- skin analysis ---------------------------- */
 
-  static createSkinAnalysisTask(fileId: string, options: SkinAnalysisOptions = {}) {
+  static createSkinAnalysisTask(
+    fileId: string,
+    options: SkinAnalysisOptions = {},
+  ) {
     const defaults = this.skinAnalysisDefaults;
     return this.createTask(this.skinAnalysisUrl, {
       src_file_id: fileId,
       dst_actions: [...(options.dstActions ?? HD_SKIN_ACTIONS)],
-      miniserver_args: { ...defaults.miniserver_args, ...options.miniserverArgs },
+      miniserver_args: {
+        ...defaults.miniserver_args,
+        ...options.miniserverArgs,
+      },
       format: defaults.format,
       pf_camera_kit: options.pfCameraKit ?? defaults.pf_camera_kit,
     });
   }
 
-  static async waitForSkinAnalysis(taskId: string, poll?: PollOptions): Promise<SkinAnalysisResult> {
-    const data = await this.pollTask<{ output?: SkinAnalysisOutputItem[]; url?: string }>(
-      `${this.skinAnalysisUrl}/${encodeURIComponent(taskId)}`,
-      poll,
-    );
+  static async waitForSkinAnalysis(
+    taskId: string,
+    poll?: PollOptions,
+  ): Promise<SkinAnalysisResult> {
+    const data = await this.pollTask<{
+      output?: SkinAnalysisOutputItem[];
+      url?: string;
+    }>(`${this.skinAnalysisUrl}/${encodeURIComponent(taskId)}`, poll);
 
     const output = data.results?.output;
     if (!Array.isArray(output)) {
@@ -272,23 +332,30 @@ export class YouCamService {
         data,
       );
     }
-
     const concerns: SkinAnalysisResult["concerns"] = {};
     let overallScore: number | undefined;
+    let skinAge: number | undefined;
 
     for (const item of output) {
-      if (overallScore === undefined && typeof item.score === "number") {
-        overallScore = item.score;
+      switch (item.type) {
+        case "all":
+          overallScore = item.score;
+          continue;
+        case "skin_age":
+          skinAge = item.score;
+          continue;
       }
       if (!item.type) continue;
-      (concerns[item.type] ??= {})[item.region ?? "whole"] = {
-        rawScore: item.raw_score,
-        uiScore: item.ui_score,
-        maskUrls: item.mask_urls ?? [],
-      };
+      (concerns[item.type] ??= {})[item.region ?? "whole"] =
+        item.raw_score ?? item.skin_type ?? 0;
     }
 
-    return { overallScore, concerns, output };
+    return {
+      overallScore,
+      skinAge,
+      concerns,
+      output,
+    };
   }
 
   static async analyzeSkin(fileId: string, options: SkinAnalysisOptions = {}) {
@@ -307,7 +374,10 @@ export class YouCamService {
     });
   }
 
-  static async waitForSkinTone(taskId: string, poll?: PollOptions): Promise<SkinToneResult> {
+  static async waitForSkinTone(
+    taskId: string,
+    poll?: PollOptions,
+  ): Promise<SkinToneResult> {
     const data = await this.pollTask<{
       color?: Record<string, string>;
       face_quality?: Record<string, any>;
@@ -315,7 +385,12 @@ export class YouCamService {
 
     const color = data.results?.color;
     if (!color) {
-      throw new YouCamError("Skin tone analysis returned no color data", "invalid_response", undefined, data);
+      throw new YouCamError(
+        "Skin tone analysis returned no color data",
+        "invalid_response",
+        undefined,
+        data,
+      );
     }
 
     const fq = data.results?.face_quality;
@@ -346,7 +421,10 @@ export class YouCamService {
 
   /* --------------------------- Fitzpatrick scale ------------------------- */
 
-  static createFitzpatrickTask(fileId: string, options: FitzpatrickOptions = {}) {
+  static createFitzpatrickTask(
+    fileId: string,
+    options: FitzpatrickOptions = {},
+  ) {
     return this.createTask(this.fitzpatrickScaleUrl, {
       ...this.fitzpatrickScaleDefaults,
       src_file_id: fileId,
@@ -354,21 +432,36 @@ export class YouCamService {
     });
   }
 
-  static async waitForFitzpatrick(taskId: string, poll?: PollOptions): Promise<FitzpatrickResult> {
-    const data = await this.pollTask<{ fitzpatrick_scale?: FitzpatrickType; timed?: number }>(
-      `${this.fitzpatrickScaleUrl}/${encodeURIComponent(taskId)}`,
-      poll,
-    );
+  static async waitForFitzpatrick(
+    taskId: string,
+    poll?: PollOptions,
+  ): Promise<FitzpatrickResult> {
+    const data = await this.pollTask<{
+      fitzpatrick_scale?: FitzpatrickType;
+      timed?: number;
+    }>(`${this.fitzpatrickScaleUrl}/${encodeURIComponent(taskId)}`, poll);
 
     const type = data.results?.fitzpatrick_scale;
     if (!type || !(type in FITZPATRICK_INFO)) {
-      throw new YouCamError("Fitzpatrick analysis returned no skin type", "invalid_response", undefined, data);
+      throw new YouCamError(
+        "Fitzpatrick analysis returned no skin type",
+        "invalid_response",
+        undefined,
+        data,
+      );
     }
 
-    return { type, ...FITZPATRICK_INFO[type], processingSeconds: data.results?.timed };
+    return {
+      type,
+      ...FITZPATRICK_INFO[type],
+      processingSeconds: data.results?.timed,
+    };
   }
 
-  static async analyzeFitzpatrick(fileId: string, options: FitzpatrickOptions = {}) {
+  static async analyzeFitzpatrick(
+    fileId: string,
+    options: FitzpatrickOptions = {},
+  ) {
     const taskId = await this.createFitzpatrickTask(fileId, options);
     return this.waitForFitzpatrick(taskId, options.poll);
   }
