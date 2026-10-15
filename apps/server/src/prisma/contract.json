@@ -8,10 +8,6 @@
       "model": "ConnectedDevice",
       "namespace": "public"
     },
-    "Conversation": {
-      "model": "Conversation",
-      "namespace": "public"
-    },
     "Message": {
       "model": "Message",
       "namespace": "public"
@@ -336,89 +332,9 @@
               "table": "ConnectedDevice"
             }
           },
-          "Conversation": {
-            "fields": {
-              "createdAt": {
-                "nullable": false,
-                "type": {
-                  "codecId": "pg/timestamptz-temporal@1",
-                  "kind": "scalar"
-                }
-              },
-              "id": {
-                "nullable": false,
-                "type": {
-                  "codecId": "pg/text@1",
-                  "kind": "scalar"
-                }
-              },
-              "userId": {
-                "nullable": false,
-                "type": {
-                  "codecId": "pg/text@1",
-                  "kind": "scalar"
-                }
-              }
-            },
-            "relations": {
-              "messages": {
-                "cardinality": "1:N",
-                "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "conversationId"
-                  ]
-                },
-                "to": {
-                  "model": "Message",
-                  "namespace": "public"
-                }
-              },
-              "user": {
-                "cardinality": "N:1",
-                "nullable": false,
-                "on": {
-                  "localFields": [
-                    "userId"
-                  ],
-                  "targetFields": [
-                    "id"
-                  ]
-                },
-                "to": {
-                  "model": "User",
-                  "namespace": "public"
-                }
-              }
-            },
-            "storage": {
-              "fields": {
-                "createdAt": {
-                  "column": "createdAt"
-                },
-                "id": {
-                  "column": "id"
-                },
-                "userId": {
-                  "column": "userId"
-                }
-              },
-              "namespaceId": "public",
-              "table": "Conversation"
-            }
-          },
           "Message": {
             "fields": {
               "content": {
-                "nullable": false,
-                "type": {
-                  "codecId": "pg/text@1",
-                  "kind": "scalar"
-                }
-              },
-              "conversationId": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/text@1",
@@ -451,22 +367,29 @@
                   "namespaceId": "public",
                   "plane": "domain"
                 }
+              },
+              "userId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
               }
             },
             "relations": {
-              "conversation": {
+              "user": {
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
                   "localFields": [
-                    "conversationId"
+                    "userId"
                   ],
                   "targetFields": [
                     "id"
                   ]
                 },
                 "to": {
-                  "model": "Conversation",
+                  "model": "User",
                   "namespace": "public"
                 }
               }
@@ -476,9 +399,6 @@
                 "content": {
                   "column": "content"
                 },
-                "conversationId": {
-                  "column": "conversationId"
-                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -487,6 +407,9 @@
                 },
                 "sender": {
                   "column": "sender"
+                },
+                "userId": {
+                  "column": "userId"
                 }
               },
               "namespaceId": "public",
@@ -954,6 +877,13 @@
           },
           "Recommendation": {
             "fields": {
+              "accepted": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -976,6 +906,13 @@
                 }
               },
               "productId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "routineId": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
@@ -1027,6 +964,22 @@
                   "namespace": "public"
                 }
               },
+              "routine": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "routineId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Routine",
+                  "namespace": "public"
+                }
+              },
               "user": {
                 "cardinality": "N:1",
                 "nullable": false,
@@ -1046,6 +999,9 @@
             },
             "storage": {
               "fields": {
+                "accepted": {
+                  "column": "accepted"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -1057,6 +1013,9 @@
                 },
                 "productId": {
                   "column": "productId"
+                },
+                "routineId": {
+                  "column": "routineId"
                 },
                 "scanId": {
                   "column": "scanId"
@@ -1680,6 +1639,13 @@
                   "kind": "scalar"
                 }
               },
+              "image": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "score": {
                 "nullable": true,
                 "type": {
@@ -1768,6 +1734,9 @@
                 },
                 "id": {
                   "column": "id"
+                },
+                "image": {
+                  "column": "image"
                 },
                 "score": {
                   "column": "score"
@@ -1950,6 +1919,13 @@
                   "kind": "scalar"
                 }
               },
+              "lastInteractionId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "lastScanImage": {
                 "nullable": true,
                 "type": {
@@ -1994,21 +1970,6 @@
               }
             },
             "relations": {
-              "conversations": {
-                "cardinality": "1:N",
-                "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "userId"
-                  ]
-                },
-                "to": {
-                  "model": "Conversation",
-                  "namespace": "public"
-                }
-              },
               "devices": {
                 "cardinality": "1:N",
                 "on": {
@@ -2021,6 +1982,21 @@
                 },
                 "to": {
                   "model": "ConnectedDevice",
+                  "namespace": "public"
+                }
+              },
+              "messages": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
+                },
+                "to": {
+                  "model": "Message",
                   "namespace": "public"
                 }
               },
@@ -2157,6 +2133,9 @@
                 "id": {
                   "column": "id"
                 },
+                "lastInteractionId": {
+                  "column": "lastInteractionId"
+                },
                 "lastScanImage": {
                   "column": "lastScanImage"
                 },
@@ -2265,63 +2244,6 @@
               },
               "uniques": []
             },
-            "Conversation": {
-              "columns": {
-                "createdAt": {
-                  "codecId": "pg/timestamptz-temporal@1",
-                  "dataType": "pg/timestamptz",
-                  "default": {
-                    "expression": "now()",
-                    "kind": "function"
-                  },
-                  "nullable": false
-                },
-                "id": {
-                  "codecId": "pg/text@1",
-                  "dataType": "pg/text",
-                  "nullable": false
-                },
-                "userId": {
-                  "codecId": "pg/text@1",
-                  "dataType": "pg/text",
-                  "nullable": false
-                }
-              },
-              "foreignKeys": [
-                {
-                  "source": {
-                    "columns": [
-                      "userId"
-                    ],
-                    "namespaceId": "public",
-                    "tableName": "Conversation"
-                  },
-                  "target": {
-                    "columns": [
-                      "id"
-                    ],
-                    "namespaceId": "public",
-                    "tableName": "User"
-                  }
-                }
-              ],
-              "indexes": [
-                {
-                  "columns": [
-                    "userId"
-                  ],
-                  "name": "Conversation_userId_idx_a489d58a",
-                  "prefix": "Conversation_userId_idx",
-                  "unique": false
-                }
-              ],
-              "primaryKey": {
-                "columns": [
-                  "id"
-                ]
-              },
-              "uniques": []
-            },
             "Message": {
               "checks": [
                 {
@@ -2332,11 +2254,6 @@
               ],
               "columns": {
                 "content": {
-                  "codecId": "pg/text@1",
-                  "dataType": "pg/text",
-                  "nullable": false
-                },
-                "conversationId": {
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
                   "nullable": false
@@ -2365,13 +2282,18 @@
                     "namespaceId": "public",
                     "plane": "storage"
                   }
+                },
+                "userId": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
                 }
               },
               "foreignKeys": [
                 {
                   "source": {
                     "columns": [
-                      "conversationId"
+                      "userId"
                     ],
                     "namespaceId": "public",
                     "tableName": "Message"
@@ -2381,17 +2303,17 @@
                       "id"
                     ],
                     "namespaceId": "public",
-                    "tableName": "Conversation"
+                    "tableName": "User"
                   }
                 }
               ],
               "indexes": [
                 {
                   "columns": [
-                    "conversationId"
+                    "userId"
                   ],
-                  "name": "Message_conversationId_idx_669215a6",
-                  "prefix": "Message_conversationId_idx",
+                  "name": "Message_userId_idx_a489d58a",
+                  "prefix": "Message_userId_idx",
                   "unique": false
                 }
               ],
@@ -2796,6 +2718,15 @@
                 }
               ],
               "columns": {
+                "accepted": {
+                  "codecId": "pg/bool@1",
+                  "dataType": "pg/bool",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nullable": false
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "dataType": "pg/timestamptz",
@@ -2816,6 +2747,11 @@
                   "nullable": false
                 },
                 "productId": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "routineId": {
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
                   "nullable": true
@@ -2874,6 +2810,22 @@
                     "namespaceId": "public",
                     "tableName": "Product"
                   }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "routineId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Recommendation"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Routine"
+                  }
                 }
               ],
               "indexes": [
@@ -2883,6 +2835,14 @@
                   ],
                   "name": "Recommendation_productId_idx_5858600a",
                   "prefix": "Recommendation_productId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "routineId"
+                  ],
+                  "name": "Recommendation_routineId_idx_fa038a10",
+                  "prefix": "Recommendation_routineId_idx",
                   "unique": false
                 },
                 {
@@ -3253,6 +3213,11 @@
                   "dataType": "pg/text",
                   "nullable": false
                 },
+                "image": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
                 "score": {
                   "codecId": "pg/float8@1",
                   "dataType": "pg/float8",
@@ -3465,6 +3430,11 @@
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
                   "nullable": false
+                },
+                "lastInteractionId": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
                 },
                 "lastScanImage": {
                   "codecId": "pg/text@1",
@@ -3693,10 +3663,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "6b1f6a031bcd5467a53b33b079dcf19044e1c4b30249ff37f0d6de488dbf1dca"
+    "storageHash": "66707c64ef59dede9355251326a1609fc8996ca08896322cada0abe1792388b7"
   },
   "execution": {
-    "executionHash": "26720611d035c046a271a573516128f05d3184c4eff2037c3e5f0d1decd43653",
+    "executionHash": "dc1ac6e4db2ee326f04a55c1c0aa0d987b1dc883145cc25cd6bba35f22cc906d",
     "mutations": {
       "defaults": [
         {
@@ -3706,17 +3676,6 @@
           },
           "ref": {
             "entry": "ConnectedDevice",
-            "field": "id",
-            "namespace": "public"
-          }
-        },
-        {
-          "onCreate": {
-            "id": "uuidv4",
-            "kind": "generator"
-          },
-          "ref": {
-            "entry": "Conversation",
             "field": "id",
             "namespace": "public"
           }

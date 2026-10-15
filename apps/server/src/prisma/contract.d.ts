@@ -18,9 +18,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'6b1f6a031bcd5467a53b33b079dcf19044e1c4b30249ff37f0d6de488dbf1dca'>;
+  StorageHashBase<'66707c64ef59dede9355251326a1609fc8996ca08896322cada0abe1792388b7'>;
 export type ExecutionHash =
-  ExecutionHashBase<'26720611d035c046a271a573516128f05d3184c4eff2037c3e5f0d1decd43653'>;
+  ExecutionHashBase<'dc1ac6e4db2ee326f04a55c1c0aa0d987b1dc883145cc25cd6bba35f22cc906d'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -241,17 +241,12 @@ export type FieldOutputTypes = {
       readonly type: 'RING' | 'MOBILE' | 'WEB';
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
-    readonly Conversation: {
-      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
-      readonly id: CodecTypes['pg/text@1']['output'];
-      readonly userId: CodecTypes['pg/text@1']['output'];
-    };
     readonly Message: {
       readonly content: CodecTypes['pg/text@1']['output'];
-      readonly conversationId: CodecTypes['pg/text@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly sender: 'USER' | 'ALINA';
+      readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly OAuthAccount: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -294,10 +289,12 @@ export type FieldOutputTypes = {
       readonly price: CodecTypes['pg/float8@1']['output'] | null;
     };
     readonly Recommendation: {
+      readonly accepted: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly explanation: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly productId: CodecTypes['pg/text@1']['output'] | null;
+      readonly routineId: CodecTypes['pg/text@1']['output'] | null;
       readonly scanId: CodecTypes['pg/text@1']['output'] | null;
       readonly type: 'PRODUCT' | 'ROUTINE' | 'HABIT';
       readonly userId: CodecTypes['pg/text@1']['output'];
@@ -361,6 +358,7 @@ export type FieldOutputTypes = {
       readonly aiSummary: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
+      readonly image: CodecTypes['pg/text@1']['output'] | null;
       readonly score: CodecTypes['pg/float8@1']['output'] | null;
       readonly skinAge: CodecTypes['pg/int4@1']['output'] | null;
       readonly status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
@@ -383,6 +381,7 @@ export type FieldOutputTypes = {
       readonly fullName: CodecTypes['pg/text@1']['output'];
       readonly gender: 'MALE' | 'FEMALE' | null;
       readonly id: CodecTypes['pg/text@1']['output'];
+      readonly lastInteractionId: CodecTypes['pg/text@1']['output'] | null;
       readonly lastScanImage: CodecTypes['pg/text@1']['output'] | null;
       readonly password: CodecTypes['pg/text@1']['output'] | null;
       readonly phoneNumber: CodecTypes['pg/text@1']['output'] | null;
@@ -401,17 +400,12 @@ export type FieldInputTypes = {
       readonly type: 'RING' | 'MOBILE' | 'WEB';
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
-    readonly Conversation: {
-      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
-      readonly id: CodecTypes['pg/text@1']['input'];
-      readonly userId: CodecTypes['pg/text@1']['input'];
-    };
     readonly Message: {
       readonly content: CodecTypes['pg/text@1']['input'];
-      readonly conversationId: CodecTypes['pg/text@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly sender: 'USER' | 'ALINA';
+      readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly OAuthAccount: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -454,10 +448,12 @@ export type FieldInputTypes = {
       readonly price: CodecTypes['pg/float8@1']['input'] | null;
     };
     readonly Recommendation: {
+      readonly accepted: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly explanation: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly productId: CodecTypes['pg/text@1']['input'] | null;
+      readonly routineId: CodecTypes['pg/text@1']['input'] | null;
       readonly scanId: CodecTypes['pg/text@1']['input'] | null;
       readonly type: 'PRODUCT' | 'ROUTINE' | 'HABIT';
       readonly userId: CodecTypes['pg/text@1']['input'];
@@ -521,6 +517,7 @@ export type FieldInputTypes = {
       readonly aiSummary: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
+      readonly image: CodecTypes['pg/text@1']['input'] | null;
       readonly score: CodecTypes['pg/float8@1']['input'] | null;
       readonly skinAge: CodecTypes['pg/int4@1']['input'] | null;
       readonly status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
@@ -543,6 +540,7 @@ export type FieldInputTypes = {
       readonly fullName: CodecTypes['pg/text@1']['input'];
       readonly gender: 'MALE' | 'FEMALE' | null;
       readonly id: CodecTypes['pg/text@1']['input'];
+      readonly lastInteractionId: CodecTypes['pg/text@1']['input'] | null;
       readonly lastScanImage: CodecTypes['pg/text@1']['input'] | null;
       readonly password: CodecTypes['pg/text@1']['input'] | null;
       readonly phoneNumber: CodecTypes['pg/text@1']['input'] | null;
@@ -561,17 +559,12 @@ export type StorageColumnTypes = {
       readonly type: 'RING' | 'MOBILE' | 'WEB';
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
-    readonly Conversation: {
-      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
-      readonly id: CodecTypes['pg/text@1']['output'];
-      readonly userId: CodecTypes['pg/text@1']['output'];
-    };
     readonly Message: {
       readonly content: CodecTypes['pg/text@1']['output'];
-      readonly conversationId: CodecTypes['pg/text@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly sender: 'USER' | 'ALINA';
+      readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly OAuthAccount: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -614,10 +607,12 @@ export type StorageColumnTypes = {
       readonly price: CodecTypes['pg/float8@1']['output'] | null;
     };
     readonly Recommendation: {
+      readonly accepted: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly explanation: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly productId: CodecTypes['pg/text@1']['output'] | null;
+      readonly routineId: CodecTypes['pg/text@1']['output'] | null;
       readonly scanId: CodecTypes['pg/text@1']['output'] | null;
       readonly type: 'PRODUCT' | 'ROUTINE' | 'HABIT';
       readonly userId: CodecTypes['pg/text@1']['output'];
@@ -681,6 +676,7 @@ export type StorageColumnTypes = {
       readonly aiSummary: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
+      readonly image: CodecTypes['pg/text@1']['output'] | null;
       readonly score: CodecTypes['pg/float8@1']['output'] | null;
       readonly skinAge: CodecTypes['pg/int4@1']['output'] | null;
       readonly status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
@@ -703,6 +699,7 @@ export type StorageColumnTypes = {
       readonly fullName: CodecTypes['pg/text@1']['output'];
       readonly gender: 'MALE' | 'FEMALE' | null;
       readonly id: CodecTypes['pg/text@1']['output'];
+      readonly lastInteractionId: CodecTypes['pg/text@1']['output'] | null;
       readonly lastScanImage: CodecTypes['pg/text@1']['output'] | null;
       readonly password: CodecTypes['pg/text@1']['output'] | null;
       readonly phoneNumber: CodecTypes['pg/text@1']['output'] | null;
@@ -721,17 +718,12 @@ export type StorageColumnInputTypes = {
       readonly type: 'RING' | 'MOBILE' | 'WEB';
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
-    readonly Conversation: {
-      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
-      readonly id: CodecTypes['pg/text@1']['input'];
-      readonly userId: CodecTypes['pg/text@1']['input'];
-    };
     readonly Message: {
       readonly content: CodecTypes['pg/text@1']['input'];
-      readonly conversationId: CodecTypes['pg/text@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly sender: 'USER' | 'ALINA';
+      readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly OAuthAccount: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -774,10 +766,12 @@ export type StorageColumnInputTypes = {
       readonly price: CodecTypes['pg/float8@1']['input'] | null;
     };
     readonly Recommendation: {
+      readonly accepted: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly explanation: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly productId: CodecTypes['pg/text@1']['input'] | null;
+      readonly routineId: CodecTypes['pg/text@1']['input'] | null;
       readonly scanId: CodecTypes['pg/text@1']['input'] | null;
       readonly type: 'PRODUCT' | 'ROUTINE' | 'HABIT';
       readonly userId: CodecTypes['pg/text@1']['input'];
@@ -841,6 +835,7 @@ export type StorageColumnInputTypes = {
       readonly aiSummary: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
+      readonly image: CodecTypes['pg/text@1']['input'] | null;
       readonly score: CodecTypes['pg/float8@1']['input'] | null;
       readonly skinAge: CodecTypes['pg/int4@1']['input'] | null;
       readonly status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
@@ -863,6 +858,7 @@ export type StorageColumnInputTypes = {
       readonly fullName: CodecTypes['pg/text@1']['input'];
       readonly gender: 'MALE' | 'FEMALE' | null;
       readonly id: CodecTypes['pg/text@1']['input'];
+      readonly lastInteractionId: CodecTypes['pg/text@1']['input'] | null;
       readonly lastScanImage: CodecTypes['pg/text@1']['input'] | null;
       readonly password: CodecTypes['pg/text@1']['input'] | null;
       readonly phoneNumber: CodecTypes['pg/text@1']['input'] | null;
@@ -883,22 +879,14 @@ export namespace Models {
     user: public_User;
     readonly [RelationKeys]?: 'user';
   };
-  export type public_Conversation = {
-    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
-    id: CodecTypes['pg/text@1']['output'];
-    userId: CodecTypes['pg/text@1']['output'];
-    messages: public_Message[];
-    user: public_User;
-    readonly [RelationKeys]?: 'messages' | 'user';
-  };
   export type public_Message = {
     content: CodecTypes['pg/text@1']['output'];
-    conversationId: CodecTypes['pg/text@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     id: CodecTypes['pg/text@1']['output'];
     sender: 'USER' | 'ALINA';
-    conversation: public_Conversation;
-    readonly [RelationKeys]?: 'conversation';
+    userId: CodecTypes['pg/text@1']['output'];
+    user: public_User;
+    readonly [RelationKeys]?: 'user';
   };
   export type public_OAuthAccount = {
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -951,16 +939,19 @@ export namespace Models {
     readonly [RelationKeys]?: never;
   };
   export type public_Recommendation = {
+    accepted: CodecTypes['pg/bool@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     explanation: CodecTypes['pg/text@1']['output'];
     id: CodecTypes['pg/text@1']['output'];
     productId: CodecTypes['pg/text@1']['output'] | null;
+    routineId: CodecTypes['pg/text@1']['output'] | null;
     scanId: CodecTypes['pg/text@1']['output'] | null;
     type: 'PRODUCT' | 'ROUTINE' | 'HABIT';
     userId: CodecTypes['pg/text@1']['output'];
     product: public_Product | null;
+    routine: public_Routine | null;
     user: public_User;
-    readonly [RelationKeys]?: 'product' | 'user';
+    readonly [RelationKeys]?: 'product' | 'routine' | 'user';
   };
   export type public_Routine = {
     accepted: CodecTypes['pg/bool@1']['output'];
@@ -1031,6 +1022,7 @@ export namespace Models {
     aiSummary: CodecTypes['pg/text@1']['output'] | null;
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     id: CodecTypes['pg/text@1']['output'];
+    image: CodecTypes['pg/text@1']['output'] | null;
     score: CodecTypes['pg/float8@1']['output'] | null;
     skinAge: CodecTypes['pg/int4@1']['output'] | null;
     status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
@@ -1058,14 +1050,15 @@ export namespace Models {
     fullName: CodecTypes['pg/text@1']['output'];
     gender: 'MALE' | 'FEMALE' | null;
     id: CodecTypes['pg/text@1']['output'];
+    lastInteractionId: CodecTypes['pg/text@1']['output'] | null;
     lastScanImage: CodecTypes['pg/text@1']['output'] | null;
     password: CodecTypes['pg/text@1']['output'] | null;
     phoneNumber: CodecTypes['pg/text@1']['output'] | null;
     skinTone: CodecTypes['pg/text@1']['output'] | null;
     skinType: CodecTypes['pg/text@1']['output'] | null;
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    conversations: public_Conversation[];
     devices: public_ConnectedDevice[];
+    messages: public_Message[];
     oauthAccounts: public_OAuthAccount[];
     orders: public_Order[];
     preferences: public_Preference | null;
@@ -1074,8 +1067,8 @@ export namespace Models {
     sessions: public_Session[];
     subscriptions: public_Subscription[];
     readonly [RelationKeys]?:
-      | 'conversations'
       | 'devices'
+      | 'messages'
       | 'oauthAccounts'
       | 'orders'
       | 'preferences'
@@ -1089,7 +1082,6 @@ export namespace Models {
 export declare const models: {
   public: {
     ConnectedDevice: Models.public_ConnectedDevice;
-    Conversation: Models.public_Conversation;
     Message: Models.public_Message;
     OAuthAccount: Models.public_OAuthAccount;
     Order: Models.public_Order;
@@ -1184,62 +1176,9 @@ type ContractBase = Omit<
                 },
               ];
             };
-            readonly Conversation: {
-              columns: {
-                readonly createdAt: {
-                  readonly dataType: 'pg/timestamptz';
-                  readonly codecId: 'pg/timestamptz-temporal@1';
-                  readonly nullable: false;
-                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
-                  readonly many: false;
-                };
-                readonly id: {
-                  readonly dataType: 'pg/text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: false;
-                  readonly many: false;
-                };
-                readonly userId: {
-                  readonly dataType: 'pg/text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: false;
-                  readonly many: false;
-                };
-              };
-              primaryKey: { readonly columns: readonly ['id'] };
-              uniques: readonly [];
-              indexes: readonly [
-                {
-                  readonly name: 'Conversation_userId_idx_a489d58a';
-                  readonly prefix: 'Conversation_userId_idx';
-                  readonly columns: readonly ['userId'];
-                  readonly unique: false;
-                },
-              ];
-              foreignKeys: readonly [
-                {
-                  readonly source: {
-                    readonly namespaceId: 'public' & NamespaceId;
-                    readonly tableName: 'Conversation';
-                    readonly columns: readonly ['userId'];
-                  };
-                  readonly target: {
-                    readonly namespaceId: 'public' & NamespaceId;
-                    readonly tableName: 'User';
-                    readonly columns: readonly ['id'];
-                  };
-                },
-              ];
-            };
             readonly Message: {
               columns: {
                 readonly content: {
-                  readonly dataType: 'pg/text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: false;
-                  readonly many: false;
-                };
-                readonly conversationId: {
                   readonly dataType: 'pg/text';
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
@@ -1264,14 +1203,20 @@ type ContractBase = Omit<
                   readonly nullable: false;
                   readonly many: false;
                 };
+                readonly userId: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
               };
               primaryKey: { readonly columns: readonly ['id'] };
               uniques: readonly [];
               indexes: readonly [
                 {
-                  readonly name: 'Message_conversationId_idx_669215a6';
-                  readonly prefix: 'Message_conversationId_idx';
-                  readonly columns: readonly ['conversationId'];
+                  readonly name: 'Message_userId_idx_a489d58a';
+                  readonly prefix: 'Message_userId_idx';
+                  readonly columns: readonly ['userId'];
                   readonly unique: false;
                 },
               ];
@@ -1280,11 +1225,11 @@ type ContractBase = Omit<
                   readonly source: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'Message';
-                    readonly columns: readonly ['conversationId'];
+                    readonly columns: readonly ['userId'];
                   };
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
-                    readonly tableName: 'Conversation';
+                    readonly tableName: 'User';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -1599,6 +1544,16 @@ type ContractBase = Omit<
             };
             readonly Recommendation: {
               columns: {
+                readonly accepted: {
+                  readonly dataType: 'pg/bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                  readonly many: false;
+                };
                 readonly createdAt: {
                   readonly dataType: 'pg/timestamptz';
                   readonly codecId: 'pg/timestamptz-temporal@1';
@@ -1619,6 +1574,12 @@ type ContractBase = Omit<
                   readonly many: false;
                 };
                 readonly productId: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly routineId: {
                   readonly dataType: 'pg/text';
                   readonly codecId: 'pg/text@1';
                   readonly nullable: true;
@@ -1653,6 +1614,12 @@ type ContractBase = Omit<
                   readonly unique: false;
                 },
                 {
+                  readonly name: 'Recommendation_routineId_idx_fa038a10';
+                  readonly prefix: 'Recommendation_routineId_idx';
+                  readonly columns: readonly ['routineId'];
+                  readonly unique: false;
+                },
+                {
                   readonly name: 'Recommendation_userId_idx_a489d58a';
                   readonly prefix: 'Recommendation_userId_idx';
                   readonly columns: readonly ['userId'];
@@ -1681,6 +1648,18 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'Product';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'Recommendation';
+                    readonly columns: readonly ['routineId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'Routine';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -2102,6 +2081,12 @@ type ContractBase = Omit<
                   readonly nullable: false;
                   readonly many: false;
                 };
+                readonly image: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
                 readonly score: {
                   readonly dataType: 'pg/float8';
                   readonly codecId: 'pg/float8@1';
@@ -2267,6 +2252,12 @@ type ContractBase = Omit<
                   readonly nullable: false;
                   readonly many: false;
                 };
+                readonly lastInteractionId: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
                 readonly lastScanImage: {
                   readonly dataType: 'pg/text';
                   readonly codecId: 'pg/text@1';
@@ -2370,10 +2361,6 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'ConnectedDevice';
     };
-    readonly Conversation: {
-      readonly namespace: 'public' & NamespaceId;
-      readonly model: 'Conversation';
-    };
     readonly Message: { readonly namespace: 'public' & NamespaceId; readonly model: 'Message' };
     readonly OAuthAccount: {
       readonly namespace: 'public' & NamespaceId;
@@ -2461,63 +2448,9 @@ type ContractBase = Omit<
               };
             };
           };
-          readonly Conversation: {
-            readonly fields: {
-              readonly createdAt: {
-                readonly nullable: false;
-                readonly type: {
-                  readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-temporal@1';
-                };
-              };
-              readonly id: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly userId: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-            };
-            readonly relations: {
-              readonly messages: {
-                readonly to: {
-                  readonly namespace: 'public' & NamespaceId;
-                  readonly model: 'Message';
-                };
-                readonly cardinality: '1:N';
-                readonly on: {
-                  readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['conversationId'];
-                };
-              };
-              readonly user: {
-                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
-                readonly cardinality: 'N:1';
-                readonly nullable: false;
-                readonly on: {
-                  readonly localFields: readonly ['userId'];
-                  readonly targetFields: readonly ['id'];
-                };
-              };
-            };
-            readonly storage: {
-              readonly table: 'Conversation';
-              readonly namespaceId: 'public';
-              readonly fields: {
-                readonly createdAt: { readonly column: 'createdAt' };
-                readonly id: { readonly column: 'id' };
-                readonly userId: { readonly column: 'userId' };
-              };
-            };
-          };
           readonly Message: {
             readonly fields: {
               readonly content: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly conversationId: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
@@ -2536,17 +2469,18 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly userId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
             };
             readonly relations: {
-              readonly conversation: {
-                readonly to: {
-                  readonly namespace: 'public' & NamespaceId;
-                  readonly model: 'Conversation';
-                };
+              readonly user: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
                 readonly nullable: false;
                 readonly on: {
-                  readonly localFields: readonly ['conversationId'];
+                  readonly localFields: readonly ['userId'];
                   readonly targetFields: readonly ['id'];
                 };
               };
@@ -2556,10 +2490,10 @@ type ContractBase = Omit<
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly content: { readonly column: 'content' };
-                readonly conversationId: { readonly column: 'conversationId' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly id: { readonly column: 'id' };
                 readonly sender: { readonly column: 'sender' };
+                readonly userId: { readonly column: 'userId' };
               };
             };
           };
@@ -2843,6 +2777,10 @@ type ContractBase = Omit<
           };
           readonly Recommendation: {
             readonly fields: {
+              readonly accepted: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -2859,6 +2797,10 @@ type ContractBase = Omit<
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
               readonly productId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly routineId: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
@@ -2888,6 +2830,18 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['id'];
                 };
               };
+              readonly routine: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Routine';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['routineId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
               readonly user: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
@@ -2902,10 +2856,12 @@ type ContractBase = Omit<
               readonly table: 'Recommendation';
               readonly namespaceId: 'public';
               readonly fields: {
+                readonly accepted: { readonly column: 'accepted' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly explanation: { readonly column: 'explanation' };
                 readonly id: { readonly column: 'id' };
                 readonly productId: { readonly column: 'productId' };
+                readonly routineId: { readonly column: 'routineId' };
                 readonly scanId: { readonly column: 'scanId' };
                 readonly type: { readonly column: 'type' };
                 readonly userId: { readonly column: 'userId' };
@@ -3281,6 +3237,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly image: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly score: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
@@ -3331,6 +3291,7 @@ type ContractBase = Omit<
                 readonly aiSummary: { readonly column: 'aiSummary' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly id: { readonly column: 'id' };
+                readonly image: { readonly column: 'image' };
                 readonly score: { readonly column: 'score' };
                 readonly skinAge: { readonly column: 'skinAge' };
                 readonly status: { readonly column: 'status' };
@@ -3438,6 +3399,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly lastInteractionId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly lastScanImage: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -3467,10 +3432,10 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
-              readonly conversations: {
+              readonly devices: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
-                  readonly model: 'Conversation';
+                  readonly model: 'ConnectedDevice';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
@@ -3478,10 +3443,10 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['userId'];
                 };
               };
-              readonly devices: {
+              readonly messages: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
-                  readonly model: 'ConnectedDevice';
+                  readonly model: 'Message';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
@@ -3580,6 +3545,7 @@ type ContractBase = Omit<
                 readonly fullName: { readonly column: 'fullName' };
                 readonly gender: { readonly column: 'gender' };
                 readonly id: { readonly column: 'id' };
+                readonly lastInteractionId: { readonly column: 'lastInteractionId' };
                 readonly lastScanImage: { readonly column: 'lastScanImage' };
                 readonly password: { readonly column: 'password' };
                 readonly phoneNumber: { readonly column: 'phoneNumber' };
@@ -3760,14 +3726,6 @@ type ContractBase = Omit<
           readonly onCreate: { readonly id: 'uuidv4'; readonly kind: 'generator' };
           readonly ref: {
             readonly entry: 'ConnectedDevice';
-            readonly field: 'id';
-            readonly namespace: 'public';
-          };
-        },
-        {
-          readonly onCreate: { readonly id: 'uuidv4'; readonly kind: 'generator' };
-          readonly ref: {
-            readonly entry: 'Conversation';
             readonly field: 'id';
             readonly namespace: 'public';
           };

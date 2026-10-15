@@ -1,5 +1,7 @@
-import { analyserTools, streamTools } from "./gemma.tools";
+/* ---------------------------- OPTIONS ---------------------------- */
+
 import { analyserSystemInstruction, streamSystemInstruction } from "./gemma.instructions";
+import { analyserTools, streamTools } from "./gemma.tools";
 
 
 const baseOptions = {
@@ -19,6 +21,5 @@ export const analyserOptions = {
 export const streamOptions = {
   ...baseOptions,
   tools: streamTools,
-  stream: true,
   system_instruction: streamSystemInstruction,
 };

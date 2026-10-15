@@ -19,9 +19,11 @@ model User {
 
   lastScanImage String?
 
+  lastInteractionId String?
+
   scans         SkinScan[]
   routines      Routine[]
-  conversations Conversation[]
+  messages Message[]
   preferences   Preference?
   subscriptions Subscription[]
   orders        Order[]
@@ -226,29 +228,14 @@ model Recommendation {
 
 }
 
-model Conversation {
+
+model Message {
 
   id            String @id @default(uuid())
 
   userId        String
 
   user          User @relation(fields:[userId], references:[id])
-
-  lastInteractionId String?
-
-  createdAt     DateTime @default(now())
-
-  messages      Message[]
-
-}
-
-model Message {
-
-  id            String @id @default(uuid())
-
-  conversationId String
-
-  conversation Conversation @relation(fields:[conversationId], references:[id])
 
   sender        Sender
 

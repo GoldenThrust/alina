@@ -1,7 +1,6 @@
 import type { ToolRegistry } from "../tool.registry";
 import { SkincareRepository } from "./skincare.repository";
 import {
-  CreateConversationTool,
   CreateObservationTool,
   CreateRoutineTool,
   CreateSummaryTool,
@@ -12,6 +11,8 @@ import {
   GetRecommendationsTool,
   GetRoutineLogsTool,
   GetRoutinesTool,
+  GetScanHistoryTool,
+  RecommendHabitTool,
   RecommendProductTool,
   RecommendRoutineTool,
 } from "./skincare.tools";
@@ -22,6 +23,7 @@ export function registerSkincareTools(
 ) {
   const tools = [
     // read
+    new GetScanHistoryTool(repo),
     new GetPreviousSummariesTool(repo),
     new GetPreviousObservationsTool(repo),
     new GetRecommendationsTool(repo),
@@ -34,8 +36,8 @@ export function registerSkincareTools(
     new CreateObservationTool(repo),
     new CreateRoutineTool(repo),
     new RecommendRoutineTool(repo),
+    new RecommendHabitTool(repo),
     new RecommendProductTool(repo),
-    new CreateConversationTool(repo),
   ];
 
   for (const tool of tools) registry.register(tool);

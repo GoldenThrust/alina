@@ -3,9 +3,31 @@ import { BaseTool } from "../base.tool";
 import type { ToolContext } from "../tool";
 import type { SkincareRepository } from "./skincare.repository";
 
+/*
+ * Schemas use .optional() instead of .default() so the zod input and output
+ * types are identical (BaseTool expects ZodType<TInput>). Defaults are applied
+ * inside executeInternal.
+ */
+
 const length = z.enum(["short", "long"]);
-const limit = (max: number, fallback: number) =>
-  z.number().int().min(1).max(max).default(fallback);
+const period = z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT", "HABIT"]);
+const category = z.enum([
+  "CLEANSER",
+  "TONER",
+  "SERUM",
+  "MOISTURIZER",
+  "SUNSCREEN",
+  "TREATMENT",
+  "OTHER",
+]);
+
+const limitOf = (max: number) => z.number().int().min(1).max(max).optional();
+
+const stepSchema = z.object({
+  period,
+  title: z.string().min(1),
+  instruction: z.string().min(1),
+});
 
 abstract class SkincareTool<TInput, TResult = unknown> extends BaseTool<
   TInput,
@@ -16,53 +38,93 @@ abstract class SkincareTool<TInput, TResult = unknown> extends BaseTool<
   }
 }
 
-/* ======================= READ TOOLS ======================= */
+/* ============================ READ ============================ */
 
-const getSummariesSchema = z.object({
-  length: length.optional().describe("Filter by short or long summaries"),
-  limit: limit(20, 5),
-});
+const scanHistorySchema = z.object({ limit: limitOf(20) });
 
-export class GetPreviousSummariesTool extends SkincareTool<
-  z.infer<typeof getSummariesSchema>
+export class GetScanHistoryTool extends SkincareTool<
+  z.infer<typeof scanHistorySchema>
 > {
-  readonly name = "get_previous_summaries";
+  readonly name = "get_scan_history";
   readonly description =
-    "Fetch the user's previous skin summaries, newest first. Use before writing a new summary to stay consistent and track change over time.";
-  readonly schema = getSummariesSchema;
+    "Fetch the user's completed skin scans with score, skin age and detailed metrics, newest first.";
+  readonly schema = scanHistorySchema;
 
   protected async executeInternal(
-    input: z.infer<typeof getSummariesSchema>,
+    input: z.infer<typeof scanHistorySchema>,
     { userId }: ToolContext,
   ) {
-    return this.repo.summaries(userId, input);
+    const scans = await this.repo.scans(userId, {
+      limit: input.limit ?? 5,
+      withAnalysis: true,
+    });
+    return scans.map((s) => ({
+      scanId: s.id,
+      createdAt: s.createdAt,
+      score: s.score,
+      skinAge: s.skinAge,
+      analysis: s.analysis ?? null,
+    }));
   }
 }
 
-const getObservationsSchema = z.object({
-  length: length.optional().describe("Filter by short or long observations"),
-  limit: limit(20, 5),
+const previousSchema = z.object({
+  length: length.optional(),
+  limit: limitOf(20),
 });
 
+export class GetPreviousSummariesTool extends SkincareTool<
+  z.infer<typeof previousSchema>
+> {
+  readonly name = "get_previous_summaries";
+  readonly description =
+    "Fetch summaries saved on the user's previous scans, newest first.";
+  readonly schema = previousSchema;
+
+  protected async executeInternal(
+    input: z.infer<typeof previousSchema>,
+    { userId }: ToolContext,
+  ) {
+    const scans = await this.repo.scans(userId, { limit: input.limit ?? 5 });
+    return scans
+      .filter((s) => s.aiShortSummary || s.aiSummary)
+      .map((s) => ({
+        scanId: s.id,
+        createdAt: s.createdAt,
+        ...(input.length !== "long" && { short: s.aiShortSummary }),
+        ...(input.length !== "short" && { long: s.aiSummary }),
+      }));
+  }
+}
+
 export class GetPreviousObservationsTool extends SkincareTool<
-  z.infer<typeof getObservationsSchema>
+  z.infer<typeof previousSchema>
 > {
   readonly name = "get_previous_observations";
   readonly description =
-    "Fetch the user's previous skin observations, newest first. Use to compare the current scan against past findings.";
-  readonly schema = getObservationsSchema;
+    "Fetch observations saved on the user's previous scans, newest first.";
+  readonly schema = previousSchema;
 
   protected async executeInternal(
-    input: z.infer<typeof getObservationsSchema>,
+    input: z.infer<typeof previousSchema>,
     { userId }: ToolContext,
   ) {
-    return this.repo.observations(userId, input);
+    const scans = await this.repo.scans(userId, { limit: input.limit ?? 5 });
+    return scans
+      .filter((s) => s.aiShortObservation || s.aiObservation)
+      .map((s) => ({
+        scanId: s.id,
+        createdAt: s.createdAt,
+        ...(input.length !== "long" && { short: s.aiShortObservation }),
+        ...(input.length !== "short" && { long: s.aiObservation }),
+      }));
   }
 }
 
 const getRecommendationsSchema = z.object({
-  type: z.enum(["routine", "product"]).optional(),
-  limit: limit(30, 10),
+  type: z.enum(["PRODUCT", "ROUTINE", "HABIT"]).optional(),
+  accepted: z.boolean().optional(),
+  limit: limitOf(30),
 });
 
 export class GetRecommendationsTool extends SkincareTool<
@@ -70,41 +132,45 @@ export class GetRecommendationsTool extends SkincareTool<
 > {
   readonly name = "get_recommendations";
   readonly description =
-    "Fetch recommendations already made to the user (routines and products) so you do not repeat or contradict them.";
+    "Fetch recommendations already made to the user (products, routines, habits) with their product or routine details.";
   readonly schema = getRecommendationsSchema;
 
   protected async executeInternal(
     input: z.infer<typeof getRecommendationsSchema>,
     { userId }: ToolContext,
   ) {
-    return this.repo.recommendations(userId, input);
+    return this.repo.recommendations(userId, {
+      type: input.type,
+      accepted: input.accepted,
+      limit: input.limit ?? 10,
+    });
   }
 }
 
-const getRoutinesSchema = z.object({
-  activeOnly: z.boolean().default(true),
-});
+const getRoutinesSchema = z.object({ acceptedOnly: z.boolean().optional() });
 
 export class GetRoutinesTool extends SkincareTool<
   z.infer<typeof getRoutinesSchema>
 > {
   readonly name = "get_routines";
   readonly description =
-    "Fetch the user's skincare routines with their steps. Defaults to active routines only.";
+    "Fetch the user's routines with their steps. Accepted routines only by default; pass acceptedOnly false to include suggestions not yet accepted.";
   readonly schema = getRoutinesSchema;
 
   protected async executeInternal(
     input: z.infer<typeof getRoutinesSchema>,
     { userId }: ToolContext,
   ) {
-    return this.repo.routines(userId, input);
+    return this.repo.routines(userId, {
+      acceptedOnly: input.acceptedOnly ?? true,
+    });
   }
 }
 
 const getRoutineLogsSchema = z.object({
   routineId: z.string().optional(),
-  days: z.number().int().min(1).max(90).default(14),
-  limit: limit(200, 60),
+  days: z.number().int().min(1).max(90).optional(),
+  limit: limitOf(200),
 });
 
 export class GetRoutineLogsTool extends SkincareTool<
@@ -112,48 +178,50 @@ export class GetRoutineLogsTool extends SkincareTool<
 > {
   readonly name = "get_routine_logs";
   readonly description =
-    "Fetch the user's routine completion logs for the last N days. Use to judge adherence before adjusting a routine.";
+    "Fetch routine completion logs for the last N days, with the number of days the user completed a routine out of the window.";
   readonly schema = getRoutineLogsSchema;
 
   protected async executeInternal(
     input: z.infer<typeof getRoutineLogsSchema>,
     { userId }: ToolContext,
   ) {
-    const since = new Date(Date.now() - input.days * 24 * 60 * 60 * 1000);
+    const days = input.days ?? 14;
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const logs = await this.repo.routineLogs(userId, {
       routineId: input.routineId,
       since,
-      limit: input.limit,
+      limit: input.limit ?? 100,
     });
-    const completed = logs.filter((l) => l.completed).length;
+
+    const activeDays = new Set(
+      logs.map((l) => new Date(l.completedAt).toISOString().slice(0, 10)),
+    ).size;
+
     return {
-      windowDays: input.days,
-      total: logs.length,
-      completed,
-      adherence: logs.length ? Number((completed / logs.length).toFixed(2)) : null,
+      windowDays: days,
+      completions: logs.length,
+      daysWithCompletion: activeDays,
+      adherence: Number((activeDays / days).toFixed(2)),
       logs,
     };
   }
 }
 
-const getConversationSchema = z.object({
-  conversationId: z.string().optional(),
-  limit: limit(100, 20),
-});
+const getConversationSchema = z.object({ limit: limitOf(100) });
 
 export class GetConversationTool extends SkincareTool<
   z.infer<typeof getConversationSchema>
 > {
   readonly name = "get_conversation";
   readonly description =
-    "Fetch recent messages from the user's conversation (latest one unless an id is given).";
+    "Fetch the user's most recent chat messages (sender USER or ALINA), oldest first.";
   readonly schema = getConversationSchema;
 
   protected async executeInternal(
     input: z.infer<typeof getConversationSchema>,
     { userId }: ToolContext,
   ) {
-    return this.repo.conversation(userId, input);
+    return this.repo.messages(userId, input.limit ?? 20);
   }
 }
 
@@ -164,7 +232,7 @@ export class GetPreferencesTool extends SkincareTool<
 > {
   readonly name = "get_preferences";
   readonly description =
-    "Fetch the user's skincare preferences: skin type, concerns, allergies, ingredients to avoid, budget. Always check before recommending products.";
+    "Fetch the user's skin type, skin tone, favorite brands, favorite ingredients, avoided ingredients and budget.";
   readonly schema = getPreferencesSchema;
 
   protected async executeInternal(
@@ -175,81 +243,53 @@ export class GetPreferencesTool extends SkincareTool<
   }
 }
 
-/* ======================= WRITE TOOLS ======================= */
+/* ============================ WRITE ============================ */
 
-const createSummarySchema = z.object({
+const saveTextSchema = z.object({
+  scanId: z.string().min(1),
   length,
-  content: z
-    .string()
-    .min(1)
-    .describe(
-      "short: 1-2 sentences headline. long: detailed multi-paragraph summary.",
-    ),
-  scanId: z.string().optional(),
+  content: z.string().min(1),
 });
 
-export class CreateSummaryTool extends SkincareTool<
-  z.infer<typeof createSummarySchema>
+abstract class SaveScanTextTool extends SkincareTool<
+  z.infer<typeof saveTextSchema>
 > {
+  readonly schema = saveTextSchema;
+  protected abstract readonly shortField: string;
+  protected abstract readonly longField: string;
+
+  protected async executeInternal(
+    input: z.infer<typeof saveTextSchema>,
+    { userId }: ToolContext,
+  ) {
+    const scan = await this.repo.findScan(userId, input.scanId);
+    if (!scan) throw new Error(`Scan ${input.scanId} not found for this user.`);
+
+    const field = input.length === "short" ? this.shortField : this.longField;
+    await this.repo.updateScan(input.scanId, { [field]: input.content });
+    return { scanId: input.scanId, saved: field };
+  }
+}
+
+export class CreateSummaryTool extends SaveScanTextTool {
   readonly name = "create_summary";
   readonly description =
-    "Save a skin summary. Call once with length 'short' and once with 'long' for a complete scan analysis.";
-  readonly schema = createSummarySchema;
-
-  protected async executeInternal(
-    input: z.infer<typeof createSummarySchema>,
-    { userId }: ToolContext,
-  ) {
-    return this.repo.createSummary({ userId, ...input });
-  }
+    "Save the short or long summary on a scan. Call once with length short and once with length long.";
+  protected readonly shortField = "aiShortSummary";
+  protected readonly longField = "aiSummary";
 }
 
-const createObservationSchema = z.object({
-  length,
-  content: z
-    .string()
-    .min(1)
-    .describe(
-      "short: one key finding. long: detailed findings per area (hydration, texture, pigmentation, etc.).",
-    ),
-  concerns: z
-    .array(z.string())
-    .default([])
-    .describe("Concern tags, e.g. dryness, acne, redness"),
-  scanId: z.string().optional(),
-});
-
-export class CreateObservationTool extends SkincareTool<
-  z.infer<typeof createObservationSchema>
-> {
+export class CreateObservationTool extends SaveScanTextTool {
   readonly name = "create_observation";
   readonly description =
-    "Save a skin observation (a factual finding from the scan). Use 'short' for a key finding and 'long' for the detailed breakdown.";
-  readonly schema = createObservationSchema;
-
-  protected async executeInternal(
-    input: z.infer<typeof createObservationSchema>,
-    { userId }: ToolContext,
-  ) {
-    return this.repo.createObservation({ userId, ...input });
-  }
+    "Save the short or long observation on a scan. Call once with length short and once with length long.";
+  protected readonly shortField = "aiShortObservation";
+  protected readonly longField = "aiObservation";
 }
 
-const routineStepSchema = z.object({
-  order: z.number().int().min(1),
-  instruction: z.string().min(1),
-  productName: z.string().optional(),
-  productCategory: z
-    .string()
-    .optional()
-    .describe("e.g. cleanser, serum, moisturizer, sunscreen"),
-});
-
 const createRoutineSchema = z.object({
-  name: z.string().min(1),
-  slot: z.enum(["morning", "evening", "weekly"]),
-  goal: z.string().optional(),
-  steps: z.array(routineStepSchema).min(1).max(12),
+  title: z.string().min(1),
+  steps: z.array(stepSchema).min(1).max(12),
 });
 
 export class CreateRoutineTool extends SkincareTool<
@@ -257,26 +297,22 @@ export class CreateRoutineTool extends SkincareTool<
 > {
   readonly name = "create_routine";
   readonly description =
-    "Create an active routine for the user. Only call when the user wants it set up; otherwise use recommend_routine.";
+    "Create a routine and mark it accepted. Only call when the user asked for it or agreed to it; otherwise use recommend_routine.";
   readonly schema = createRoutineSchema;
 
   protected async executeInternal(
     input: z.infer<typeof createRoutineSchema>,
     { userId }: ToolContext,
   ) {
-    return this.repo.createRoutine({
-      userId,
-      ...input,
-      steps: [...input.steps].sort((a, b) => a.order - b.order),
-    });
+    return this.repo.createRoutine({ userId, accepted: true, ...input });
   }
 }
 
 const recommendRoutineSchema = z.object({
+  scanId: z.string().optional(),
   title: z.string().min(1),
-  reason: z.string().min(1).describe("Why this routine fits the scan"),
-  slot: z.enum(["morning", "evening", "weekly"]),
-  steps: z.array(routineStepSchema).min(1).max(12),
+  explanation: z.string().min(1),
+  steps: z.array(stepSchema).min(1).max(12),
 });
 
 export class RecommendRoutineTool extends SkincareTool<
@@ -284,32 +320,82 @@ export class RecommendRoutineTool extends SkincareTool<
 > {
   readonly name = "recommend_routine";
   readonly description =
-    "Suggest a routine to the user without activating it. The user can accept it later.";
+    "Suggest a routine without accepting it. The user can accept it later.";
   readonly schema = recommendRoutineSchema;
 
   protected async executeInternal(
     input: z.infer<typeof recommendRoutineSchema>,
     { userId }: ToolContext,
   ) {
-    const { title, reason, ...payload } = input;
-    return this.repo.createRecommendation({
+    const routine = await this.repo.createRoutine({
       userId,
-      type: "routine",
-      title,
-      reason,
-      payload,
+      accepted: false,
+      title: input.title,
+      steps: input.steps,
     });
+    const recommendation = await this.repo.createRecommendation({
+      userId,
+      scanId: input.scanId,
+      type: "ROUTINE",
+      explanation: input.explanation,
+      routineId: routine.id,
+    });
+    return { recommendation, routine };
+  }
+}
+
+const recommendHabitSchema = z.object({
+  scanId: z.string().optional(),
+  title: z.string().min(1),
+  instruction: z.string().min(1),
+  explanation: z.string().min(1),
+});
+
+export class RecommendHabitTool extends SkincareTool<
+  z.infer<typeof recommendHabitSchema>
+> {
+  readonly name = "recommend_habit";
+  readonly description =
+    "Suggest a lifestyle habit (sleep, water, sun protection behavior, pillowcase changes, etc.).";
+  readonly schema = recommendHabitSchema;
+
+  protected async executeInternal(
+    input: z.infer<typeof recommendHabitSchema>,
+    { userId }: ToolContext,
+  ) {
+    const routine = await this.repo.createRoutine({
+      userId,
+      accepted: false,
+      title: input.title,
+      steps: [
+        {
+          period: "HABIT",
+          title: input.title,
+          instruction: input.instruction,
+        },
+      ],
+    });
+    const recommendation = await this.repo.createRecommendation({
+      userId,
+      scanId: input.scanId,
+      type: "HABIT",
+      explanation: input.explanation,
+      routineId: routine.id,
+    });
+    return { recommendation, routine };
   }
 }
 
 const recommendProductSchema = z.object({
+  scanId: z.string().optional(),
   name: z.string().min(1),
-  brand: z.string().optional(),
-  category: z.string().min(1).describe("e.g. cleanser, serum, sunscreen"),
-  reason: z.string().min(1).describe("Why this fits the scan and preferences"),
-  keyIngredients: z.array(z.string()).default([]),
-  usage: z.string().optional().describe("When and how to use it"),
-  priceRange: z.string().optional(),
+  brand: z.string().min(1),
+  category,
+  description: z.string().min(1),
+  explanation: z.string().min(1),
+  keyIngredients: z.array(z.string()),
+  price: z.number().nonnegative().optional(),
+  affiliateUrl: z.string().url().optional(),
 });
 
 export class RecommendProductTool extends SkincareTool<
@@ -317,65 +403,43 @@ export class RecommendProductTool extends SkincareTool<
 > {
   readonly name = "recommend_product";
   readonly description =
-    "Recommend a skincare product. Check get_preferences first and never suggest allergens or ingredients the user avoids.";
+    "Recommend one skincare product. Rejected if it contains an ingredient the user avoids.";
   readonly schema = recommendProductSchema;
 
   protected async executeInternal(
     input: z.infer<typeof recommendProductSchema>,
     { userId }: ToolContext,
   ) {
-    const { reason, ...payload } = input;
-
     const prefs = await this.repo.preferences(userId);
-    const blocked = new Set(
-      [...(prefs?.allergies ?? []), ...(prefs?.avoidIngredients ?? [])].map(
-        (i) => i.toLowerCase(),
+    const avoided = prefs.avoidedIngredients.map((i) => i.toLowerCase());
+    const conflict = input.keyIngredients.find((ingredient) =>
+      avoided.some(
+        (a) =>
+          ingredient.toLowerCase().includes(a) ||
+          a.includes(ingredient.toLowerCase()),
       ),
-    );
-    const conflict = input.keyIngredients.find((i) =>
-      blocked.has(i.toLowerCase()),
     );
     if (conflict) {
       throw new Error(
-        `Product contains "${conflict}", which the user avoids. Choose a different product.`,
+        `"${conflict}" is an ingredient the user avoids. Choose a different product.`,
       );
     }
 
-    return this.repo.createRecommendation({
-      userId,
-      type: "product",
-      title: input.name,
-      reason,
-      payload,
+    const product = await this.repo.findOrCreateProduct({
+      name: input.name,
+      brand: input.brand,
+      category: input.category,
+      description: input.description,
+      price: input.price,
+      affiliateUrl: input.affiliateUrl,
     });
-  }
-}
-
-const createConversationSchema = z.object({
-  title: z.string().min(1).max(120),
-  firstMessage: z
-    .object({
-      role: z.enum(["user", "assistant"]).default("assistant"),
-      content: z.string().min(1),
-    })
-    .optional(),
-});
-
-export class CreateConversationTool extends SkincareTool<
-  z.infer<typeof createConversationSchema>
-> {
-  readonly name = "create_conversation";
-  readonly description =
-    "Start a new conversation thread for the user, optionally seeded with a first message.";
-  readonly schema = createConversationSchema;
-
-  protected async executeInternal(
-    input: z.infer<typeof createConversationSchema>,
-    { userId }: ToolContext,
-  ) {
-    return this.repo.createConversation(
-      { userId, title: input.title },
-      input.firstMessage,
-    );
+    const recommendation = await this.repo.createRecommendation({
+      userId,
+      scanId: input.scanId,
+      type: "PRODUCT",
+      explanation: input.explanation,
+      productId: product.id,
+    });
+    return { recommendation, product };
   }
 }

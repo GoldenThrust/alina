@@ -1,10 +1,10 @@
 import { v4 as uuid } from "uuid";
-import { db } from "../../../prisma/db";
 import Websocket from "../../websocket.service";
+import { SkincareRepository } from "../tools/skincare/skincare.repository";
 import type { ToolExecutor } from "../tools/tool.executor";
 import type { GemmaClient } from "./gemma.service";
 
-const MAX_TURNS = 30;
+const MAX_TURNS = 10;
 
 interface FunctionCall {
   id: string;
@@ -41,18 +41,17 @@ export class GemmaAgent {
   constructor(
     private readonly gemma: GemmaClient,
     private readonly executor: ToolExecutor,
+    private readonly repo: SkincareRepository = new SkincareRepository(),
   ) {}
 
-  private async previousInteractionId(
-    userId: string,
-  ): Promise<string | undefined> {
-    const conversation = await db.orm.public.Conversation.where({ userId })
-      .include("messages", (messages) =>
-        messages.orderBy((message) => message.id.desc()),
-      )
-      .first();
-
-    return conversation?.messages?.[0]?.id ?? undefined;
+  /** Persist the latest interaction id so the next request can continue it. */
+  private async remember(userId: string, interactionId: string | undefined) {
+    if (!interactionId) return;
+    try {
+      await this.repo.saveInteractionId(userId, interactionId);
+    } catch (error) {
+      console.error("[GemmaAgent] failed to save interaction id", error);
+    }
   }
 
   /**
@@ -96,7 +95,7 @@ export class GemmaAgent {
 
   async analyze(userId: string, input: unknown): Promise<AgentResult> {
     let inputData: unknown = input;
-    let previousId = await this.previousInteractionId(userId);
+    let previousId = await this.repo.lastInteractionId(userId);
     let lastText = "";
 
     for (let turn = 0; turn < MAX_TURNS; turn++) {
@@ -106,6 +105,7 @@ export class GemmaAgent {
       } as any);
 
       lastText = interaction.output_text ?? "";
+      previousId = interaction.id;
 
       const calls: FunctionCall[] = (interaction.steps ?? [])
         .filter((step: any) => step.type === "function_call")
@@ -115,15 +115,12 @@ export class GemmaAgent {
           arguments: step.arguments ?? {},
         }));
 
-      if (calls.length === 0) {
-        Websocket.sendMessage(userId, lastText);
-        return { text: lastText, id: interaction.id };
-      }
+      if (calls.length === 0) break;
 
       inputData = await this.runCalls(calls, userId, interaction.id);
-      previousId = interaction.id;
     }
 
+    await this.remember(userId, previousId);
     Websocket.sendMessage(userId, lastText);
     return { text: lastText, id: previousId };
   }
@@ -131,7 +128,7 @@ export class GemmaAgent {
   async chat(userId: string, input: unknown): Promise<AgentResult> {
     const sessionId = uuid();
     let inputData: unknown = input;
-    let previousId = await this.previousInteractionId(userId);
+    let previousId = await this.repo.lastInteractionId(userId);
     let fullText = "";
 
     Websocket.startStream(userId, sessionId);
@@ -146,10 +143,13 @@ export class GemmaAgent {
         );
 
         fullText += text;
-
         if (interactionId) previousId = interactionId;
 
-        if (status !== "requires_action" || calls.length === 0 || !interactionId) {
+        if (
+          status !== "requires_action" ||
+          calls.length === 0 ||
+          !interactionId
+        ) {
           break;
         }
 
@@ -159,6 +159,7 @@ export class GemmaAgent {
       Websocket.endStream(userId, sessionId);
     }
 
+    await this.remember(userId, previousId);
     return { text: fullText, id: previousId };
   }
 

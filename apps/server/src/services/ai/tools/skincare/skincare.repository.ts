@@ -1,240 +1,245 @@
 import { db } from "../../../../prisma/db";
 
 /**
- * Single place that touches the database for the skincare tools.
- * If your ORM's query syntax differs from what is used here, adapt only
- * this file — the tools depend on the interface below, not on the ORM.
+ * The only file that touches the database for the skincare tools.
+ * If your ORM's query syntax differs from what is used here (take, create,
+ * where().update()), adapt this file only. Tools depend on its methods.
  */
 
-export type SummaryLength = "short" | "long";
-export type RecommendationType = "routine" | "product";
-export type RoutineSlot = "morning" | "evening" | "weekly";
+export type RoutinePeriod =
+  | "MORNING"
+  | "AFTERNOON"
+  | "EVENING"
+  | "NIGHT"
+  | "HABIT";
 
-export interface RoutineStep {
-  order: number;
+export type ProductCategory =
+  | "CLEANSER"
+  | "TONER"
+  | "SERUM"
+  | "MOISTURIZER"
+  | "SUNSCREEN"
+  | "TREATMENT"
+  | "OTHER";
+
+  db.orm.public
+export type RecommendationType = "PRODUCT" | "ROUTINE" | "HABIT";
+export type Sender = "USER" | "ALINA";
+
+export interface StepInput {
+  period: RoutinePeriod;
+  title: string;
   instruction: string;
-  productName?: string;
-  productCategory?: string;
 }
 
-export interface SummaryRecord {
-  id: string;
-  userId: string;
-  length: SummaryLength;
-  content: string;
-  scanId?: string | null;
-  createdAt: Date;
+export interface PreferenceView {
+  skinType: string | null;
+  skinTone: string | null;
+  favoriteBrands: string[];
+  favoriteIngredients: string[];
+  avoidedIngredients: string[];
+  budget: number | null;
 }
 
-export interface ObservationRecord {
-  id: string;
-  userId: string;
-  length: SummaryLength;
-  content: string;
-  concerns: string[];
-  scanId?: string | null;
-  createdAt: Date;
-}
-
-export interface RecommendationRecord {
-  id: string;
-  userId: string;
-  type: RecommendationType;
-  title: string;
-  reason: string;
-  payload: Record<string, unknown>;
-  status: "suggested" | "accepted" | "dismissed";
-  createdAt: Date;
-}
-
-export interface RoutineRecord {
-  id: string;
-  userId: string;
-  name: string;
-  slot: RoutineSlot;
-  goal?: string | null;
-  steps: RoutineStep[];
-  active: boolean;
-  createdAt: Date;
-}
-
-export interface RoutineLogRecord {
-  id: string;
-  userId: string;
-  routineId: string;
-  completed: boolean;
-  notes?: string | null;
-  loggedAt: Date;
-}
-
-export interface MessageRecord {
-  id: string;
-  conversationId: string;
-  role: "user" | "assistant";
-  content: string;
-  interactionId?: string | null;
-}
-
-export interface ConversationRecord {
-  id: string;
-  userId: string;
-  title: string;
-  createdAt: Date;
-  messages?: MessageRecord[];
-}
-
-export interface PreferenceRecord {
-  id: string;
-  userId: string;
-  skinType?: string | null;
-  concerns: string[];
-  allergies: string[];
-  avoidIngredients: string[];
-  budget?: string | null;
-  routineComplexity?: string | null;
-  notes?: string | null;
-}
-
-const orm = () => db.orm.public as any;
+const orm = () => db.orm.public;
 
 export class SkincareRepository {
-  // ---------- reads ----------
+  /* ------------------------- scans ------------------------- */
 
-  async summaries(
+  async scans(
     userId: string,
-    opts: { length?: SummaryLength; limit: number },
-  ): Promise<SummaryRecord[]> {
-    const where = opts.length ? { userId, length: opts.length } : { userId };
-    return orm()
-      .Summary.where(where)
+    opts: { limit: number; withAnalysis?: boolean },
+  ): Promise<any[]> {
+    let query = orm().SkinScan.where({ userId, status: "COMPLETED" });
+    if (opts.withAnalysis) query = query.include("analysis");
+    return query
       .orderBy((s: any) => s.createdAt.desc())
       .limit(opts.limit)
       .all();
   }
 
-  async observations(
-    userId: string,
-    opts: { length?: SummaryLength; limit: number },
-  ): Promise<ObservationRecord[]> {
-    const where = opts.length ? { userId, length: opts.length } : { userId };
-    return orm()
-      .Observation.where(where)
-      .orderBy((o: any) => o.createdAt.desc())
-      .limit(opts.limit)
-      .all();
+  async findScan(userId: string, scanId: string): Promise<any | null> {
+    return (
+      (await orm().SkinScan.where({ id: scanId, userId }).first()) ?? null
+    );
   }
 
-  async recommendations(
-    userId: string,
-    opts: { type?: RecommendationType; limit: number },
-  ): Promise<RecommendationRecord[]> {
-    const where = opts.type ? { userId, type: opts.type } : { userId };
-    return orm()
-      .Recommendation.where(where)
-      .orderBy((r: any) => r.createdAt.desc())
-      .limit(opts.limit)
-      .all();
+  async updateScan(scanId: string, data: Record<string, unknown>) {
+    return orm().SkinScan.where({ id: scanId }).update(data);
   }
+
+  /* ------------------------- routines ------------------------- */
 
   async routines(
     userId: string,
-    opts: { activeOnly: boolean },
-  ): Promise<RoutineRecord[]> {
-    const where = opts.activeOnly ? { userId, active: true } : { userId };
+    opts: { acceptedOnly: boolean },
+  ): Promise<any[]> {
+    const where = opts.acceptedOnly
+      ? { userId, accepted: true }
+      : { userId };
     return orm()
       .Routine.where(where)
+      .include("steps", (steps: any) =>
+        steps.orderBy((s: any) => s.position.asc()),
+      )
       .orderBy((r: any) => r.createdAt.desc())
       .all();
+  }
+
+  async routineById(id: string): Promise<any | null> {
+    return (
+      (await orm()
+        .Routine.where({ id })
+        .include("steps", (steps: any) =>
+          steps.orderBy((s: any) => s.position.asc()),
+        )
+        .first()) ?? null
+    );
+  }
+
+  async createRoutine(data: {
+    userId: string;
+    title: string;
+    accepted: boolean;
+    steps: StepInput[];
+  }) {
+    const routine = await orm().Routine.create({
+      userId: data.userId,
+      title: data.title,
+      accepted: data.accepted,
+    });
+
+    const steps = [];
+    for (const [index, step] of data.steps.entries()) {
+      steps.push(
+        await orm().RoutineStep.create({
+          routineId: routine.id,
+          period: step.period,
+          title: step.title,
+          instruction: step.instruction,
+          position: index + 1,
+        }),
+      );
+    }
+    return { ...routine, steps };
   }
 
   async routineLogs(
     userId: string,
     opts: { routineId?: string; since: Date; limit: number },
-  ): Promise<RoutineLogRecord[]> {
+  ): Promise<any[]> {
     const where = opts.routineId
       ? { userId, routineId: opts.routineId }
       : { userId };
-    const logs: RoutineLogRecord[] = await orm()
+    const logs: any[] = await orm()
       .RoutineLog.where(where)
-      .orderBy((l: any) => l.loggedAt.desc())
+      .orderBy((l: any) => l.completedAt.desc())
       .limit(opts.limit)
       .all();
-    return logs.filter((l) => new Date(l.loggedAt) >= opts.since);
+    return logs.filter((l) => new Date(l.completedAt) >= opts.since);
   }
 
-  async conversation(
+  /* ------------------------- recommendations & products ------------------------- */
+
+  async recommendations(
     userId: string,
-    opts: { conversationId?: string; limit: number },
-  ): Promise<ConversationRecord | null> {
-    const where = opts.conversationId
-      ? { userId, id: opts.conversationId }
-      : { userId };
-    const convo = await orm()
-      .Conversation.where(where)
-      .include("messages", (messages: any) =>
-        messages.orderBy((m: any) => m.id.desc()),
-      )
+    opts: {
+      type?: RecommendationType;
+      accepted?: boolean;
+      limit: number;
+    },
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = { userId };
+    if (opts.type) where.type = opts.type;
+    if (opts.accepted !== undefined) where.accepted = opts.accepted;
+
+    const recs: any[] = await orm()
+      .Recommendation.where(where)
+      .orderBy((r: any) => r.createdAt.desc())
+      .limit(opts.limit)
+      .all();
+
+    return Promise.all(
+      recs.map(async (rec) => ({
+        ...rec,
+        product: rec.productId
+          ? ((await orm().Product.where({ id: rec.productId }).first()) ??
+            null)
+          : null,
+        routine: rec.routineId ? await this.routineById(rec.routineId) : null,
+      })),
+    );
+  }
+
+  async findOrCreateProduct(data: {
+    name: string;
+    brand: string;
+    category: ProductCategory;
+    description: string;
+    price?: number;
+    affiliateUrl?: string;
+  }) {
+    const existing = await orm()
+      .Product.where({ name: data.name, brand: data.brand })
       .first();
-    if (!convo) return null;
+    if (existing) return existing;
+    return orm().Product.create(data);
+  }
+
+  async createRecommendation(data: {
+    userId: string;
+    scanId?: string;
+    type: RecommendationType;
+    explanation: string;
+    productId?: string;
+    routineId?: string;
+  }) {
+    return orm().Recommendation.create({ ...data, accepted: false });
+  }
+
+  /* ------------------------- messages & interaction ------------------------- */
+
+  /** Latest messages for the user, oldest first. Requires `userId` on Message. */
+  async messages(userId: string, limit: number): Promise<any[]> {
+    const rows: any[] = await orm()
+      .Message.where({ userId })
+      .orderBy((m: any) => m.createdAt.desc())
+      .limit(limit)
+      .all();
+    return rows.reverse();
+  }
+
+  /** Requires `lastInteractionId String?` on the User model. */
+  async lastInteractionId(userId: string): Promise<string | undefined> {
+    const user = await orm().User.where({ id: userId }).first();
+    return user?.lastInteractionId ?? undefined;
+  }
+
+  async saveInteractionId(userId: string, interactionId: string) {
+    await orm()
+      .User.where({ id: userId })
+      .update({ lastInteractionId: interactionId });
+  }
+
+  /** Start fresh: the next request begins a new interaction chain. */
+  async resetInteraction(userId: string) {
+    await orm().User.where({ id: userId }).update({ lastInteractionId: null });
+  }
+
+  /* ------------------------- preferences ------------------------- */
+
+  async preferences(userId: string): Promise<PreferenceView> {
+    const [pref, user] = await Promise.all([
+      orm().Preference.where({ userId }).first(),
+      orm().User.where({ id: userId }).first(),
+    ]);
     return {
-      ...convo,
-      messages: (convo.messages ?? []).slice(0, opts.limit).reverse(),
+      skinType: user?.skinType ?? null,
+      skinTone: user?.skinTone ?? null,
+      favoriteBrands: (pref?.favoriteBrands as string[]) ?? [],
+      favoriteIngredients: (pref?.favoriteIngredients as string[]) ?? [],
+      avoidedIngredients: (pref?.avoidedIngredients as string[]) ?? [],
+      budget: pref?.budget ?? null,
     };
-  }
-
-  async preferences(userId: string): Promise<PreferenceRecord | null> {
-    return (await orm().Preference.where({ userId }).first()) ?? null;
-  }
-
-  // ---------- writes ----------
-
-  async createSummary(
-    data: Omit<SummaryRecord, "id" | "createdAt">,
-  ): Promise<SummaryRecord> {
-    return orm().Summary.create({ ...data, createdAt: new Date() });
-  }
-
-  async createObservation(
-    data: Omit<ObservationRecord, "id" | "createdAt">,
-  ): Promise<ObservationRecord> {
-    return orm().Observation.create({ ...data, createdAt: new Date() });
-  }
-
-  async createRoutine(
-    data: Omit<RoutineRecord, "id" | "createdAt" | "active">,
-  ): Promise<RoutineRecord> {
-    return orm().Routine.create({
-      ...data,
-      active: true,
-      createdAt: new Date(),
-    });
-  }
-
-  async createRecommendation(
-    data: Omit<RecommendationRecord, "id" | "createdAt" | "status">,
-  ): Promise<RecommendationRecord> {
-    return orm().Recommendation.create({
-      ...data,
-      status: "suggested",
-      createdAt: new Date(),
-    });
-  }
-
-  async createConversation(
-    data: Pick<ConversationRecord, "userId" | "title">,
-    firstMessage?: { role: "user" | "assistant"; content: string },
-  ): Promise<ConversationRecord> {
-    const convo: ConversationRecord = await orm().Conversation.create({
-      ...data,
-      createdAt: new Date(),
-    });
-    if (firstMessage) {
-      await orm().Message.create({
-        conversationId: convo.id,
-        role: firstMessage.role,
-        content: firstMessage.content,
-      });
-    }
-    return convo;
   }
 }
