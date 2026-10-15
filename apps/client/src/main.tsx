@@ -1,12 +1,17 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import './lib/api'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import "./lib/api";
 
-import App from './App.tsx'
+import App from "./App.tsx";
+import { SocketProvider } from "./context/SocketContext.tsx";
+import { AppToaster } from "./components/ui/toaster.tsx";
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <SocketProvider>
+       <AppToaster />
+      <App />
+    </SocketProvider>
   </StrictMode>,
-)
+);

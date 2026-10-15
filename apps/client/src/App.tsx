@@ -16,8 +16,10 @@ import ScanResult from "./pages/ScanResult";
 import Subscription from "./pages/Subscription";
 import AccountVerification from "./pages/AccountVerification";
 import AuthLayout from "./layouts/AuthLayout";
+// import { useSocket } from "./context/SocketContext";
 
 function App() {
+  // const _ = useSocket();
   useEffect(() => {
     void bootstrapAuth();
   }, []);
@@ -37,6 +39,7 @@ function App() {
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} index />
           <Route path="/scan" element={<Scan />} />
+          <Route path="/scan-result" element={<ScanResult />} />
           <Route path="/scan-result/:scanId" element={<ScanResult />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/recommendations" element={<Recommendation />} />

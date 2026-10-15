@@ -93,7 +93,7 @@ export class GemmaAgent {
     );
   }
 
-  async analyze(userId: string, input: unknown): Promise<AgentResult> {
+  async analyze(userId: string, scanId: string, input: unknown): Promise<AgentResult> {
     let inputData: unknown = input;
     let previousId = await this.repo.lastInteractionId(userId);
     let lastText = "";
@@ -122,6 +122,12 @@ export class GemmaAgent {
 
     await this.remember(userId, previousId);
     Websocket.sendMessage(userId, lastText);
+    Websocket.sendNotification(userId, {
+      type: "gemma_analysis_complete",
+      scanId,
+    });
+
+    Websocket.sendNavigationSignal(userId, `/scan-result/${scanId}`);
     return { text: lastText, id: previousId };
   }
 

@@ -1,10 +1,5 @@
 import { db } from "../../../../prisma/db";
 
-/**
- * The only file that touches the database for the skincare tools.
- * If your ORM's query syntax differs from what is used here (take, create,
- * where().update()), adapt this file only. Tools depend on its methods.
- */
 
 export type RoutinePeriod =
   | "MORNING"

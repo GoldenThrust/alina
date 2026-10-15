@@ -8,7 +8,7 @@ const HOST = env.HOST;
 
 const start = async () => {
   const app = buildApp();
-  Websocket.run(app.server);
+  Websocket.run(app);
 
 
   try {

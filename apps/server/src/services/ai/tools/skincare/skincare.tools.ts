@@ -3,12 +3,6 @@ import { BaseTool } from "../base.tool";
 import type { ToolContext } from "../tool";
 import type { SkincareRepository } from "./skincare.repository";
 
-/*
- * Schemas use .optional() instead of .default() so the zod input and output
- * types are identical (BaseTool expects ZodType<TInput>). Defaults are applied
- * inside executeInternal.
- */
-
 const length = z.enum(["short", "long"]);
 const period = z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT", "HABIT"]);
 const category = z.enum([
