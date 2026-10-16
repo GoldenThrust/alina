@@ -18,7 +18,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'66707c64ef59dede9355251326a1609fc8996ca08896322cada0abe1792388b7'>;
+  StorageHashBase<'0ff392a59eb304ea2f2ccdaa312f400da7bb17c55cc51f150c68d18a63c461ba'>;
 export type ExecutionHash =
   ExecutionHashBase<'dc1ac6e4db2ee326f04a55c1c0aa0d987b1dc883145cc25cd6bba35f22cc906d'>;
 export type ProfileHash =
@@ -385,6 +385,7 @@ export type FieldOutputTypes = {
       readonly lastScanImage: CodecTypes['pg/text@1']['output'] | null;
       readonly password: CodecTypes['pg/text@1']['output'] | null;
       readonly phoneNumber: CodecTypes['pg/text@1']['output'] | null;
+      readonly role: 'USER' | 'ADMIN';
       readonly skinTone: CodecTypes['pg/text@1']['output'] | null;
       readonly skinType: CodecTypes['pg/text@1']['output'] | null;
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -544,6 +545,7 @@ export type FieldInputTypes = {
       readonly lastScanImage: CodecTypes['pg/text@1']['input'] | null;
       readonly password: CodecTypes['pg/text@1']['input'] | null;
       readonly phoneNumber: CodecTypes['pg/text@1']['input'] | null;
+      readonly role: 'USER' | 'ADMIN';
       readonly skinTone: CodecTypes['pg/text@1']['input'] | null;
       readonly skinType: CodecTypes['pg/text@1']['input'] | null;
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -703,6 +705,7 @@ export type StorageColumnTypes = {
       readonly lastScanImage: CodecTypes['pg/text@1']['output'] | null;
       readonly password: CodecTypes['pg/text@1']['output'] | null;
       readonly phoneNumber: CodecTypes['pg/text@1']['output'] | null;
+      readonly role: 'USER' | 'ADMIN';
       readonly skinTone: CodecTypes['pg/text@1']['output'] | null;
       readonly skinType: CodecTypes['pg/text@1']['output'] | null;
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -862,6 +865,7 @@ export type StorageColumnInputTypes = {
       readonly lastScanImage: CodecTypes['pg/text@1']['input'] | null;
       readonly password: CodecTypes['pg/text@1']['input'] | null;
       readonly phoneNumber: CodecTypes['pg/text@1']['input'] | null;
+      readonly role: 'USER' | 'ADMIN';
       readonly skinTone: CodecTypes['pg/text@1']['input'] | null;
       readonly skinType: CodecTypes['pg/text@1']['input'] | null;
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -1054,6 +1058,7 @@ export namespace Models {
     lastScanImage: CodecTypes['pg/text@1']['output'] | null;
     password: CodecTypes['pg/text@1']['output'] | null;
     phoneNumber: CodecTypes['pg/text@1']['output'] | null;
+    role: 'USER' | 'ADMIN';
     skinTone: CodecTypes['pg/text@1']['output'] | null;
     skinType: CodecTypes['pg/text@1']['output'] | null;
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -2276,6 +2281,16 @@ type ContractBase = Omit<
                   readonly nullable: true;
                   readonly many: false;
                 };
+                readonly role: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'USER'>;
+                  };
+                  readonly many: false;
+                };
                 readonly skinTone: {
                   readonly dataType: 'pg/text';
                   readonly codecId: 'pg/text@1';
@@ -2345,6 +2360,10 @@ type ContractBase = Omit<
             readonly SubscriptionStatus: {
               readonly kind: 'valueSet';
               readonly values: readonly ['ACTIVE', 'CANCELLED', 'EXPIRED'];
+            };
+            readonly UserRole: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['USER', 'ADMIN'];
             };
           };
         };
@@ -3415,6 +3434,10 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly role: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly skinTone: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -3549,6 +3572,7 @@ type ContractBase = Omit<
                 readonly lastScanImage: { readonly column: 'lastScanImage' };
                 readonly password: { readonly column: 'password' };
                 readonly phoneNumber: { readonly column: 'phoneNumber' };
+                readonly role: { readonly column: 'role' };
                 readonly skinTone: { readonly column: 'skinTone' };
                 readonly skinType: { readonly column: 'skinType' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
@@ -3634,6 +3658,13 @@ type ContractBase = Omit<
               { readonly name: 'EXPIRED'; readonly value: 'EXPIRED' },
             ];
           };
+          readonly UserRole: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'USER'; readonly value: 'USER' },
+              { readonly name: 'ADMIN'; readonly value: 'ADMIN' },
+            ];
+          };
         };
         readonly enumMemberTypes?: {
           readonly DeviceType: readonly [
@@ -3685,6 +3716,10 @@ type ContractBase = Omit<
             { readonly name: 'ACTIVE'; readonly value: 'ACTIVE' },
             { readonly name: 'CANCELLED'; readonly value: 'CANCELLED' },
             { readonly name: 'EXPIRED'; readonly value: 'EXPIRED' },
+          ];
+          readonly UserRole: readonly [
+            { readonly name: 'USER'; readonly value: 'USER' },
+            { readonly name: 'ADMIN'; readonly value: 'ADMIN' },
           ];
         };
       };

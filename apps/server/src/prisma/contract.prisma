@@ -21,6 +21,8 @@ model User {
 
   lastInteractionId String?
 
+  role          UserRole @default(USER)
+
   scans         SkinScan[]
   routines      Routine[]
   messages Message[]
@@ -387,4 +389,9 @@ enum ProductCategory {
   SUNSCREEN
   TREATMENT
   OTHER
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }

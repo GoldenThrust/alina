@@ -166,5 +166,6 @@ type YouCamAnalysisData = {
   userId: string;
   type: analysisType;
   source: string | Buffer;
+  imagePath: string;
   options: AnalyzeImageOptions | {};
 }

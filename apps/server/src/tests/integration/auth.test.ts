@@ -86,7 +86,7 @@ async function createUserRecord({
 } = {}) {
   return await db.orm.public.User.create({
       email,
-      name,
+      fullName: name,
       password: await hash(password),
       emailVerifiedAt: verified ? new Date() : null,
   });
@@ -214,7 +214,7 @@ describe("Auth Routes", () => {
         email: user.email,
     }).first();
 
-    expect(updatedUser?.name).toBe(updatedName);
+    expect(updatedUser?.fullName).toBe(updatedName);
   });
 
   test("GET /refresh exchanges a refresh token for new tokens", async ({

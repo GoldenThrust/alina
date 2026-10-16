@@ -1,7 +1,7 @@
 type JwtPayload = {
   sub: string;
   email: string;
-  role: "customer" | "admin" | "restaurant_ownerchef" | "delivery_person" | "staff";
+  role: "USER" | "ADMIN";
   sessionId?: string;
   secret?: string;
 };

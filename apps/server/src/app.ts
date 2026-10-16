@@ -1,5 +1,4 @@
-import Fastify, { fastify } from "fastify";
-import { db } from "./prisma/db.ts";
+import Fastify from "fastify";
 import {
   serializerCompiler,
   validatorCompiler,
@@ -14,7 +13,6 @@ import multipart from "@fastify/multipart";
 
 import { env } from "./config/env.ts";
 import fs from "fs";
-import { fileManager } from "./common/files/file.ts";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -155,27 +153,6 @@ export function buildApp() {
   app.get("/hello", function (_, reply) {
     reply.send("Hello from Alina API! Visit /api for API routes.");
   });
-
-  // Test Route here
-  app.post(
-    "/api/scan",
-    //     {
-    //   // preHandler: [fastify.authenticate],
-    // },
-    async (request, reply) => {
-      try {
-        const imagePath = await fileManager.uploadFile(request, "image");
-        console.log("File uploaded successfully:", imagePath);
-      } catch (error) {
-        console.error("Error uploading file:", error);
-        return reply.status(500).send({ error: "Failed to upload file" });
-      }
-
-      return reply.send({
-        message: "File received successfully",
-      });
-    },
-  );
 
   // Hooks
   // app.addHook("onClose", async () => {

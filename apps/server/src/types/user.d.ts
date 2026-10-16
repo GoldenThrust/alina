@@ -5,9 +5,9 @@ type User = {
   dateOfBirth: any;
   email: string;
   emailVerifiedAt: any;
-  gender: "male" | "female" | null;
-  image: string | null;
-  name: string | null;
+  gender: "MALE" | "FEMALE" | null;
+  avatar: string | null;
+  fullName: string | null;
   password: string | null;
   phoneNumber: string | null;
 };

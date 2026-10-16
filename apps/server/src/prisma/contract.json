@@ -245,6 +245,19 @@
                 "value": "EXPIRED"
               }
             ]
+          },
+          "UserRole": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "USER",
+                "value": "USER"
+              },
+              {
+                "name": "ADMIN",
+                "value": "ADMIN"
+              }
+            ]
           }
         },
         "models": {
@@ -1947,6 +1960,19 @@
                   "kind": "scalar"
                 }
               },
+              "role": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "UserRole",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
               "skinTone": {
                 "nullable": true,
                 "type": {
@@ -2144,6 +2170,9 @@
                 },
                 "phoneNumber": {
                   "column": "phoneNumber"
+                },
+                "role": {
+                  "column": "role"
                 },
                 "skinTone": {
                   "column": "skinTone"
@@ -3378,6 +3407,11 @@
                   "expression": "\"gender\" IN ('MALE', 'FEMALE')",
                   "name": "User_gender_check_9e8dd636",
                   "prefix": "User_gender_check"
+                },
+                {
+                  "expression": "\"role\" IN ('USER', 'ADMIN')",
+                  "name": "User_role_check_1954e8c0",
+                  "prefix": "User_role_check"
                 }
               ],
               "columns": {
@@ -3450,6 +3484,21 @@
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
                   "nullable": true
+                },
+                "role": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "default": {
+                    "kind": "literal",
+                    "value": "USER"
+                  },
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "UserRole",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
                 },
                 "skinTone": {
                   "codecId": "pg/text@1",
@@ -3656,6 +3705,13 @@
                 "CANCELLED",
                 "EXPIRED"
               ]
+            },
+            "UserRole": {
+              "kind": "valueSet",
+              "values": [
+                "USER",
+                "ADMIN"
+              ]
             }
           }
         },
@@ -3663,7 +3719,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "66707c64ef59dede9355251326a1609fc8996ca08896322cada0abe1792388b7"
+    "storageHash": "0ff392a59eb304ea2f2ccdaa312f400da7bb17c55cc51f150c68d18a63c461ba"
   },
   "execution": {
     "executionHash": "dc1ac6e4db2ee326f04a55c1c0aa0d987b1dc883145cc25cd6bba35f22cc906d",

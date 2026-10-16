@@ -30,3 +30,19 @@ export function connectDatabase(): Promise<void> {
   });
   return connection;
 }
+
+export const ORM = {
+  Scan: () => db.orm.public.SkinScan,
+  Analysis: () => db.orm.public.SkinAnalysis,
+  Routine: () => db.orm.public.Routine,
+  Step: () => db.orm.public.RoutineStep,
+  RoutineLog: () => db.orm.public.RoutineLog,
+  Product: () => db.orm.public.Product,
+  Recommendation: () => db.orm.public.Recommendation,
+  Message: () => db.orm.public.Message,
+  Preference: () => db.orm.public.Preference,
+  Order: () => db.orm.public.Order,
+  OrderItem: () => db.orm.public.OrderItem,
+  Device: () => db.orm.public.ConnectedDevice,
+  Subscription: () => db.orm.public.Subscription,
+};

@@ -80,7 +80,7 @@ export async function handleOAuthLogin(
   if (!user) {
     user = await db.orm.public.User.create({
       email: profile.email,
-      name: profile.name,
+      fullName: profile.name,
       // The provider has already verified this email; without this, login() rejects OAuth users.
       emailVerifiedAt: Temporal.Now.instant(),
     });
@@ -132,12 +132,12 @@ export default async function register(payload: {
   // Creates the user, or overwrites name/password on an unverified signup.
   const user = await db.orm.public.User.upsert({
     create: {
-      name: payload.name,
+      fullName: payload.name,
       email: payload.email,
       password: hashPassword,
     },
     update: {
-      name: payload.name,
+      fullName: payload.name,
       password: hashPassword,
     },
     conflictOn: { email: payload.email },
@@ -231,7 +231,7 @@ export async function verifyAccountToken(
     subject: "Welcome to Alina",
     template: path.join(EMAIL_TEMPLATE_PATH, "welcome.mjml"),
     payload: {
-      firstName: user.name?.split(" ")[0] ?? user.email.split("@")[0] ?? "Alina member",
+      firstName: user.fullName?.split(" ")[0] ?? user.email.split("@")[0] ?? "Alina member",
       heroImageUrl: `${config.env.CLIENT_URL}/images/main.png`,
       scanIconUrl: `${config.env.CLIENT_URL}/images/camera-icon.png`,
       trackIconUrl: `${config.env.CLIENT_URL}/images/chart-icon.png`,
@@ -244,7 +244,7 @@ export async function verifyAccountToken(
   return {
     message: "Account verified successfully",
     user: {
-      name: user.name ?? user.email.split("@")[0] ?? "Alina member",
+      name: user.fullName ?? user.email.split("@")[0] ?? "Alina member",
       email: user.email,
     },
     ...tokens,
@@ -292,7 +292,7 @@ export async function resetPassword(token: string, password: string) {
       "successfully-reset-password.mjml",
     ),
     payload: {
-      name: user.name,
+      name: user.fullName,
     },
   });
 
@@ -421,7 +421,7 @@ sendEmailJob
     subject: "Alina Account Email Reset",
     template: path.join(EMAIL_TEMPLATE_PATH, "email-reset-request.mjml"),
     payload: {
-      name: user.name,
+      name: user.fullName,
       reset_link: `${config.env.CLIENT_URL}/email-reset/${token}`,
       expiry_minutes: EMAIL_RESET_TTL_MINUTES,
     },
@@ -432,7 +432,7 @@ sendEmailJob
     subject: "Alina Account Email Reset Warning",
     template: path.join(EMAIL_TEMPLATE_PATH, "email-reset-warning.mjml"),
     payload: {
-      name: user.name,
+      name: user.fullName,
       revert_link: `${config.env.CLIENT_URL}/email-reset/${revertToken}/revert`,
       expiry_days: EMAIL_REVERT_TTL_DAYS,
     },
@@ -478,7 +478,7 @@ export async function resetEmail(token: string) {
     subject: "Alina Account Email Reset Successfully",
     template: path.join(EMAIL_TEMPLATE_PATH, "email-reset.mjml"),
     payload: {
-      name: user.name,
+      name: user.fullName,
     },
   });
 
@@ -488,7 +488,7 @@ export async function resetEmail(token: string) {
     subject: "Alina Account Email Reset Successfully",
     template: path.join(EMAIL_TEMPLATE_PATH, "email-reset.mjml"),
     payload: {
-      name: user.name,
+      name: user.fullName,
     },
   });
 
@@ -536,7 +536,7 @@ export async function revertResetEmail(token: string, password: string) {
     subject: "Alina Account Email Reset Reverted",
     template: path.join(EMAIL_TEMPLATE_PATH, "email-revert.html"),
     payload: {
-      name: user.name,
+      name: user.fullName,
     },
   });
 

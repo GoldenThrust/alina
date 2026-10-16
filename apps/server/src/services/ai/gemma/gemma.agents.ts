@@ -1,8 +1,10 @@
 import { v4 as uuid } from "uuid";
 import Websocket from "../../websocket.service";
 import { SkincareRepository } from "../tools/skincare/skincare.repository";
-import type { ToolExecutor } from "../tools/tool.executor";
-import type { GemmaClient } from "./gemma.service";
+import { ToolExecutor } from "../tools/tool.executor";
+import { GemmaClient } from "./gemma.service";
+import { ToolRegistry } from "../tools/tool.registry";
+import { db } from "../../../prisma/db";
 
 const MAX_TURNS = 10;
 
@@ -33,7 +35,8 @@ interface StreamOutcome {
 }
 
 export interface AgentResult {
-  text: string;
+  error?: string;
+  text?: string;
   id: string | undefined;
 }
 
@@ -93,42 +96,61 @@ export class GemmaAgent {
     );
   }
 
-  async analyze(userId: string, scanId: string, input: unknown): Promise<AgentResult> {
-    let inputData: unknown = input;
-    let previousId = await this.repo.lastInteractionId(userId);
-    let lastText = "";
+  async analyze(
+    userId: string,
+    scanId: string,
+    input: unknown,
+  ): Promise<AgentResult> {
+    try {
+      let inputData: unknown = input;
+      let previousId = await this.repo.lastInteractionId(userId);
+      let lastText = "";
 
-    for (let turn = 0; turn < MAX_TURNS; turn++) {
-      const interaction = await this.gemma.generate({
-        input: inputData,
-        previous_interaction_id: previousId,
-      } as any);
+      for (let turn = 0; turn < MAX_TURNS; turn++) {
+        const interaction = await this.gemma.generate({
+          input: inputData,
+          previous_interaction_id: previousId,
+        } as any);
 
-      lastText = interaction.output_text ?? "";
-      previousId = interaction.id;
+        lastText = interaction.output_text ?? "";
+        previousId = interaction.id;
 
-      const calls: FunctionCall[] = (interaction.steps ?? [])
-        .filter((step: any) => step.type === "function_call")
-        .map((step: any) => ({
-          id: step.id,
-          name: step.name,
-          arguments: step.arguments ?? {},
-        }));
+        const calls: FunctionCall[] = (interaction.steps ?? [])
+          .filter((step: any) => step.type === "function_call")
+          .map((step: any) => ({
+            id: step.id,
+            name: step.name,
+            arguments: step.arguments ?? {},
+          }));
 
-      if (calls.length === 0) break;
+        if (calls.length === 0) break;
 
-      inputData = await this.runCalls(calls, userId, interaction.id);
+        inputData = await this.runCalls(calls, userId, interaction.id);
+      }
+
+      await this.remember(userId, previousId);
+      Websocket.sendMessage(userId, lastText);
+      Websocket.sendNotification(userId, {
+        type: "gemma_analysis_complete",
+        scanId,
+      });
+
+      await db.orm.public.SkinScan.where({ id: scanId }).update({
+        status: "COMPLETED",
+      });
+
+      Websocket.sendNavigationSignal(userId, `/scan-result/${scanId}`);
+      return { text: lastText, id: previousId };
+    } catch (error: any) {
+      await db.orm.public.SkinScan.where({ id: scanId }).update({
+        status: "FAILED",
+      });
+
+      return {
+        error: `Failed to Analyse Data: ${error?.message}`,
+        id: undefined,
+      };
     }
-
-    await this.remember(userId, previousId);
-    Websocket.sendMessage(userId, lastText);
-    Websocket.sendNotification(userId, {
-      type: "gemma_analysis_complete",
-      scanId,
-    });
-
-    Websocket.sendNavigationSignal(userId, `/scan-result/${scanId}`);
-    return { text: lastText, id: previousId };
   }
 
   async chat(userId: string, input: unknown): Promise<AgentResult> {
@@ -169,7 +191,7 @@ export class GemmaAgent {
     return { text: fullText, id: previousId };
   }
 
-  async streamData(
+  private async streamData(
     userId: string,
     sessionId: string,
     input: unknown,
@@ -246,3 +268,9 @@ export class GemmaAgent {
     }
   }
 }
+
+export const gemmaAgent = new GemmaAgent(
+  new GemmaClient(process.env.GOOGLE_API_KEY ?? ""),
+  new ToolExecutor(new ToolRegistry()),
+  new SkincareRepository(),
+);

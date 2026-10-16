@@ -12,7 +12,7 @@ export async function createAuthenticatedUser(app: FastifyInstance) {
 
   const createdUser = await db.orm.public.User.create({
     email: user.email,
-    name: user.name,
+    fullName: user.name,
     password: await hash(user.password),
     emailVerifiedAt: new Date(),
   });
