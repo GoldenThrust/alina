@@ -23,7 +23,8 @@
     "migration:status": "prisma migration status",
     "skills:sync": "prisma skills sync || exit 0",
     "start": "node dist/server.mjs",
-    "postinstall": "prisma skills sync || exit 0"
+    "postinstall": "prisma skills sync || exit 0",
+    "db:seed": "tsx src/prisma/seed/run.ts"
   },
   "dependencies": {
     "@faker-js/faker": "^10.6.0",

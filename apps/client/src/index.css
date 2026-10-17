@@ -242,7 +242,7 @@ select:focus-visible {
   align-items: center;
   gap: 8px;
   color: var(--ink);
-  font-family: "Manrope", "Segoe UI", sans-serif;
+  font-family: "Ubuntu", "Manrope", "Segoe UI", sans-serif;
   font-size: 20px;
   font-weight: 700;
 }
@@ -1296,7 +1296,9 @@ select:focus-visible {
 }
 .capture-frame {
   position: relative;
-  width: min(100%, 550px);
+  width: 540px;
+  width: min(100%, 540px);
+  /* height: max(100%, 720px); */
   aspect-ratio: 1.08;
   display: grid;
   place-items: center;
@@ -3168,9 +3170,4 @@ select:focus-visible {
   position: relative;
   display: flex;
   justify-content: center;
-}
-
-/* The kit sizes itself from its init width/height (defaults to portrait). */
-.capture-frame #YMK-module {
-  max-width: 100%;
 }

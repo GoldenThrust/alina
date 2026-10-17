@@ -32,6 +32,7 @@ export function connectDatabase(): Promise<void> {
 }
 
 export const ORM = {
+  User: () => db.orm.public.User,
   Scan: () => db.orm.public.SkinScan,
   Analysis: () => db.orm.public.SkinAnalysis,
   Routine: () => db.orm.public.Routine,

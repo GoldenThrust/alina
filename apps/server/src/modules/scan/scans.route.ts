@@ -1,12 +1,22 @@
 import type { FastifyInstance } from "fastify";
-import { scanAnalysisHandler } from "./scans.controller";
+import { requireAdmin } from "../../lib/crud";
+import * as C from "./scans.controller";
+import * as Z from "./scans.schema";
+import { IdParams, PaginationQuery } from "../../lib/schemas";
 
 export default async function scanRoutes(fastify: FastifyInstance) {
-  fastify.post(
-    "/scan",
-    {
-      preHandler: [fastify.authenticate],
-    },
-    scanAnalysisHandler
-  );
+    const auth = [fastify.authenticate];
+  // const admin = [fastify.authenticate, requireAdmin];
+  
+  
+  /* ---------- Scans ---------- */
+  fastify.get("/", { preHandler: auth, schema: { querystring: Z.ListScansQuery } }, C.scanController.list);
+  fastify.get("/:id", { preHandler: auth, schema: { params: IdParams } }, C.scanController.get);
+  fastify.post("/", { preHandler: auth }, C.scanController.create); // multipart: field "image"
+  fastify.delete("/:id", { preHandler: auth, schema: { params: IdParams } }, C.scanController.remove);
+
+  /* ---------- Skin analysis (1:1 with scan) ---------- */
+  fastify.get("/:scanId/analysis", { preHandler: auth, schema: { params: Z.ScanIdParams } }, C.analysisController.get);
+  fastify.put("/:scanId/analysis", { preHandler: auth, schema: { params: Z.ScanIdParams, body: Z.UpsertAnalysisBody } }, C.analysisController.upsert);
+  fastify.delete("/:scanId/analysis", { preHandler: auth, schema: { params: Z.ScanIdParams } }, C.analysisController.remove);
 }

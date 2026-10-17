@@ -26,5 +26,4 @@ export const UpsertAnalysisBody = z.object({
   skinType: z.record(z.any(), z.number().min(0).max(100)).optional(),
 });
 
-
-
+export const ScanIdParams = z.object({ scanId: z.uuid() });

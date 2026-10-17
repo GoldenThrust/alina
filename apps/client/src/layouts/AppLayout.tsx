@@ -33,7 +33,8 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const authReady = useSessionStore((state) => state.authReady);
-
+  
+  
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
@@ -47,6 +48,8 @@ export default function AppLayout() {
       </div>
     );
   }
+
+  console.log("Dashboard session:", session, !session);
   if (!session) return <Navigate to="/login" replace />;
 
   async function signOut() {

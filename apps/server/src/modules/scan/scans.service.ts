@@ -3,9 +3,9 @@ import { assertOwned, createOwnedService, pick } from "../../lib/crud";
 import { ORM } from "../../prisma/db";
 import APIError from "../../errors/APIError";
 import type { UpsertAnalysisBody } from "./scans";
+import { YouCamAnalysis } from "../../queues/youcam/youcam.producer";
 
 const EMAIL_TEMPLATE_PATH = path.join(import.meta.dirname, "emails");
-
 
 /* ===================== SkinScan ===================== */
 const scanBase = createOwnedService({
@@ -19,6 +19,23 @@ const scanBase = createOwnedService({
 
 export const scanService = {
   ...scanBase,
+  async create(userId: string, payload: { image: string }) {
+    const user = await ORM.User().where({
+      id: userId,
+    }).first();
+
+    if (!user) {
+      throw new APIError("User not found!", 401);
+    }
+
+    YouCamAnalysis({
+      imagePath: payload.image,
+      type: user.skinTone ? "skin" : "all",
+      source: payload.image,
+      userId: userId,
+      options: {},
+    });
+  },
   async get(userId: string, id: string) {
     const scan = await assertOwned(ORM.Scan, id, userId, "Scan");
     const analysis = await ORM.Analysis().where({ scanId: id }).first();
@@ -35,9 +52,22 @@ export const scanService = {
 
 /* ===================== SkinAnalysis (1:1 with scan) ===================== */
 const ANALYSIS_FIELDS = [
-  "redness", "ageSpot", "radiance", "moisture", "oiliness", "darkCircle",
-  "eyeBag", "droopyUpperEyelid", "droopyLowerEyelid", "firmness", "texture",
-  "acne", "pore", "wrinkle", "tearTrough", "skinType",
+  "redness",
+  "ageSpot",
+  "radiance",
+  "moisture",
+  "oiliness",
+  "darkCircle",
+  "eyeBag",
+  "droopyUpperEyelid",
+  "droopyLowerEyelid",
+  "firmness",
+  "texture",
+  "acne",
+  "pore",
+  "wrinkle",
+  "tearTrough",
+  "skinType",
 ] as const;
 
 export const analysisService = {

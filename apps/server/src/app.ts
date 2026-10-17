@@ -11,10 +11,12 @@ import fastifyOauth2 from "@fastify/oauth2";
 import superjson from "superjson";
 import multipart from "@fastify/multipart";
 
-import { env } from "./config/env.ts";
 import fs from "fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { env } from "./config/env.ts";
+import { allowUrls } from "./common/utils/constant.ts";
+import { readFileSync } from "node:fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +30,14 @@ export function buildApp() {
     logger: {
       file: "log/server.txt",
     },
+    ...(config.env.NODE_ENV === "development"
+      ? {
+          https: {
+            key: readFileSync("C:\\Users\\adeni\\Documents\\Cert\\key.pem"),
+            cert: readFileSync("C:\\Users\\adeni\\Documents\\Cert\\cert.pem"),
+          },
+        }
+      : {}),
   });
 
   app.withTypeProvider<ZodTypeProvider>();
@@ -53,7 +63,7 @@ export function buildApp() {
 
     if (error.validation) {
       return res.status(400).send({
-        message: "Validation failed",
+        message: error.message || "Validation failed",
         errors: error.message,
       });
     }
@@ -72,7 +82,7 @@ export function buildApp() {
   });
   app.register(import("@fastify/helmet"));
   app.register(import("@fastify/cors"), {
-    origin: config.env.CLIENT_URL,
+    origin: allowUrls,
     credentials: true,
   });
 

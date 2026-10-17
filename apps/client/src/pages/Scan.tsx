@@ -12,37 +12,59 @@ import {
   ScanFace,
   ShieldCheck,
   Camera,
-  X,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import PageHeading from "../components/PageHeading";
 import toast from "react-hot-toast";
 import { requestScan } from "../services/scan";
-import { useCameraKit } from "../hooks/useCameraKit";
-import {
-  prepareImageForSkinAnalysis,
-  ImageSizeError,
-} from "../utils/prepareImage";
+import { useFaceQuality } from "../hooks/useFaceQuality";
 
 export default function Scan() {
   const [fileName, setFileName] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
-  const [uploadError, setUploadError] = useState("");
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [streaming, setStreaming] = useState(false);
+  const [cameraError, setCameraError] = useState("");
 
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const analysisCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
   // Set when the preview URL has been handed to the next page.
   const keepPreviewUrlRef = useRef(false);
 
+  const qualityStatus = useFaceQuality(
+    videoRef,
+    analysisCanvasRef,
+    overlayCanvasRef,
+    streaming && !!stream,
+  );
+  const isReady = qualityStatus.includes("✓");
+
   const navigate = useNavigate();
 
-  const handleCaptured = useCallback((blob: Blob) => {
-    setUploadError("");
-    setPreviewUrl(URL.createObjectURL(blob));
-    setFileName("camera-capture.jpg");
-  }, []);
+  // Attach the stream after React renders the video element.
+  // Stop the camera when the stream changes or the component unmounts.
+  useEffect(() => {
+    const video = videoRef.current;
 
-  const camera = useCameraKit(handleCaptured);
-  const cameraError = camera.error || uploadError;
+    if (video && stream) {
+      video.srcObject = stream;
+      void video.play().catch((error: unknown) => {
+        console.error("Could not play camera preview:", error);
+      });
+    }
 
+    return () => {
+      stream?.getTracks().forEach((track) => track.stop());
+
+      if (video) {
+        video.srcObject = null;
+      }
+    };
+  }, [stream]);
+
+  // Release object URLs when replaced, but not when we've handed the URL
+  // to the result page (it still needs it).
   useEffect(() => {
     return () => {
       if (previewUrl && !keepPreviewUrlRef.current) {
@@ -51,51 +73,115 @@ export default function Scan() {
     };
   }, [previewUrl]);
 
-  const handleFile = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
+  const handleFile = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-      if (!file.type.startsWith("image/")) {
-        setUploadError("Please select a valid image file.");
-        event.target.value = "";
-        return;
+    if (!file.type.startsWith("image/")) {
+      setCameraError("Please select a valid image file.");
+      event.target.value = "";
+      return;
+    }
+
+    setCameraError("");
+    setStream(null);
+    setStreaming(false);
+
+    setFileName(file.name);
+    setPreviewUrl(URL.createObjectURL(file));
+
+    // Allow the same file to be selected again.
+    event.target.value = "";
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    try {
+      setCameraError("");
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error(
+          "Camera access requires HTTPS or localhost in a supported browser.",
+        );
       }
 
-      setUploadError("");
-      camera.close();
+      // Release any previous camera stream before opening another.
+      setStream(null);
+      setStreaming(false);
 
-      setFileName(file.name);
-      setPreviewUrl(URL.createObjectURL(file));
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: false,
+      });
 
-      // Allow the same file to be selected again.
-      event.target.value = "";
-    },
-    [camera],
-  );
+      setPreviewUrl("");
+      setFileName("");
+      setStream(mediaStream);
+      setStreaming(true);
+    } catch (error) {
+      setCameraError(
+        error instanceof Error ? error.message : "Could not access the camera.",
+      );
+    }
+  }, []);
 
-  const startCamera = useCallback(() => {
-    setUploadError("");
-    setPreviewUrl("");
-    setFileName("");
-    void camera.open();
-  }, [camera]);
+  const captureImage = useCallback(() => {
+    const video = videoRef.current;
+
+    if (!video || !video.videoWidth) {
+      setCameraError("Wait for the camera preview to load.");
+      return;
+    }
+
+    // Use an offscreen canvas so the capture is full-resolution and never
+    // contains the face-detection overlay.
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      setCameraError("Could not initialize image capture.");
+      return;
+    }
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          setCameraError("Could not capture the image.");
+          return;
+        }
+
+        setPreviewUrl(URL.createObjectURL(blob));
+        setFileName("camera-capture.jpg");
+        setCameraError("");
+
+        // Clearing the stream triggers the cleanup effect,
+        // which stops the camera tracks.
+        setStream(null);
+        setStreaming(false);
+      },
+      "image/jpeg",
+      0.9,
+    );
+  }, []);
 
   const continuePreview: React.SubmitEventHandler<HTMLFormElement> =
     useCallback(
       async (event) => {
         event.preventDefault();
 
+        if (streaming) {
+          captureImage();
+          return;
+        }
+
         if (!previewUrl || !fileName) return;
 
-        setUploadError("");
-
         try {
-          const original = await fetch(previewUrl).then((r) => r.blob());
-
-          // Step 1: resize to the supported HD dimensions.
-          const blob = await prepareImageForSkinAnalysis(original);
-
+          const blob = await fetch(previewUrl).then((r) => r.blob());
           const scanId = await requestScan(blob);
 
           keepPreviewUrlRef.current = true;
@@ -108,19 +194,13 @@ export default function Scan() {
             },
           });
           toast.success("Analysis complete! You can view your scan result.");
-        } catch (error: any) {
-          if (error instanceof ImageSizeError) {
-            setUploadError(error.message);
-            return;
-          }
+        } catch (error) {
           console.error("Scan failed:", error);
           toast.error("Failed to complete the scan.");
         }
       },
-      [fileName, navigate, previewUrl],
+      [captureImage, fileName, navigate, previewUrl, streaming],
     );
-
-  const showGuide = !camera.isOpen && !camera.isLoading && !previewUrl;
 
   return (
     <div className="page-content scan-page">
@@ -155,10 +235,7 @@ export default function Scan() {
               <span>02</span>
               <div>
                 <strong>Keep it natural</strong>
-                <small>
-                  Remove glasses and makeup, keep bangs off your forehead, and
-                  leave your hair down over your chest.
-                </small>
+                <small>Remove glasses and move hair away from your face.</small>
               </div>
             </li>
 
@@ -187,14 +264,14 @@ export default function Scan() {
 
         <form className="panel capture-panel" onSubmit={continuePreview}>
           <div className="capture-frame">
-            {/* Mandatory mount point for the Camera Kit UI. Always rendered. */}
-            <div id="YMK-module" />
-
-            {previewUrl && !camera.isOpen && (
+            {previewUrl ? (
               <img src={previewUrl} alt="Selected scan preview" />
-            )}
-
-            {showGuide && (
+            ) : stream ? (
+              <>
+                <video ref={videoRef} autoPlay playsInline muted />
+                <canvas ref={overlayCanvasRef} className="face-overlay" />
+              </>
+            ) : (
               <div className="face-guide">
                 <span className="guide-corner top-left" />
                 <span className="guide-corner top-right" />
@@ -212,13 +289,12 @@ export default function Scan() {
             )}
           </div>
 
+          {/* Small hidden canvas used only for brightness/blur analysis */}
+          <canvas ref={analysisCanvasRef} hidden />
+
           <div className="capture-status">
-            <span className={`status-dot ${camera.isReady ? "" : "muted"}`} />
-            {camera.isOpen
-              ? camera.isLoading
-                ? "Starting camera..."
-                : camera.status
-              : "Start your camera or choose a photo"}
+            <span className={`status-dot ${isReady ? "" : "muted"}`} />
+            {streaming ? qualityStatus : "Start your camera or choose a photo"}
           </div>
 
           {cameraError && (
@@ -234,21 +310,11 @@ export default function Scan() {
               <input type="file" accept="image/*" onChange={handleFile} />
             </label>
 
-            {camera.isOpen ? (
-              <button
-                className="button button-secondary"
-                type="button"
-                onClick={camera.close}
-              >
-                <X size={16} />
-                Cancel
-              </button>
-            ) : (
+            {!streaming && (
               <button
                 className="button button-secondary"
                 type="button"
                 onClick={startCamera}
-                disabled={camera.isLoading}
               >
                 <Camera size={16} />
                 {previewUrl ? "Retake photo" : "Start camera"}
@@ -258,22 +324,31 @@ export default function Scan() {
             <button
               className="button button-primary"
               type="submit"
-              disabled={camera.isOpen || !previewUrl}
+              disabled={streaming ? !isReady : !previewUrl}
             >
-              Preview result
-              <ArrowRight size={16} />
+              {streaming ? (
+                <>
+                  Capture
+                  <Camera size={16} />
+                </>
+              ) : (
+                <>
+                  Preview result
+                  <ArrowRight size={16} />
+                </>
+              )}
             </button>
           </div>
 
-          {fileName && !camera.isOpen ? (
+          {fileName && !streaming ? (
             <p className="inline-confirm">
               <Check size={14} />
               Image ready for preview only.
             </p>
           ) : (
             <p className="small-note">
-              {camera.isOpen
-                ? "Hold still. Your photo is captured automatically."
+              {streaming
+                ? "Capture a frame when you're ready."
                 : "Make sure your photo is clear and well-lit for the best analysis."}
             </p>
           )}

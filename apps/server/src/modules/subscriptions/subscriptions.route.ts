@@ -1,12 +1,13 @@
 import type { FastifyInstance } from "fastify";
-import { scanAnalysisHandler } from "./subscriptions.controller";
+import { IdParams, PaginationQuery } from "../../lib/schemas";
+import * as C from "./subscriptions.controller";
 
 export default async function scanRoutes(fastify: FastifyInstance) {
-  fastify.post(
-    "/scan",
-    {
-      preHandler: [fastify.authenticate],
-    },
-    scanAnalysisHandler
-  );
+      const auth = [fastify.authenticate];
+    // const admin = [fastify.authenticate, requireAdmin];
+
+    /* ---------- Subscriptions (read + cancel) ---------- */
+  fastify.get("/subscriptions", { preHandler: auth, schema: { querystring: PaginationQuery } }, C.subscriptionController.list);
+  fastify.get("/subscriptions/:id", { preHandler: auth, schema: { params: IdParams } }, C.subscriptionController.get);
+  fastify.post("/subscriptions/:id/cancel", { preHandler: auth, schema: { params: IdParams } }, C.subscriptionController.cancel);
 }

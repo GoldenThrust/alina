@@ -1,6 +1,6 @@
 import { useCallback, useState, type SubmitEventHandler } from "react";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { register } from "../services/auth";
 
 export default function Register() {
@@ -10,6 +10,7 @@ export default function Register() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit: SubmitEventHandler<HTMLFormElement> = useCallback(async (event) => {
     event.preventDefault();
@@ -21,6 +22,10 @@ export default function Register() {
       setNotice(
         result.message ?? "Account created. Check your email to continue.",
       );
+
+      setTimeout(() => {
+        navigate("/login", { state: { email } });
+      }, 2000);
     } catch (reason) {
       setError(
         reason instanceof Error

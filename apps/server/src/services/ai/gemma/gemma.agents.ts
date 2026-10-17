@@ -146,10 +146,12 @@ export class GemmaAgent {
         status: "FAILED",
       });
 
-      return {
-        error: `Failed to Analyse Data: ${error?.message}`,
-        id: undefined,
-      };
+      throw error;
+
+      // return {
+      //   error: `Failed to Analyse Data: ${error?.message}`,
+      //   id: undefined,
+      // };
     }
   }
 
@@ -183,6 +185,8 @@ export class GemmaAgent {
 
         inputData = await this.runCalls(calls, userId, interactionId);
       }
+    } catch (error: any) {
+      throw error;
     } finally {
       Websocket.endStream(userId, sessionId);
     }

@@ -15,7 +15,7 @@ const FALLBACK_INTERVAL_MS = 10 * 60_000; // if token isn't a decodable JWT
 const RETRY_DELAY_MS = 30_000; // after a network failure
 
 type RefreshResponse = { accessToken: string };
-type UserPayload = { name: string; email: string };
+type UserPayload = { fullName: string; email: string };
 type UserResponse = UserPayload | { user: UserPayload };
 
 let refreshPromise: Promise<string> | null = null;
@@ -105,7 +105,7 @@ export function bootstrapAuth(): Promise<void> {
         });
         const user = "user" in data ? data.user : data;
         useSessionStore.getState().setSession({
-          name: user.name,
+          name: user.fullName,
           email: user.email,
           accessToken,
           mode: "account",

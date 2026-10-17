@@ -17,7 +17,7 @@ export function initFaceDetector() {
             "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite",
         },
         runningMode: "VIDEO",
-        minDetectionConfidence: 0.6,
+        minDetectionConfidence: 0.65,
       });
 
       detector = d;

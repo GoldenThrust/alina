@@ -1,5 +1,6 @@
 import { randomBytes, scryptSync } from "node:crypto";
 import { fakerEN_NG as faker } from "@faker-js/faker";
+import { Temporal } from "@js-temporal/polyfill";
 import {
   repositories as r,
   type Gender,
@@ -23,8 +24,7 @@ export const SEED_DOMAIN = "seed.example.com";
 export const DEMO_EMAIL = `demo@${SEED_DOMAIN}`;
 export const DEV_PASSWORD = "Password123!";
 
-const DAY = 24 * 60 * 60 * 1000;
-const MINUTE = 60 * 1000;
+console.log("Running Seeder......................")
 
 export interface SeedOptions {
   /** Random users to create besides the demo user. Default 5. */
@@ -37,16 +37,46 @@ export interface SeedOptions {
 
 /* ------------------------------ helpers ------------------------------ */
 
-const daysAgo = (n: number, hour?: number) => {
-  const date = new Date(Date.now() - n * DAY);
-  if (hour !== undefined) date.setHours(hour, 0, 0, 0);
-  return date;
+/**
+ * Timestamps are Temporal.Instant, calendar dates are Temporal.PlainDate.
+ * Calendar-day math (days ago / from now) goes through a ZonedDateTime in the
+ * system timezone, because Instant can't add or subtract days.
+ */
+const nowZoned = () => Temporal.Now.zonedDateTimeISO();
+
+const daysAgo = (n: number, hour?: number): Temporal.Instant => {
+  let moment = nowZoned().subtract({ days: n });
+  if (hour !== undefined) {
+    moment = moment.with({
+      hour,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+      microsecond: 0,
+      nanosecond: 0,
+    });
+  }
+  return moment.toInstant();
 };
-const daysFromNow = (n: number) => new Date(Date.now() + n * DAY);
+const daysFromNow = (n: number): Temporal.Instant =>
+  nowZoned().add({ days: n }).toInstant();
+const minutesAgo = (n: number): Temporal.Instant =>
+  Temporal.Now.instant().subtract({ minutes: n });
+
 const clamp = (n: number, min: number, max: number) =>
   Math.min(max, Math.max(min, n));
 const metric = (min: number, max: number) =>
   faker.number.float({ min, max, fractionDigits: 1 });
+
+/** Random birth date for someone aged between minAge and maxAge today. */
+function randomBirthDate(minAge: number, maxAge: number): Temporal.Instant {
+  const age = faker.number.int({ min: minAge, max: maxAge });
+  return Temporal.Now.plainDateISO()
+    .subtract({ years: age })
+    .subtract({ days: faker.number.int({ min: 0, max: 364 }) })
+    .toZonedDateTime("UTC") // midnight UTC; the column is timestamptz, so it needs an Instant
+    .toInstant();
+}
 
 /** scrypt, stored as salt:hash. Swap for your auth module's hasher if different. */
 function hashPassword(password: string): string {
@@ -300,9 +330,9 @@ async function seedChat(user: User) {
   const pairs = faker.helpers.arrayElements(CHAT_PAIRS, { min: 2, max: 4 });
   let minutes = pairs.length * 12;
   for (const [question, answer] of pairs) {
-    await r.messages.addUserMessage(user.id, question, new Date(Date.now() - minutes * MINUTE));
+    await r.messages.addUserMessage(user.id, question, minutesAgo(minutes));
     minutes -= 1;
-    await r.messages.addAlinaMessage(user.id, answer, new Date(Date.now() - minutes * MINUTE));
+    await r.messages.addAlinaMessage(user.id, answer, minutesAgo(minutes));
     minutes -= 11;
   }
 }
@@ -386,7 +416,7 @@ async function seedUser(
     phoneNumber: faker.phone.number({ style: "international" }),
     emailVerifiedAt: daysAgo(faker.number.int({ min: 5, max: 120 })),
     gender,
-    dateOfBirth: faker.date.birthdate({ min: 18, max: 48, mode: "age" }),
+    dateOfBirth: randomBirthDate(18, 48),
     avatar: faker.image.avatar(),
     skinType: faker.helpers.arrayElement(SKIN_TYPES),
     skinTone: faker.helpers.arrayElement(SKIN_TONES),
@@ -398,6 +428,8 @@ async function seedUser(
     avoidedIngredients: avoid,
     budget: faker.helpers.arrayElement([20, 30, 50, 80, 120]),
   });
+
+  console.log(`[seed] ${user.email} created with skin type ${user.skinType} and tone ${user.skinTone}. Avoids: ${avoid.join(", ") || "none"}.`);
 
   await seedAccount(user, options.password);
   const scans = await seedScans(user, avoid);

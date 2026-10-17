@@ -5,6 +5,8 @@ import { createAdapter } from "@socket.io/redis-streams-adapter";
 import { config } from "../config/index.ts";
 import redis from "../config/redis.ts";
 import type { FastifyInstance } from "fastify";
+import { processAI } from "../queues/ai/ai.processor.ts";
+import { allowUrls } from "../common/utils/constant.ts";
 
 export default class Websocket {
   static io: Server;
@@ -13,7 +15,7 @@ export default class Websocket {
     Websocket.io = new Server(app.server, {
       adapter: createAdapter(redis),
       cors: {
-        origin: [config.env.CLIENT_URL],
+        origin: allowUrls,
         credentials: true,
       },
     });
@@ -44,6 +46,10 @@ export default class Websocket {
         socket.disconnect(true);
         return;
       }
+
+      socket.on("message", (message) => {
+        processAI({ userId: user.id, message });
+      });
 
       socket.join(user.id.toString());
     });

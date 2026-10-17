@@ -3,10 +3,10 @@ import { AIQueue } from "./ai.queue";
 
 export async function AIProcessingJob(data: AIData) {
   await AIQueue.add("process-AI", data, {
-    attempts: 3,
+    attempts: 10,
     backoff: {
       type: "exponential",
-      delay: 5000,
+      delay: 1000,
     },
   });
 }

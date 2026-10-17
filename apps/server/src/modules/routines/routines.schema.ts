@@ -21,10 +21,18 @@ export const UpdateStepBody = CreateStepBody.partial();
 
 /* ---------- RoutineLog ---------- */
 export const CreateRoutineLogBody = z.object({
-  routineId: z.string().uuid(),
+  routineId: z.uuid(),
   completedAt: z.coerce.date(),
 });
 export const UpdateRoutineLogBody = z.object({ completedAt: z.coerce.date() });
 export const ListRoutineLogsQuery = PaginationQuery.extend({
-  routineId: z.string().uuid().optional(),
+  routineId: z.uuid().optional(),
+});
+
+export const RoutineIdParams = z.object({ routineId: z.uuid() });
+
+
+export const StepParams = z.object({
+  routineId: z.uuid(),
+  id: z.uuid(),
 });

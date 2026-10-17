@@ -18,8 +18,6 @@ export const scanController = {
       } catch {}
       if (!image) throw new APIError("Scan image is required", 400);
 
-      // TODO: enqueue your AI analysis job here; it should move status
-      // PENDING -> PROCESSING -> COMPLETED/FAILED and fill the score fields.
       return S.scanService.create(userId, { image });
     },
     201,
