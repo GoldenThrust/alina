@@ -1,7 +1,7 @@
 import { useCallback, useState, type SubmitEventHandler } from "react";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router";
-import { register } from "../services/auth";
+import { register } from "../services/api/auth";
 
 export default function Register() {
   const [name, setName] = useState("");

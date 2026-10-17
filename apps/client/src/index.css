@@ -3171,3 +3171,201 @@ select:focus-visible {
   display: flex;
   justify-content: center;
 }
+
+
+/* ---- Routine page: additions (append to your stylesheet) ---- */
+
+.routine-accepted-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 11px;
+  border-radius: 6px;
+  background: var(--positive-soft);
+  color: var(--positive);
+  font-size: 11px;
+  font-weight: 700;
+}
+.routine-proposal {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #e3dcfb;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.routine-proposal svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.routine-proposal p {
+  margin: 0;
+  color: #5e5390;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.routine-proposal strong {
+  color: #463a85;
+}
+.routine-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* step rows: instruction needs to wrap, row is expandable */
+.routine-items li {
+  align-items: flex-start;
+  padding: 12px 0;
+}
+.routine-items li .routine-check {
+  margin-top: 8px;
+}
+.routine-items li .routine-step-number {
+  margin-top: 13px;
+}
+.routine-check:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.routine-step-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.routine-step-body .routine-item-copy {
+  flex: 1;
+}
+.routine-step-body .routine-item-copy strong {
+  font-size: 12px;
+  white-space: normal;
+}
+.routine-instruction {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  color: #8a8e9d;
+  font-size: 10px !important;
+  line-height: 1.55;
+}
+.routine-instruction.open {
+  -webkit-line-clamp: unset;
+}
+.routine-chevron {
+  flex: 0 0 auto;
+  margin-top: 5px;
+  color: #a5a8b4;
+  transition: transform 0.18s ease;
+}
+.routine-items li.open .routine-chevron {
+  transform: rotate(180deg);
+}
+.routine-done-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  color: var(--positive);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* streak card */
+.routine-streak-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 14px;
+}
+.routine-streak-head .page-eyebrow {
+  margin-bottom: 3px;
+}
+.routine-streak-head h2 {
+  margin: 0;
+  color: #45495b;
+  font:
+    600 15px "Manrope",
+    sans-serif;
+}
+.routine-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.routine-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.routine-day i {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e4e5ed;
+  border-radius: 50%;
+  background: #fff;
+  color: #fff;
+}
+.routine-day.hit i {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.routine-day.today i {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.routine-day small {
+  color: #9a9eac;
+  font-size: 8px;
+  font-weight: 600;
+}
+.routine-streak-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid #eff0f4;
+  color: #9397a5;
+  font-size: 9px;
+  line-height: 1.5;
+}
+.routine-streak-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+/* loading */
+.routine-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+.routine-skeleton-row {
+  height: 44px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #f1f1f6 25%, #f8f8fb 50%, #f1f1f6 75%);
+  background-size: 200% 100%;
+  animation: routine-shimmer 1.4s infinite linear;
+}
+@keyframes routine-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.empty-state .button {
+  margin-top: 8px;
+}

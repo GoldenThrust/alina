@@ -11,7 +11,7 @@ export type AuthResponse = {
   error?: string;
   accessToken?: string;
   refreshToken?: string;
-  user?: { name?: string; email?: string };
+  user?: User;
 };
 
 async function submitAuth(path: 'login' | 'register', payload: AuthPayload): Promise<AuthResponse> {

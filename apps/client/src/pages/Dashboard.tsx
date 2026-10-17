@@ -11,7 +11,7 @@ import {
 import { Link } from "react-router";
 import PageHeading from "../components/PageHeading";
 import { getDateInfo } from "../utils/date";
-import { useSessionStore } from "../stores/session";
+import { useAuthStore } from "../stores";
 
 const recentScans = [
   {
@@ -40,13 +40,13 @@ const recentScans = [
 const { date, period } = getDateInfo();
 
 export default function Dashboard() {
-  const session = useSessionStore((state) => state.session);
+  const user = useAuthStore((state: AuthState) => state.user);
   
   return (
     <div className="page-content dashboard-page">
       <PageHeading
         eyebrow={date}
-        title={`Good ${period}, ${session?.name?.split(" ")[0] || "there"}!`}
+        title={`Good ${period}, ${user?.fullName?.split(" ")[0] || "there"}!`}
         description="A small check-in can make your routine feel a little more personal."
         action={
           <Link className="button button-primary" to="/scan">

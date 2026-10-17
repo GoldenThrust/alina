@@ -13,13 +13,13 @@ import {
   X,
 } from "lucide-react";
 import PageHeading from "../components/PageHeading";
-import { useSessionStore } from "../stores/session";
+import { useAuthStore } from "../stores";
 
 export default function Profile() {
-  const session = useSessionStore((state) => state.session);
+  const user = useAuthStore((state: AuthState) => state.user);
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(session?.name ?? "Sarah");
-  const [email, setEmail] = useState(session?.email ?? "sarah@example.test");
+  const [name, setName] = useState(user?.fullName ?? "Sarah");
+  const [email, setEmail] = useState(user?.email ?? "sarah@example.test");
   const [saved, setSaved] = useState(false);
   const [preferences, setPreferences] = useState([
     "Fragrance-free",
@@ -99,16 +99,14 @@ export default function Profile() {
                   <strong>{name}</strong>
                   <span>{email}</span>
                   <small>
-                    {session?.mode === "demo"
-                      ? "Sample profile · edits are local to this session"
-                      : "Account profile"}
+                    Account profile"
                   </small>
                 </div>
               </div>
             )}
             {saved ? (
               <p className="inline-confirm">
-                <Check size={14} /> Updated for this session.
+                <Check size={14} /> Updated for this user.
               </p>
             ) : null}
           </section>
@@ -189,7 +187,7 @@ export default function Profile() {
             <p className="page-eyebrow">YOUR INFORMATION</p>
             <h2>Personal by design.</h2>
             <p>
-              Your profile and routine are kept in this prototype session. No
+              Your profile and routine are kept in this prototype user. No
               sample scan image is uploaded or analyzed.
             </p>
             <a href="#privacy">

@@ -1,5 +1,5 @@
-import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
-import { useSessionStore } from "../stores/session";
+import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from "axios";
+import { useAuthStore } from "../stores";
 
 const API_URL = `${import.meta.env.VITE_SERVER_URL}/api`;
 
@@ -47,8 +47,8 @@ function scheduleRefresh(token: string, overrideDelay?: number) {
       await refreshAccessToken();
     } catch (error) {
       // Real auth failures already cleared the session. For network errors, retry.
-      const { session } = useSessionStore.getState();
-      if (session?.mode === "account" && session.accessToken) {
+      const { session } = useAuthStore.getState();
+      if (session?.accessToken) {
         scheduleRefresh(session.accessToken, RETRY_DELAY_MS);
       }
     }
@@ -58,7 +58,7 @@ function scheduleRefresh(token: string, overrideDelay?: number) {
 /** Single-flight refresh: concurrent callers share one request. */
 export function refreshAccessToken(): Promise<string> {
   if (!refreshPromise) {
-    const startedWith = useSessionStore.getState().session;
+    const startedWith = useAuthStore.getState().session;
     const stored = localStorage.getItem("refreshToken");
 
     refreshPromise = authClient
@@ -68,8 +68,8 @@ export function refreshAccessToken(): Promise<string> {
         { headers: stored ? { Authorization: `Bearer ${stored}` } : undefined },
       )
       .then(({ data }) => {
-        const { session, setSession } = useSessionStore.getState();
-        if (session?.mode === "account") {
+        const { session, setSession } = useAuthStore.getState();
+        if (session) {
           setSession({ ...session, accessToken: data.accessToken });
         }
         return data.accessToken;
@@ -79,9 +79,9 @@ export function refreshAccessToken(): Promise<string> {
         // Only clear if nobody replaced the session while this was in flight.
         if (
           (status === 401 || status === 403) &&
-          useSessionStore.getState().session === startedWith
+          useAuthStore.getState().session === startedWith
         ) {
-          useSessionStore.getState().clearSession();
+          useAuthStore.getState().signOut();
         }
         throw error;
       })
@@ -96,25 +96,26 @@ export function refreshAccessToken(): Promise<string> {
 export function bootstrapAuth(): Promise<void> {
   if (!bootstrapPromise) {
     bootstrapPromise = (async () => {
-      const store = useSessionStore.getState();
+      const store = useAuthStore.getState();
+      const stored = localStorage.getItem("refreshToken");
       if (store.session) return;
       try {
         const accessToken = await refreshAccessToken();
         const { data } = await axios.get<UserResponse>("/auth/user", {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
-        const user = "user" in data ? data.user : data;
-        useSessionStore.getState().setSession({
-          name: user.fullName,
-          email: user.email,
+        const user = ("user" in data ? data.user : data) as User;
+        useAuthStore.getState().setUser({ ...user });
+        useAuthStore.getState().setSession({
+          refreshToken: stored as string,
           accessToken,
-          mode: "account",
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000),
         });
       } catch {
         // Not signed in (or server unreachable): stay logged out.
       }
     })().finally(() => {
-      useSessionStore.getState().setAuthReady();
+      useAuthStore.getState().setAuthReady();
     });
   }
   return bootstrapPromise;
@@ -129,17 +130,16 @@ export async function logout() {
 
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
-  useSessionStore.getState().clearSession();
+  useAuthStore.getState().signOut();
 }
 
 // Shared request interceptor: attaches the access token if signed in.
 const attachAccessToken = (config: InternalAxiosRequestConfig) => {
-  const { session } = useSessionStore.getState();
+  const { session } = useAuthStore.getState();
   console.log(session);
 
   if (
-    session?.mode === "account" &&
-    session.accessToken &&
+    session?.accessToken &&
     !config.headers.Authorization
   ) {
     config.headers.Authorization = `Bearer ${config.url !== "/auth/logout" ? session.accessToken : localStorage.getItem("refreshToken")}`;
@@ -167,13 +167,11 @@ axios.interceptors.response.use(
   async (error: AxiosError) => {
     const original = error.config as
       (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
-    const { session } = useSessionStore.getState();
 
     if (
       error.response?.status === 401 &&
       original &&
       !original._retry &&
-      session?.mode === "account" &&
       !/\/auth\/(login|register|refresh|logout)/.test(original.url ?? "")
     ) {
       original._retry = true;
@@ -187,11 +185,10 @@ axios.interceptors.response.use(
 );
 
 // Background refresh scheduling follows the session: start on sign-in / new token, stop on sign-out or demo.
-useSessionStore.subscribe((state, prev) => {
+useAuthStore.subscribe((state, prev) => {
   const token =
-    state.session?.mode === "account" ? state.session.accessToken : undefined;
-  const prevToken =
-    prev.session?.mode === "account" ? prev.session.accessToken : undefined;
+     state.session?.accessToken ;
+  const prevToken = prev.session?.accessToken;
   if (!token) {
     clearTimeout(timer);
   } else if (token !== prevToken) {
@@ -199,11 +196,34 @@ useSessionStore.subscribe((state, prev) => {
   }
 });
 
+
+/* =====================================================================
+ * Request helper (same error behaviour as the auth module)
+ * ===================================================================== */
+
+export async function request<T>(config: AxiosRequestConfig): Promise<T> {
+  try {
+    const response = await axios.request<T>(config);
+    return response.data;
+  } catch (error: AxiosError | any) {
+    const message = error?.response?.data?.message ?? error?.message;
+    console.error(`${config.method?.toUpperCase()} ${config.url} failed`, message);
+    throw new Error(message ?? `Request failed (${error?.status})`);
+  }
+}
+
+export const get = <T>(url: string, params?: object) => request<T>({ method: "GET", url, params });
+export const post = <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
+  request<T>({ method: "POST", url, data, ...config });
+export const put = <T>(url: string, data?: unknown) => request<T>({ method: "PUT", url, data });
+export const del = <T = MessageResponse>(url: string) => request<T>({ method: "DELETE", url });
+ 
+
 // Timers are throttled/paused in sleeping tabs; re-check when the tab returns.
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
-  const { session } = useSessionStore.getState();
-  if (session?.mode !== "account" || !session.accessToken) return;
+  const { session } = useAuthStore.getState();
+  if (!session?.accessToken) return;
   const exp = getTokenExpiry(session.accessToken);
   if (exp && exp - Date.now() < REFRESH_MARGIN_MS) {
     void refreshAccessToken().catch(() => {});

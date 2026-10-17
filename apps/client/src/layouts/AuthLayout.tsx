@@ -1,27 +1,25 @@
 import { useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
-import { useSessionStore } from "../stores/session";
+import { selectIsAuthenticated, useAuthStore } from "../stores";
+import Splash from "../pages/Splash";
 
 export default function AuthLayout() {
-    const session = useSessionStore((state) => state.session);
+  const isAuthed = useAuthStore(selectIsAuthenticated);
   const location = useLocation();
-  const authReady = useSessionStore((state) => state.authReady);
+  const AuthReady = useAuthStore((s: AuthState) => s.authReady);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  if (!authReady) {
-    return (
-      <div className="app-frame" aria-busy="true">
-        <div className="app-main">
-          <main className="workspace">Loading your space…</main>
-        </div>
-      </div>
-    );
+  if (!AuthReady) {
+    return <Splash />
   }
-  if (session) return <Navigate to="/dashboard" replace />;
+  if (isAuthed) return <Navigate to="/dashboard" replace />;
 
-
-    return ( <div className="auth-layout"><Outlet /></div> );
+  return (
+    <div className="auth-layout">
+      <Outlet />
+    </div>
+  );
 }

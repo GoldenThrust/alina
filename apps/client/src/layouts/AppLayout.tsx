@@ -12,9 +12,10 @@ import {
 import { NavLink, Navigate, Outlet, useNavigate } from "react-router";
 import { useEffect } from "react";
 import { useLocation } from "react-router";
-import { useSessionStore } from "../stores/session";
 
 import { logout } from "../lib/api";
+import { selectIsAuthenticated, useAuthStore } from "../stores";
+import Splash from "../pages/Splash";
 
 const navigation = [
   { to: "/dashboard", label: "Home", icon: House },
@@ -28,33 +29,26 @@ const navigation = [
 ];
 
 export default function AppLayout() {
-  const session = useSessionStore((state) => state.session);
-  const clearSession = useSessionStore((state) => state.clearSession);
+  const user = useAuthStore((state: AuthState) => state.user);
+  const logOut = useAuthStore((state: AuthState) => state.signOut);
   const navigate = useNavigate();
   const location = useLocation();
-  const authReady = useSessionStore((state) => state.authReady);
-  
+  const AuthReady = useAuthStore((s: AuthState) => s.authReady);
+  const isAuthed = useAuthStore(selectIsAuthenticated);
   
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  if (!authReady) {
-    return (
-      <div className="app-frame" aria-busy="true">
-        <div className="app-main">
-          <main className="workspace">Loading your space…</main>
-        </div>
-      </div>
-    );
+  if ( !AuthReady) {
+    return <Splash />
   }
 
-  console.log("Dashboard session:", session, !session);
-  if (!session) return <Navigate to="/login" replace />;
+  if (!isAuthed || !user) return <Navigate to="/login" replace />;
 
   async function signOut() {
-    if (session?.mode === "account") await logout();
-    else clearSession();
+    await logout();
+    logOut();
     navigate("/");
   }
 
@@ -85,12 +79,12 @@ export default function AppLayout() {
         <div className="sidebar-bottom">
           <div className="sidebar-profile">
             <span className="avatar avatar-small">
-              {session.name.slice(0, 1).toUpperCase()}
+              {user.fullName.slice(0, 1).toUpperCase()}
             </span>
             <span className="sidebar-profile-copy">
-              <strong>{session.name}</strong>
+              <strong>{user.fullName}</strong>
               <small>
-                {session.mode === "demo" ? "Sample profile" : session.email}
+                {user.email}
               </small>
             </span>
           </div>
@@ -113,34 +107,17 @@ export default function AppLayout() {
             </span>
           </div>
           <div className="topbar-user">
-            {session.mode === "demo" ? (
-              <span className="demo-chip">
-                <span /> Demo mode
-              </span>
-            ) : null}
             <button
               className="avatar"
               type="button"
               aria-label="Open profile"
               onClick={() => navigate("/profile")}
             >
-              {session.name.slice(0, 1).toUpperCase()}
+              {user.fullName.slice(0, 1).toUpperCase()}
             </button>
           </div>
         </header>
         <main className="workspace">
-          {session.mode === "demo" ? (
-            <div className="demo-banner">
-              <Sparkles size={15} />
-              <span>
-                <strong>Sample workspace</strong> · Results and conversations
-                here are illustrative, not live analysis.
-              </span>
-              <button type="button" onClick={() => navigate("/scan")}>
-                Try the scan flow <span aria-hidden="true">↗</span>
-              </button>
-            </div>
-          ) : null}
           <Outlet />
         </main>
       </div>

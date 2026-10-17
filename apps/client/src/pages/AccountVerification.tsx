@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { LockKeyhole } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
-import { verifyAccount } from "../services/auth";
-import { useSessionStore } from "../stores/session";
+import { verifyAccount } from "../services/api/auth";
+import { useAuthStore } from "../stores";
 
 export default function AccountVerification() {
   const navigate = useNavigate();
   const { token } = useParams<{ token: string }>();
-  const setSession = useSessionStore((state) => state.setSession);
+  const setUser = useAuthStore((state: AuthState) => state.setUser);
+  const setSession = useAuthStore((state: AuthState) => state.setSession);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const hasFetched = useRef(false);
@@ -25,11 +26,11 @@ export default function AccountVerification() {
       try {
         const response = await verifyAccount(token);
         if (response.accessToken && response.refreshToken && response.user) {
+          setUser({ ...response.user });
           setSession({
-            name: response.user.name!,
-            email: response.user.email!,
             accessToken: response.accessToken,
-            mode: "account",
+            refreshToken: response.refreshToken,
+            expiresAt: new Date(Date.now() + 60 * 60 * 1000)
           });
           setTimeout(() => {
             navigate("/dashboard");

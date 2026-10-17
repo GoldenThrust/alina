@@ -13,6 +13,6 @@ export default async function scanRoutes(fastify: FastifyInstance) {
   fastify.get("/:id", { preHandler: auth, schema: { params: IdParams } }, C.deviceController.get);
   fastify.post("/", { preHandler: auth, schema: { body: Z.CreateDeviceBody } }, C.deviceController.create);
   fastify.put("/:id", { preHandler: auth, schema: { params: IdParams, body: Z.UpdateDeviceBody } }, C.deviceController.update);
-  fastify.delete("//:id", { preHandler: auth, schema: { params: IdParams } }, C.deviceController.remove);
+  fastify.delete("/:id", { preHandler: auth, schema: { params: IdParams } }, C.deviceController.remove);
 
 }

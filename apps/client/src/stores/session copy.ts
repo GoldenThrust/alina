@@ -19,7 +19,7 @@ type SessionState = {
   clearSession: () => void;
 };
 
-export const useSessionStore = create<SessionState>((set) => ({
+export const useAuthStore = create<SessionState>((set) => ({
   session: null,
   authReady: false,
   routineItems: ['Gentle cleanser', 'Daily moisturizer', 'SPF 30 sunscreen'],
