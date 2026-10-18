@@ -2,9 +2,20 @@ import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { newestFirst, oldestFirst } from "../utils/dates.store";
 import {
-  emptyEntities, patchOne, removeOne, selectAll, setAll, upsertMany, upsertOne,
-  type Entities,
+  emptyEntities,
+  patchOne,
+  removeOne,
+  selectAll,
+  setAll,
+  upsertMany,
+  upsertOne,
 } from "../utils/entities.store";
+import {
+  calculateAnalysisDelta,
+  calculateAnalysisDeltaPercent,
+  sortAnalysisChange,
+} from "../utils/analysis";
+import { percentageChange } from "../utils/math";
 
 interface ScanState {
   scans: Entities<SkinScan>;
@@ -47,7 +58,9 @@ export const selectScansNewestFirst = (s: ScanState) =>
   selectAll(s.scans).sort(newestFirst((x) => x.createdAt));
 
 const completed = (s: ScanState) =>
-  selectAll(s.scans).filter((x) => x.status === "COMPLETED" && x.score !== null);
+  selectAll(s.scans).filter(
+    (x) => x.status === "COMPLETED" && x.score !== null,
+  );
 
 export const selectLatestCompletedScan = (s: ScanState): SkinScan | null =>
   completed(s).sort(newestFirst((x) => x.createdAt))[0] ?? null;
@@ -56,7 +69,9 @@ export const selectSelectedScan = (s: ScanState): SkinScan | null =>
   s.selectedScanId ? (s.scans.byId[s.selectedScanId] ?? null) : null;
 
 export const selectHasScanInProgress = (s: ScanState) =>
-  selectAll(s.scans).some((x) => x.status === "PENDING" || x.status === "PROCESSING");
+  selectAll(s.scans).some(
+    (x) => x.status === "PENDING" || x.status === "PROCESSING",
+  );
 
 /** Oldest to newest, ready for a chart. */
 export const selectScoreHistory = (s: ScanState) =>
@@ -64,15 +79,88 @@ export const selectScoreHistory = (s: ScanState) =>
     .sort(oldestFirst((x) => x.createdAt))
     .map((x) => ({ at: x.createdAt, score: x.score!, skinAge: x.skinAge }));
 
-/** Latest score minus the one before it; null with fewer than two scans. */
-export function selectScoreDelta(s: ScanState): number | null {
-  const history = selectScoreHistory(s);
-  if (history.length < 2) return null;
-  return history[history.length - 1]!.score - history[history.length - 2]!.score;
+/** Latest score minus previous score */
+export function selectScoreDelta(s: ScanState): SkinScan | null {
+  const scans = selectScansNewestFirst(s);
+
+  if (scans.length < 2) return null;
+
+  const latest = scans[0]!;
+  const previous = scans[1]!;
+
+  return {
+    id: latest.id,
+    userId: latest.userId,
+    status: latest.status,
+    aiObservation: latest.aiObservation,
+    aiShortObservation: latest.aiShortObservation,
+    aiSummary: latest.aiSummary,
+    aiShortSummary: latest.aiShortSummary,
+    image: latest.image,
+    score: latest.score! - previous.score!,
+    skinAge: latest.skinAge! - previous.skinAge!,
+    analysis: calculateAnalysisDelta(latest.analysis, previous.analysis),
+    createdAt: latest.createdAt,
+  };
 }
 
+export function selectScoreDeltaPercent(s: ScanState): SkinScan | null {
+  const scans = selectScansNewestFirst(s);
+
+  if (scans.length < 2) return null;
+
+  const latest = scans[0]!;
+  const previous = scans[1]!;
+
+  return {
+    id: latest.id,
+    userId: latest.userId,
+    status: latest.status,
+    aiObservation: latest.aiObservation,
+    aiShortObservation: latest.aiShortObservation,
+    aiSummary: latest.aiSummary,
+    aiShortSummary: latest.aiShortSummary,
+    image: latest.image,
+    score: percentageChange(latest.score!, previous.score!),
+
+    skinAge: percentageChange(latest.skinAge!, previous.skinAge!),
+
+    analysis: calculateAnalysisDeltaPercent(latest.analysis, previous.analysis),
+
+    createdAt: latest.createdAt,
+  };
+}
+
+export function selectSortedAnalysisDelta(state: ScanState) {
+  const delta = selectScoreDelta(state);
+
+  if (!delta) return [];
+
+  return sortAnalysisChange(delta);
+}
+
+export function selectSortedAnalysisDeltaPercent(state: ScanState) {
+  const delta = selectScoreDeltaPercent(state);
+
+  if (!delta) return [];
+
+  return sortAnalysisChange(delta);
+}
 /* ------------------------------ hooks ------------------------------ */
 
 export const useScans = () => useScanStore(useShallow(selectScansNewestFirst));
 export const useLatestScan = () => useScanStore(selectLatestCompletedScan);
-export const useScoreHistory = () => useScanStore(useShallow(selectScoreHistory));
+
+export const useScoreHistory = () =>
+  useScanStore(useShallow(selectScoreHistory));
+
+export const useScoreDelta = () => useScanStore(useShallow(selectScoreDelta));
+
+export const useScoreDeltaPercent = () =>
+  useScanStore(useShallow(selectScoreDeltaPercent));
+
+export const useSortedAnalysisDelta = () =>
+  useScanStore(useShallow(selectSortedAnalysisDelta));
+
+export const useSortedAnalysisDeltaPercent = () =>
+  useScanStore(useShallow(selectSortedAnalysisDeltaPercent));

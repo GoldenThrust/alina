@@ -4,7 +4,8 @@ import { YouCamService } from "../../services/yomCam.service";
 import { AIProcessingJob } from "../ai/ai.producer";
 
 export async function processYoucam(job: any) {
-  const { userId, type, source, imagePath, options } = job.data as YouCamAnalysisData;
+  const { userId, type, source, imagePath, options } =
+    job.data as YouCamAnalysisData;
   let response: AnalyzeImageResult | null = null;
   try {
     if (type === "all") {
@@ -30,7 +31,7 @@ export async function processYoucam(job: any) {
         options as AnalyzeImageOptions,
       );
     }
-  
+
     if (response === null) return;
     if (response?.skinAnalysis?.ok) {
       const skinAnalysis = response.skinAnalysis?.data;
@@ -40,15 +41,25 @@ export async function processYoucam(job: any) {
         status: "PROCESSING",
         score: skinAnalysis.overallScore,
         skinAge: skinAnalysis.skinAge,
-        image: imagePath
-      })
+        image: imagePath,
+      });
+
+      const user = await db.orm.public.User.where({ id: userId }).first();
+    
+      if (!user) {
+        throw new Error(`User with ID ${userId} not found`);
+      }
 
       await db.orm.public.SkinAnalysis.create({
         scanId: skinScan.id,
         eyeBag: skinAnalysis.concerns["hd_eye_bag"]["whole"] as number,
-        droopyLowerEyelid: skinAnalysis.concerns["hd_droopy_lower_eyelid"]["whole"] as number,
+        droopyLowerEyelid: skinAnalysis.concerns["hd_droopy_lower_eyelid"][
+          "whole"
+        ] as number,
         tearTrough: skinAnalysis.concerns["hd_tear_trough"]["whole"] as number,
-        droopyUpperEyelid: skinAnalysis.concerns["hd_droopy_upper_eyelid"]["whole"] as number,
+        droopyUpperEyelid: skinAnalysis.concerns["hd_droopy_upper_eyelid"][
+          "whole"
+        ] as number,
         redness: skinAnalysis.concerns["hd_redness"]["whole"] as number,
         ageSpot: skinAnalysis.concerns["hd_age_spot"]["whole"] as number,
         radiance: skinAnalysis.concerns["hd_radiance"]["whole"] as number,
@@ -61,21 +72,40 @@ export async function processYoucam(job: any) {
         texture: skinAnalysis.concerns["hd_texture"]["whole"] as number,
         pore: skinAnalysis.concerns["hd_pore"] as JsonValue,
         wrinkle: skinAnalysis.concerns["hd_wrinkle"] as JsonValue,
-      })
+      });
 
       AIProcessingJob({
         userId,
         scanId: skinScan.id,
-        input: "Hello"
-      })
+        input: {
+          event: "skin_scan_completed",
+
+          userId,
+
+          scanId: skinScan.id,
+
+          scan: {
+            id: skinScan.id,
+            score: skinScan.score,
+            skinAge: skinScan.skinAge,
+            // image: skinScan.image,
+            analysis: {
+              skinAnalysis,
+              skinTone: response.skinTone?.ok ? response.skinTone.data : user.skinTone,
+              fitzpatrick: response.fitzpatrick?.ok
+                ? response.fitzpatrick.data
+                : user.skinType,
+            },
+          },
+
+        },
+      });
     } else if (response?.skinAnalysis?.ok === false) {
-      throw new Error(response.skinAnalysis.error.message ?? response.skinAnalysis.error);
+      throw new Error(
+        response.skinAnalysis.error.message ?? response.skinAnalysis.error,
+      );
     }
-
-
   } catch (error) {
     console.error("Error processing YouCam job:", error);
   }
-
-
 }

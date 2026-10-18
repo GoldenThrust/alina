@@ -8,8 +8,6 @@ type DeviceType = "RING" | "MOBILE" | "WEB";
 type SubscriptionPlan = "FREE" | "PLUS" | "PREMIUM";
 type SubscriptionStatus = "ACTIVE" | "CANCELLED" | "EXPIRED";
 
-
-
 type ProductCategory =
   | "CLEANSER"
   | "TONER"
@@ -18,7 +16,6 @@ type ProductCategory =
   | "SUNSCREEN"
   | "TREATMENT"
   | "OTHER";
-
 
 interface HasId {
   id: string;
@@ -72,9 +69,25 @@ interface RegionScores {
   [region: string]: number;
 }
 
+interface poreScores {
+  forehead: number;
+  nose: number;
+  cheek: number;
+  whole: number;
+}
+
+interface WrinkleScores {
+  forehead: number;
+  glabellar: number;
+  crowfeet: number;
+  periocular: number;
+  nasolabial: number;
+  marionette: number;
+  whole: number;
+}
 interface SkinAnalysis {
-  id: string;
-  scanId: string;
+  id?: string;
+  scanId?: string;
   redness: number | null;
   ageSpot: number | null;
   radiance: number | null;
@@ -85,12 +98,16 @@ interface SkinAnalysis {
   droopyUpperEyelid: number | null;
   droopyLowerEyelid: number | null;
   firmness: number | null;
-  texture: { score: number } | null;
+  texture: number | null;
   acne: number | null;
-  pore: RegionScores | null;
-  wrinkle: RegionScores | null;
+  pore: poreScores | null;
+  wrinkle: WrinkleScores | null;
   tearTrough: number | null;
-  skinType: { type: string; confidence: number } | null;
+  skinType?: {
+    whole: string;
+    t_zone: string;
+    u_zone: string;
+  } | null;
 }
 
 interface SkinScan {

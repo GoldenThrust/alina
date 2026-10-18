@@ -25,6 +25,7 @@ import register, {
 } from "./auth.service.ts";
 import APIError from "../../errors/APIError.ts";
 import { fileManager } from "../../common/files/file.ts";
+import { logger } from "../../config/logger.ts";
 
 /**
  * OAuth2 callback handler for Google sign-in
@@ -180,7 +181,9 @@ export async function loginHandler(
       });
     }
 
-    // console.error("Login failed", error);
+    console.error("Login failed", error);
+    logger.error("User login failed", error);
+
 
     res.status(500).send({ message: "User Login failed" });
   }

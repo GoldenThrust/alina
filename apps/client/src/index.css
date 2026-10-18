@@ -947,7 +947,6 @@ select:focus-visible {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: conic-gradient(#7051eb 0 82%, #eeeafc 82% 100%);
 }
 .score-ring > div {
   width: 80px;
@@ -1088,6 +1087,72 @@ select:focus-visible {
   background: var(--positive-soft);
   color: var(--positive);
 }
+
+.quick-icon.blue {
+  background: #DBEAFE;
+  color: #2563EB;
+}
+
+.quick-icon.amber {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+.quick-icon.yellow {
+  background: #FEF9C3;
+  color: #CA8A04;
+}
+
+.quick-icon.red {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.quick-icon.rose {
+  background: #FFE4E6;
+  color: #E11D48;
+}
+
+.quick-icon.emerald {
+  background: #D1FAE5;
+  color: #059669;
+}
+
+.quick-icon.teal {
+  background: #CCFBF1;
+  color: #0F766E;
+}
+
+.quick-icon.cyan {
+  background: #CFFAFE;
+  color: #0891B2;
+}
+
+.quick-icon.indigo {
+  background: #E0E7FF;
+  color: #4F46E5;
+}
+
+.quick-icon.violet {
+  background: #EDE9FE;
+  color: #7C3AED;
+}
+
+.quick-icon.sky {
+  background: #E0F2FE;
+  color: #0284C7;
+}
+
+.quick-icon.slate {
+  background: #F1F5F9;
+  color: #475569;
+}
+
+.quick-icon.brown {
+  background: #FDE68A;
+  color: #92400E;
+}
+
 .quick-action > span:nth-child(2) {
   min-width: 0;
   display: flex;
@@ -1174,6 +1239,18 @@ select:focus-visible {
   background: var(--positive-soft);
   color: var(--positive);
 }
+
+.timeline-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: #9a9dac;
+  font-size: 20px;
+  font: "Manrope", sans-serif;
+  border: #9a9dac 1px dashed;
+}
+
 .attribute-list {
   margin-top: 8px;
 }

@@ -79,7 +79,7 @@ export default function AppLayout() {
         <div className="sidebar-bottom">
           <div className="sidebar-profile">
             <span className="avatar avatar-small">
-              {user.fullName.slice(0, 1).toUpperCase()}
+              {user.avatar ? <img src={user.avatar} alt="Avatar" className="rounded" /> : user.fullName.slice(0, 1).toUpperCase()}
             </span>
             <span className="sidebar-profile-copy">
               <strong>{user.fullName}</strong>
@@ -113,7 +113,7 @@ export default function AppLayout() {
               aria-label="Open profile"
               onClick={() => navigate("/profile")}
             >
-              {user.fullName.slice(0, 1).toUpperCase()}
+              {user.avatar ? <img src={user.avatar} alt="Avatar" className="rounded-full" /> : user.fullName.slice(0, 1).toUpperCase()}
             </button>
           </div>
         </header>

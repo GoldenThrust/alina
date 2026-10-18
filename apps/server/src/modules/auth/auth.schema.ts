@@ -67,7 +67,8 @@ export const RegisterBody = z.object({
 
 export const LoginBody = z.object({
   email: emailSchema,
-  password: passwordSchema,
+  password: z
+  .string(),
 });
 
 export const UpdateBody = z.object({

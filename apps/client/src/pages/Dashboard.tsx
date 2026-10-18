@@ -2,46 +2,45 @@ import {
   ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
-  Droplets,
   ScanFace,
   Sparkles,
-  Sun,
   Waves,
 } from "lucide-react";
 import { Link } from "react-router";
 import PageHeading from "../components/PageHeading";
 import { getDateInfo } from "../utils/date";
-import { useAuthStore } from "../stores";
-
-const recentScans = [
-  {
-    day: "Today",
-    date: "Oct 09",
-    score: 82,
-    note: "Hydration is trending up",
-    tone: "positive",
-  },
-  {
-    day: "Monday",
-    date: "Oct 06",
-    score: 79,
-    note: "A steady baseline",
-    tone: "neutral",
-  },
-  {
-    day: "Thursday",
-    date: "Oct 02",
-    score: 76,
-    note: "Your first check-in",
-    tone: "neutral",
-  },
-];
+import {
+  useAuthStore,
+  useLatestScan,
+  useScans,
+  useScoreDeltaPercent,
+  useSortedAnalysisDelta,
+} from "../stores";
+import { useState } from "react";
+import {
+  ANALYSIS_DIRECTION,
+  analysisMeta,
+  getAnalysisNote,
+} from "../utils/analysis";
 
 const { date, period } = getDateInfo();
 
 export default function Dashboard() {
   const user = useAuthStore((state: AuthState) => state.user);
-  
+  const latestScan = useLatestScan();
+  const recentScans = useScans();
+  const sortedAnalysisDelta = useSortedAnalysisDelta();
+  const scoreDeltaPercent = useScoreDeltaPercent();
+  const [currentAnalysisDisplay, setCurrentAnalysisDisplay] =
+    useState<number>(0);
+  const score = latestScan?.score ?? 0;
+  const scoreColor =
+    score >= 80
+      ? ["#7051eb", "#eeeafc"]
+      : score >= 60
+        ? ["#f59e0b", "#fef3c7"]
+        : ["#ef4444", "#fee2e2"];
+
   return (
     <div className="page-content dashboard-page">
       <PageHeading
@@ -58,27 +57,46 @@ export default function Dashboard() {
         <div className="panel skin-summary">
           <div className="section-kicker">
             <span className="status-dot" /> YOUR SKIN TODAY{" "}
-            <span className="demo-label">DEMO SNAPSHOT</span>
+            {/* <span className="demo-label">Latest SNAPSHOT</span> */}
           </div>
           <div className="summary-main">
             <div>
-              <h2>Feeling balanced, with room to replenish.</h2>
+              <h2>
+                {latestScan?.aiShortObservation
+                  ? latestScan.aiShortObservation
+                  : "No recent observations"}
+              </h2>
               <p>
-                Hydration looks steadier in this sample timeline. Keep your
-                routine gentle and check in again when it feels useful.
+                {latestScan?.aiSummary
+                  ? latestScan.aiSummary
+                  : "No detailed Summary available."}
               </p>
             </div>
-            <div className="score-ring" aria-label="Sample skin score 82">
+            <div
+              className="score-ring"
+              aria-label={`Skin score ${score}`}
+              style={{
+                background: `conic-gradient(${scoreColor[0]} 0 ${score}%, ${scoreColor[1]} ${score}% 100%)`,
+              }}
+            >
               <div>
-                <strong>82</strong>
+                <strong>{score}</strong>
                 <span>SKIN SCORE</span>
               </div>
             </div>
           </div>
           <div className="summary-foot">
             <span>
-              <ArrowUpRight size={15} /> +4 points{" "}
-              <small>vs. previous sample</small>
+              {scoreDeltaPercent ? (
+                <>
+                  {scoreDeltaPercent.score && scoreDeltaPercent.score >= 0 ? (
+                    <ArrowUpRight size={15} />
+                  ) : (
+                    <ArrowDownRight size={15} /> 
+                  )} {scoreDeltaPercent.score} points{" "}
+                  <small>vs. previous sample</small>
+                </>
+              ) : null}
             </span>
             <Link to="/scan-result">
               View last result <ArrowRight size={15} />
@@ -155,27 +173,47 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="timeline-list">
-            {recentScans.map((scan, index) => (
-              <div className="timeline-row" key={scan.date}>
-                <span
-                  className={`timeline-marker ${index === 0 ? "current" : ""}`}
-                />
-                <span className="timeline-date">
-                  <strong>{scan.day}</strong>
-                  <small>{scan.date}</small>
-                </span>
-                <span className="timeline-note">{scan.note}</span>
-                <span className={`timeline-score ${scan.tone}`}>
-                  {scan.score}
-                </span>
+            {recentScans.length > 0 ? (
+              recentScans.map((scan, index) => {
+                if (index > 4) return null;
+                return (
+                  <div className="timeline-row" key={scan.id}>
+                    <span
+                      className={`timeline-marker ${index === 0 ? "current" : ""}`}
+                    />
+                    <span className="timeline-date">
+                      <strong>{scan.createdAt.getDay()}</strong>
+                      <small>{scan.createdAt.getDate()}</small>
+                    </span>
+                    <span className="timeline-note">{scan.aiShortSummary}</span>
+                    <span
+                      className={`timeline-score`}
+                      style={{
+                        backgroundColor: scan?.score
+                          ? scan.score > 80
+                            ? "#7051eb"
+                            : scan.score > 60
+                              ? "#f59e0b"
+                              : "#ef4444"
+                          : "#eeeafc",
+                      }}
+                    >
+                      {scan.score ?? 0}
+                    </span>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="timeline-empty">
+                <span className="timeline-label">No recent scans</span>
               </div>
-            ))}
+            )}
           </div>
         </div>
         <div className="panel attribute-panel">
           <div className="section-heading">
             <div>
-              <p className="page-eyebrow">SAMPLE SIGNALS</p>
+              <p className="page-eyebrow">SIGNALS</p>
               <h2>In focus</h2>
             </div>
             <Link to="/scan-result" aria-label="View sample scan result">
@@ -183,40 +221,57 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="attribute-list">
-            <div>
-              <span className="quick-icon blue">
-                <Droplets size={16} />
-              </span>
-              <span>
-                <strong>Hydration</strong>
-                <small>More balanced</small>
-              </span>
-              <span className="attribute-change positive">
-                <ArrowUpRight size={14} /> 4%
-              </span>
-            </div>
-            <div>
-              <span className="quick-icon amber">
-                <Sun size={16} />
-              </span>
-              <span>
-                <strong>Texture</strong>
-                <small>Looking steady</small>
-              </span>
-              <span className="attribute-change neutral">
-                <ArrowDownRight size={14} /> 1%
-              </span>
-            </div>
-            <div>
-              <span className="quick-icon mint">
-                <Waves size={16} />
-              </span>
-              <span>
-                <strong>Oil balance</strong>
-                <small>Similar to last check</small>
-              </span>
-              <span className="attribute-change neutral">0%</span>
-            </div>
+            {sortedAnalysisDelta.length > 0 ? (
+              sortedAnalysisDelta.map((item, index) => {
+                if (index > 2) return null;
+                const isPositive = item.value > 0;
+                const isNegative = item.value < 0;
+                const isNeutral = item.value === 0;
+                const itemLabel = item.key.split(".")[0];
+                const metaData = analysisMeta[itemLabel];
+                const analysisDirection = ANALYSIS_DIRECTION[itemLabel];
+                const isImprovement =
+                  (analysisDirection === "higher" && isPositive) ||
+                  (analysisDirection === "lower" && isNegative);
+
+                if (
+                  (item.key.split(".")[1] &&
+                    item.key.split(".")[1] !== "whole") ||
+                  currentAnalysisDisplay >= 3
+                )
+                  return null;
+                else setCurrentAnalysisDisplay((val) => val++);
+
+                return (
+                  <div>
+                    <span className={`quick-icon ${metaData.color}`}>
+                      <metaData.icon size={16} />
+                    </span>
+                    <span>
+                      <strong>{metaData.label}</strong>
+                      <small>
+                        {getAnalysisNote(item.value, analysisDirection)}
+                      </small>
+                    </span>
+                    <span
+                      className={`attribute-change ${
+                        isNeutral
+                          ? "neutral"
+                          : isImprovement
+                            ? "positive"
+                            : "negative"
+                      }`}
+                    >
+                      {isPositive && <ArrowUpRight size={14} />}
+                      {isNegative && <ArrowDownRight size={14} />}
+                      {item.value}%
+                    </span>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="absolute text-slate-600">No data available</div>
+            )}
           </div>
         </div>
       </section>
