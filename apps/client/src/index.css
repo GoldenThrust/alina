@@ -3713,3 +3713,99 @@ select:focus-visible {
   background: var(--chart-color, #4f9d8f);
   color: #fff;
 }
+
+.routine-form { display: grid; gap: 10px; margin-top: 16px; }
+.routine-form label { display: grid; gap: 4px; font-size: 13px; }
+.routine-form input,
+.routine-form textarea,
+.routine-form select {
+  font: inherit; padding: 9px 11px; border-radius: 10px;
+  border: 1px solid var(--border, #e2e8f0); background: transparent; color: inherit;
+}
+.routine-next {
+  margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-style: normal; font-weight: 600;
+  background: #dbeafe; color: #2563eb;
+}
+.routine-tools { display: flex; gap: 16px; margin-top: 12px; }
+
+/* ---- Routine page: create / delete / suggestions (append to your stylesheet) ---- */
+
+.routine-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.routine-picker {
+  min-height: 40px;
+  max-width: 200px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: #45495c;
+  font-size: 12px;
+}
+.routine-actions .routine-remove {
+  width: 40px;
+  height: 40px;
+  opacity: 1;
+}
+.routine-actions .routine-remove:hover {
+  color: #c0392b;
+  border-color: #efc4be;
+}
+
+.button-danger {
+  background: #c0392b;
+  color: #fff;
+}
+.button-danger:hover:not(:disabled) {
+  background: #a53125;
+}
+.routine-confirm-body {
+  margin: 0 0 18px;
+  color: #6b7084;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.routine-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.suggestion-modal {
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+.routine-modal-section {
+  margin-top: 18px;
+}
+.routine-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.modal-option .modal-option-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.modal-option .modal-option-copy strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.modal-option .modal-option-copy small {
+  color: #9a9eac;
+  font-size: 9px;
+}
+
+@media (max-width: 760px) {
+  .routine-actions {
+    justify-content: flex-start;
+  }
+}

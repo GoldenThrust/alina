@@ -250,4 +250,5 @@ interface RoutineState {
   addLog: (log: RoutineLog) => void;
   removeLog: (logId: string) => void;
   clear: () => void;
+  setDemoRoutines: () => void;
 }

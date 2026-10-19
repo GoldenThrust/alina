@@ -94,14 +94,14 @@ function ToastCard(t: Toast) {
         {/* Close */}
         <button
           onClick={() => toast.dismiss(t.id)}
-          className="text-zinc-400 hover:text-zinc-700 dark:hover:text-white"
+          className="text-zinc-400 hover:text-purple-600"
         >
           <X size={18} />
         </button>
       </div>
 
       {/* Progress */}
-      <div className="h-1 w-full bg-zinc-200 dark:bg-zinc-800">
+      <div className="h-1 w-full bg-zinc-200">
         <div
           className={`h-full bg-linear-to-r ${config.accent} animate-pulse`}
         />

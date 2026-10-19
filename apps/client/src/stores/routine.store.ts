@@ -4,6 +4,7 @@ import { addDays, localDateKey, newestFirst } from "../utils/dates";
 import {
   emptyEntities, patchOne, removeMany, removeOne, selectAll, setAll, upsertOne,
 } from "../utils/entities";
+import { MOCK_ROUTINE_LOGS, MOCK_ROUTINES } from "../data/routine";
 
 
 const byPosition = (a: RoutineStep, b: RoutineStep) => a.position - b.position;
@@ -52,6 +53,10 @@ export const useRoutineStore = create<RoutineState>()((set) => ({
   addLog: (log) => set((s) => ({ logs: upsertOne(s.logs, log) })),
   removeLog: (logId) => set((s) => ({ logs: removeOne(s.logs, logId) })),
   clear: () => set({ routines: emptyEntities(), logs: emptyEntities() }),
+  setDemoRoutines: () => {
+    useRoutineStore.getState().setRoutines(MOCK_ROUTINES);
+    useRoutineStore.getState().setLogs(MOCK_ROUTINE_LOGS);
+  }
 }));
 
 /* ------------------------------ selectors ------------------------------ */

@@ -16,7 +16,7 @@ import ScanResult from "./pages/ScanResult";
 import Subscription from "./pages/Subscription";
 import AccountVerification from "./pages/AccountVerification";
 import AuthLayout from "./layouts/AuthLayout";
-import { useProductStore, useRecommendationStore, useScanStore } from "./stores";
+import { useProductStore, useRecommendationStore, useRoutineStore, useScanStore } from "./stores";
 // import { useSocket } from "./context/SocketContext";
 
 function App() {
@@ -28,6 +28,7 @@ function App() {
   useScanStore.getState().setDemoScans();
   useRecommendationStore.getState().setDemoRecommendations();
   useProductStore.getState().setDemoProducts();
+  useRoutineStore.getState().setDemoRoutines();
 
   return (
     <BrowserRouter>

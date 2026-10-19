@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  Check,
   Droplets,
   Heart,
   // ShieldCheck,
@@ -13,8 +14,13 @@ import {
   usePendingRecommendationsOfType,
   useRecommendedProducts,
 } from "../stores";
+import { useCallback, useState } from "react";
+import toast from "react-hot-toast";
 
 export default function Recommendation() {
+  const [busy, setBusy] = useState(false);
+  const [featuredAdded, setFeaturedAdded] = useState(false);
+  const [routine, setRoutine] = useState<string[]>([]);
   const productRecommendations = usePendingRecommendationsOfType("PRODUCT");
 
   const recommendedProductIds = productRecommendations
@@ -29,32 +35,29 @@ export default function Recommendation() {
   const featuredRecommendation = productRecommendations.find(
     (r) => r.productId === featured?.id,
   );
-  // const alternativeRecommendations = alternatives.map((p) =>
-  //   productRecommendations.find((r) => r.productId === p.id),
-  // );
 
-  // const { routine, status, error, busy, addStep } = useRoutine();
+  const addToRoutine = useCallback((product: Product) => {
+    setBusy(true);
+    toast.loading(`Adding ${product.name} to your routine…`, { id: "add-to-routine" });
 
-  // const inRoutine = useCallback(
-  //   (title: string) => Boolean(routine?.steps.some((s) => s.title === title)),
-  //   [routine],
-  // );
+    setTimeout(() => {
+      setRoutine((prev) => [...prev, product.id]);
+      if (featured && product.id === featured.id) {
+        setFeaturedAdded(true);
+      }
+      setBusy(false);
+      toast.success(`Added ${product.name} to your routine!`, { id: "add-to-routine" });
+    }, 500);
+  }, [featured]);
 
-  // const saveProduct = useCallback(
-  //   (product: Product) => {
-  //     if (inRoutine(product.name)) return;
-  //     void addStep({
-  //       period: product.period,
-  //       title: product.name,
-  //       instruction: product.instruction,
-  //     });
-  //   },
-  //   [addStep, inRoutine],
-  // );
 
-  // const noRoutine = status === "ready" && !routine;
-  // const featuredAdded = inRoutine(featured.name);
-  // const disabled = busy || status !== "ready" || noRoutine;
+  const inRoutine = useCallback(
+    (productId: string) => {
+      return routine.includes(productId);
+    },
+    [routine],
+  );
+
 
   return (
     <div className="page-content recommendations-page">
@@ -76,7 +79,7 @@ export default function Recommendation() {
       {/* {error ? <p className="form-message form-error">{error}</p> : null} */}
 
       <div className="recommendation-layout">
-        {featured ? (
+        {featured && (
           <section className="panel featured-recommendation">
             <div className="recommendation-art">
               <span className="sample-product-tag">{featured.category}</span>
@@ -130,17 +133,17 @@ export default function Recommendation() {
                 <button
                   className="button button-primary"
                   type="button"
-                  // disabled={disabled || featuredAdded}
+                  disabled={featuredAdded}
                   onClick={() => {
-                    // saveProduct(featured)
+                    toast.loading("Adding to your routine…", { id: "add-to-routine" });
+                    addToRoutine(featured)
                     if (featured.affiliateUrl) {
                       window.open(featured.affiliateUrl, "_blank");
                     }
                   }}
                 >
-                  {/* {featuredAdded ? <Check size={16} /> : <Heart size={16} />} */}
-                  {/* {featuredAdded ? "Added to your routine" : busy ? "Adding…" : "Add to routine"} */}
-                  <Heart size={16} /> Add to routine
+                  {featuredAdded ? <Check size={16} /> : <Heart size={16} />}
+                  {featuredAdded ? "Added to your routine" : busy ? "Adding…" : "Add to routine"}
                 </button>
                 <Link className="button button-secondary" to="/routine">
                   View routine <ArrowRight size={16} />
@@ -152,11 +155,6 @@ export default function Recommendation() {
             </div> */}
             </div>
           </section>
-        ) : (
-          <div>
-            You don't have any product recommendations yet. Complete a skin scan
-            first, then you can receive product recommendations.
-          </div>
         )}
 
         {alternatives.length > 0 && (
@@ -170,7 +168,7 @@ export default function Recommendation() {
             </div>
             <div className="alternatives-grid">
               {alternatives.map((product) => {
-                // const added = inRoutine(product.name);
+                const added = inRoutine(product.id);
                 return (
                   <article
                     className="panel alternative-card"
@@ -191,21 +189,21 @@ export default function Recommendation() {
                       <button
                         className="icon-button"
                         type="button"
-                        // disabled={disabled || added}
-                        // aria-label={
-                        //   added
-                        //     ? `${product.name} is in your routine`
-                        //     : `Add ${product.name} to routine`
-                        // }
+                        disabled={added}
+                        aria-label={
+                          added
+                            ? `${product.name} is in your routine`
+                            : `Add ${product.name} to routine`
+                        }
                         onClick={() => {
-                          // saveProduct(product)
+                          toast.loading("Adding to your routine…", { id: "add-to-routine" });
+                          addToRoutine(product)
                           if (product.affiliateUrl) {
                             window.open(product.affiliateUrl, "_blank");
                           }
                         }}
                       >
-                        {/* {added ? <Check size={16} /> : <ShoppingBag size={16} />} */}
-                        <ShoppingBag size={16} />
+                        {added ? <Check size={16} /> : <ShoppingBag size={16} />}
                       </button>
                     </div>
                   </article>
