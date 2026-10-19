@@ -212,6 +212,7 @@ const recommendProduct = fn(
         "Main active ingredients. Used to check against avoided ingredients. Use an empty array only if unknown.",
     },
     price: { type: "number", description: "Approximate price, if known." },
+    imageUrl: { type: "string", description: "Product image, if known." },
     affiliateUrl: { type: "string", description: "Purchase link, if known." },
   },
   ["name", "brand", "category", "description", "explanation", "keyIngredients"],

@@ -385,11 +385,12 @@ const recommendProductSchema = z.object({
   name: z.string().min(1),
   brand: z.string().min(1),
   category,
+  imageUrl: z.url().optional(),
   description: z.string().min(1),
   explanation: z.string().min(1),
   keyIngredients: z.array(z.string()),
   price: z.number().nonnegative().optional(),
-  affiliateUrl: z.string().url().optional(),
+  affiliateUrl: z.url().optional(),
 });
 
 export class RecommendProductTool extends SkincareTool<
@@ -422,6 +423,7 @@ export class RecommendProductTool extends SkincareTool<
     const product = await this.repo.findOrCreateProduct({
       name: input.name,
       brand: input.brand,
+      image: input.imageUrl,
       category: input.category,
       description: input.description,
       price: input.price,

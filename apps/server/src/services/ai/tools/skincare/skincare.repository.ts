@@ -169,6 +169,7 @@ export class SkincareRepository {
   async findOrCreateProduct(data: {
     name: string;
     brand: string;
+    image?: string;
     category: ProductCategory;
     description: string;
     price?: number;

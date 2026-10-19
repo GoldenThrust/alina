@@ -84,7 +84,7 @@ export default function Dashboard() {
               }}
             >
               <div>
-                <strong>{score}</strong>
+              <strong>{score}</strong>
                 <span>SKIN SCORE</span>
               </div>
             </div>
