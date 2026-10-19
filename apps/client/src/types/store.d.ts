@@ -69,7 +69,7 @@ interface RegionScores {
   [region: string]: number;
 }
 
-interface poreScores {
+interface PoreScores {
   forehead: number;
   nose: number;
   cheek: number;
@@ -85,6 +85,14 @@ interface WrinkleScores {
   marionette: number;
   whole: number;
 }
+
+interface ZoneTypes {
+  whole: string;
+  t_zone: string;
+  u_zone: string;
+}
+
+
 interface SkinAnalysis {
   id?: string;
   scanId?: string;
@@ -100,7 +108,7 @@ interface SkinAnalysis {
   firmness: number | null;
   texture: number | null;
   acne: number | null;
-  pore: poreScores | null;
+  pore: PoreScores | null;
   wrinkle: WrinkleScores | null;
   tearTrough: number | null;
   skinType?: {
@@ -116,6 +124,7 @@ interface SkinScan {
   status: ScanStatus;
   score: number | null;
   skinAge: number | null;
+  skinType: ZoneTypes | null;
   aiSummary: string | null;
   aiShortSummary: string | null;
   aiObservation: string | null;

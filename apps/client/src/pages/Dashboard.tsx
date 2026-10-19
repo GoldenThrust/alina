@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 import PageHeading from "../components/PageHeading";
-import { getDateInfo } from "../utils/date";
+import { getDateInfo } from "../utils/dates";
 import {
   useAuthStore,
   useLatestScan,
@@ -16,7 +16,6 @@ import {
   useScoreDeltaPercent,
   useSortedAnalysisDelta,
 } from "../stores";
-import { useState } from "react";
 import {
   ANALYSIS_DIRECTION,
   analysisMeta,
@@ -31,8 +30,6 @@ export default function Dashboard() {
   const recentScans = useScans();
   const sortedAnalysisDelta = useSortedAnalysisDelta();
   const scoreDeltaPercent = useScoreDeltaPercent();
-  const [currentAnalysisDisplay, setCurrentAnalysisDisplay] =
-    useState<number>(0);
   const score = latestScan?.score ?? 0;
   const scoreColor =
     score >= 80
@@ -40,6 +37,13 @@ export default function Dashboard() {
       : score >= 60
         ? ["#f59e0b", "#fef3c7"]
         : ["#ef4444", "#fee2e2"];
+
+  const topItems = sortedAnalysisDelta
+    .filter((item) => {
+      const region = item.key.split(".")[1];
+      return !region || region === "whole";
+    })
+    .slice(0, 5);
 
   return (
     <div className="page-content dashboard-page">
@@ -86,18 +90,19 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="summary-foot">
-            <span>
-              {scoreDeltaPercent ? (
+            {scoreDeltaPercent && scoreDeltaPercent.score ? (
+              <span className={`score-change ${scoreDeltaPercent.score >= 0 ? "positive" : "negative"}`}>
                 <>
-                  {scoreDeltaPercent.score && scoreDeltaPercent.score >= 0 ? (
+                  {scoreDeltaPercent.score >= 0 ? (
                     <ArrowUpRight size={15} />
                   ) : (
-                    <ArrowDownRight size={15} /> 
-                  )} {scoreDeltaPercent.score} points{" "}
+                    <ArrowDownRight size={15} />
+                  )}{" "}
+                  {scoreDeltaPercent.score?.toPrecision(3)} points{" "}
                   <small>vs. previous sample</small>
                 </>
-              ) : null}
-            </span>
+              </span>
+            ) : null}
             <Link to="/scan-result">
               View last result <ArrowRight size={15} />
             </Link>
@@ -182,8 +187,17 @@ export default function Dashboard() {
                       className={`timeline-marker ${index === 0 ? "current" : ""}`}
                     />
                     <span className="timeline-date">
-                      <strong>{scan.createdAt.getDay()}</strong>
-                      <small>{scan.createdAt.getDate()}</small>
+                      <strong>
+                        {scan.createdAt.toLocaleDateString("en-US", {
+                          weekday: "long",
+                        })}
+                      </strong>
+                      <small>
+                        {scan.createdAt.toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </small>
                     </span>
                     <span className="timeline-note">{scan.aiShortSummary}</span>
                     <span
@@ -191,11 +205,11 @@ export default function Dashboard() {
                       style={{
                         backgroundColor: scan?.score
                           ? scan.score > 80
-                            ? "#7051eb"
+                            ? "#DCD6FF" // soft lavender (excellent)
                             : scan.score > 60
-                              ? "#f59e0b"
-                              : "#ef4444"
-                          : "#eeeafc",
+                              ? "#FDECC8" // soft warm amber (good)
+                              : "#FAD6D6" // soft rose red (needs attention)
+                          : "#F3F0FF",
                       }}
                     >
                       {scan.score ?? 0}
@@ -221,9 +235,8 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="attribute-list">
-            {sortedAnalysisDelta.length > 0 ? (
-              sortedAnalysisDelta.map((item, index) => {
-                if (index > 2) return null;
+            {topItems.length > 0 ? (
+              topItems.map((item) => {
                 const isPositive = item.value > 0;
                 const isNegative = item.value < 0;
                 const isNeutral = item.value === 0;
@@ -233,15 +246,6 @@ export default function Dashboard() {
                 const isImprovement =
                   (analysisDirection === "higher" && isPositive) ||
                   (analysisDirection === "lower" && isNegative);
-
-                if (
-                  (item.key.split(".")[1] &&
-                    item.key.split(".")[1] !== "whole") ||
-                  currentAnalysisDisplay >= 3
-                )
-                  return null;
-                else setCurrentAnalysisDisplay((val) => val++);
-
                 return (
                   <div>
                     <span className={`quick-icon ${metaData.color}`}>

@@ -16,6 +16,7 @@ import ScanResult from "./pages/ScanResult";
 import Subscription from "./pages/Subscription";
 import AccountVerification from "./pages/AccountVerification";
 import AuthLayout from "./layouts/AuthLayout";
+import { useScanStore } from "./stores";
 // import { useSocket } from "./context/SocketContext";
 
 function App() {
@@ -23,6 +24,8 @@ function App() {
   useEffect(() => {
     void bootstrapAuth();
   }, []);
+
+  useScanStore.getState().setDemoScans();
 
   return (
     <BrowserRouter>

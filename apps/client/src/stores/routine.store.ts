@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
-import { addDays, localDateKey, newestFirst } from "../utils/dates.store";
+import { addDays, localDateKey, newestFirst } from "../utils/dates";
 import {
   emptyEntities, patchOne, removeMany, removeOne, selectAll, setAll, upsertOne,
 } from "../utils/entities.store";

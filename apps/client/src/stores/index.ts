@@ -9,7 +9,7 @@ import { useRoutineStore } from "./routine.store";
 import { useScanStore } from "./scan.store";
 import { useSubscriptionStore } from "./subscription.store";
 
-export * from "../utils/dates.store";
+export * from "../utils/dates";
 export * from "../utils/entities.store";
 export * from "./auth.store";
 export * from "./scan.store";

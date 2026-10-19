@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
-import { newestFirst, oldestFirst } from "../utils/dates.store";
+import { newestFirst, oldestFirst } from "../utils/dates";
 import {
   emptyEntities,
   patchOne,
@@ -16,6 +16,10 @@ import {
   sortAnalysisChange,
 } from "../utils/analysis";
 import { percentageChange } from "../utils/math";
+import { MOCK_SCANS } from "../data/skinProgress";
+import { dayKey, filterByRange } from "../utils/dateRange";
+import { type Range } from "../utils/dateRange";
+import { useMemo } from "react";
 
 interface ScanState {
   scans: Entities<SkinScan>;
@@ -29,11 +33,13 @@ interface ScanState {
   setStatus: (scanId: string, status: ScanStatus) => void;
   removeScan: (scanId: string) => void;
   selectScan: (scanId: string | null) => void;
+  setDemoScans: () => void;
   clear: () => void;
 }
 
 export const useScanStore = create<ScanState>()((set) => ({
   scans: emptyEntities(),
+  // scans: emptyEntities(),
   selectedScanId: null,
 
   setScans: (scans) => set({ scans: setAll(scans) }),
@@ -50,6 +56,9 @@ export const useScanStore = create<ScanState>()((set) => ({
     })),
   selectScan: (selectedScanId) => set({ selectedScanId }),
   clear: () => set({ scans: emptyEntities(), selectedScanId: null }),
+  setDemoScans: () => {
+    useScanStore.getState().setScans(MOCK_SCANS);
+  },
 }));
 
 /* ------------------------------ selectors ------------------------------ */
@@ -74,10 +83,9 @@ export const selectHasScanInProgress = (s: ScanState) =>
   );
 
 /** Oldest to newest, ready for a chart. */
-export const selectScoreHistory = (s: ScanState) =>
+export const selectScanHistory = (s: ScanState) =>
   completed(s)
-    .sort(oldestFirst((x) => x.createdAt))
-    .map((x) => ({ at: x.createdAt, score: x.score!, skinAge: x.skinAge }));
+    .sort(oldestFirst((x) => x.createdAt));
 
 /** Latest score minus previous score */
 export function selectScoreDelta(s: ScanState): SkinScan | null {
@@ -92,6 +100,7 @@ export function selectScoreDelta(s: ScanState): SkinScan | null {
     id: latest.id,
     userId: latest.userId,
     status: latest.status,
+    skinType: latest.skinType,
     aiObservation: latest.aiObservation,
     aiShortObservation: latest.aiShortObservation,
     aiSummary: latest.aiSummary,
@@ -116,6 +125,7 @@ export function selectScoreDeltaPercent(s: ScanState): SkinScan | null {
     id: latest.id,
     userId: latest.userId,
     status: latest.status,
+    skinType: latest.skinType,
     aiObservation: latest.aiObservation,
     aiShortObservation: latest.aiShortObservation,
     aiSummary: latest.aiSummary,
@@ -146,21 +156,87 @@ export function selectSortedAnalysisDeltaPercent(state: ScanState) {
 
   return sortAnalysisChange(delta);
 }
+
+
+export function selectAverageScore(
+  state: ScanState,
+  fromDate: string | null,
+  toDate: string | null,
+) {
+  const scans = selectScanHistoryInRange(state, fromDate, toDate);
+  if (scans.length === 0) return null;
+  return scans.reduce((sum, scan) => sum + (scan.score || 0), 0) / scans.length;
+}
+
+/** Completed scans, oldest -> newest, limited to [start, end] (YYYY-MM-DD, inclusive). */
+export const selectScanHistoryInRange = (
+  s: ScanState,
+  start: string | null,
+  end: string | null,
+) => filterByRange(selectScanHistory(s), start, end);
+
+/** First and last completed scan day, or null when there are no scans. */
+export const selectScanBounds = (s: ScanState): Range | null => {
+  const history = selectScanHistory(s);
+  if (!history.length) return null;
+  return {
+    start: dayKey(history[0].createdAt),
+    end: dayKey(history[history.length - 1].createdAt),
+  };
+};
+
+
+
 /* ------------------------------ hooks ------------------------------ */
 
 export const useScans = () => useScanStore(useShallow(selectScansNewestFirst));
 export const useLatestScan = () => useScanStore(selectLatestCompletedScan);
+export const useAverageScore = (fromDate: string | null, toDate: string | null) => useScanStore(useShallow((s) => selectAverageScore(s, fromDate, toDate)));
+export const useScanHistory = () =>
+  useScanStore(useShallow(selectScanHistory));
 
-export const useScoreHistory = () =>
-  useScanStore(useShallow(selectScoreHistory));
 
-export const useScoreDelta = () => useScanStore(useShallow(selectScoreDelta));
+/** Completed scans inside the date range, oldest -> newest. Re-runs when the dates or scans change. */
+export const useScanHistoryInRange = (
+  start: string | null,
+  end: string | null,
+) =>
+  useScanStore(useShallow((s) => selectScanHistoryInRange(s, start, end)));
 
-export const useScoreDeltaPercent = () =>
-  useScanStore(useShallow(selectScoreDeltaPercent));
+/** Full span of completed scans, for the date picker's min/max and the "All time" preset. */
+export const useScanBounds = () => useScanStore(useShallow(selectScanBounds));
 
-export const useSortedAnalysisDelta = () =>
-  useScanStore(useShallow(selectSortedAnalysisDelta));
+/** Latest scan in the range plus the scan right before it (even if that one is outside the range). */
+export const useScanComparison = (
+  start: string | null,
+  end: string | null,
+) => {
+  const history = useScanHistory();
+  return useMemo(() => {
+    const inRange = filterByRange(history, start, end);
+    const current = inRange[inRange.length - 1] ?? null;
+    if (!current) return { current: null, previous: null };
+    const idx = history.indexOf(current);
+    return { current, previous: idx > 0 ? history[idx - 1] : null };
+  }, [history, start, end]);
+};
 
-export const useSortedAnalysisDeltaPercent = () =>
-  useScanStore(useShallow(selectSortedAnalysisDeltaPercent));
+export const useScoreDelta = () => {
+  const scans = useScanStore((s) => s.scans);
+  return useMemo(() => selectScoreDelta({ scans } as ScanState), [scans]);
+};
+
+export const useScoreDeltaPercent = () => {
+  const scans = useScanStore((s) => s.scans);
+  return useMemo(() => selectScoreDeltaPercent({ scans } as ScanState), [scans]);
+};
+
+export const useSortedAnalysisDelta = () => {
+  const scans = useScanStore((s) => s.scans);
+  return useMemo(() => selectSortedAnalysisDelta({ scans } as ScanState), [scans]);
+};
+
+export const useSortedAnalysisDeltaPercent = () => {
+  const scans = useScanStore((s) => s.scans);
+  return useMemo(() => selectSortedAnalysisDeltaPercent({ scans } as ScanState), [scans]);
+};
