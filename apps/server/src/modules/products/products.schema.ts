@@ -12,7 +12,7 @@ export const CreateProductBody = z.object({
   category: ProductCategory,
   description: z.string().min(1),
   image: z.url().optional(),
-  affiliateUrl: z.string().url().optional(),
+  affiliateUrl: z.url().optional(),
   price: z.number().nonnegative().optional(),
 });
 export const UpdateProductBody = CreateProductBody.partial();

@@ -263,9 +263,9 @@ const rows = useMemo(() => buildRows(scans), [scans]);
           <p className="muted-copy">No check-ins in this range.</p>
         )}
       </div>
-      <p className="chart-footnote">
+      {/* <p className="chart-footnote">
         Illustrative values · no real scans are stored yet
-      </p>
+      </p> */}
     </section>
   );
 }

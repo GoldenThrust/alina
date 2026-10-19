@@ -3,7 +3,7 @@ import { useShallow } from "zustand/react/shallow";
 import { addDays, localDateKey, newestFirst } from "../utils/dates";
 import {
   emptyEntities, patchOne, removeMany, removeOne, selectAll, setAll, upsertOne,
-} from "../utils/entities.store";
+} from "../utils/entities";
 
 
 const byPosition = (a: RoutineStep, b: RoutineStep) => a.position - b.position;

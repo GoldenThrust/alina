@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import {
   emptyEntities, removeOne, selectAll, setAll, upsertOne, type Entities,
-} from "../utils/entities.store";
+} from "../utils/entities";
 
 interface DeviceState {
   devices: Entities<ConnectedDevice>;

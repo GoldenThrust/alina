@@ -9,7 +9,7 @@ import {
   setAll,
   upsertMany,
   upsertOne,
-} from "../utils/entities.store";
+} from "../utils/entities";
 import {
   calculateAnalysisDelta,
   calculateAnalysisDeltaPercent,
@@ -39,7 +39,6 @@ interface ScanState {
 
 export const useScanStore = create<ScanState>()((set) => ({
   scans: emptyEntities(),
-  // scans: emptyEntities(),
   selectedScanId: null,
 
   setScans: (scans) => set({ scans: setAll(scans) }),

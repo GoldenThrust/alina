@@ -4,7 +4,7 @@ import { now, oldestFirst } from "../utils/dates";
 import {
   emptyEntities, removeOne, replaceOne, selectAll, setAll, upsertMany, upsertOne,
   type Entities,
-} from "../utils/entities.store";
+} from "../utils/entities";
 
 interface ChatState {
   messages: Entities<Message>;

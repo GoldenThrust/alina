@@ -2,7 +2,7 @@
 
 const DATES = [];
 
-for (let i = 0; i < 300; i++) {
+for (let i = 0; i < 3000; i++) {
   const date = new Date();
   date.setDate(date.getDate() - i * 3 * Math.sin(Math.PI * Math.random()));
   DATES.push(date.toISOString());
@@ -59,6 +59,7 @@ export const MOCK_SCANS: SkinScan[] = DATES.map((date, i) => ({
   aiShortObservation: `AI short observation for scan ${i + 1}`,
   aiSummary: `AI summary for scan ${i + 1}`,
   aiShortSummary: `AI short summary for scan ${i + 1}`,
+  skinType: { whole: "combination", t_zone: "oily", u_zone: "normal" },
   userId: "user-1",
   status: "COMPLETED",
   image: `https://picsum.photos/seed/${i + 1}/400/400`,

@@ -15,7 +15,7 @@ export default function Splash() {
       <motion.img
         src="/alina.svg"
         alt="Alina logo"
-        className="splash-logo w-28 select-none"
+        className="splash-logo w-28! select-none"
         initial={
           shouldReduceMotion
             ? false

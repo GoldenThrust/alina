@@ -382,6 +382,7 @@ export class RecommendHabitTool extends SkincareTool<
 
 const recommendProductSchema = z.object({
   scanId: z.string().optional(),
+  routineId: z.string(),
   name: z.string().min(1),
   brand: z.string().min(1),
   category,
@@ -429,12 +430,14 @@ export class RecommendProductTool extends SkincareTool<
       price: input.price,
       affiliateUrl: input.affiliateUrl,
     });
+  
     const recommendation = await this.repo.createRecommendation({
       userId,
       scanId: input.scanId,
       type: "PRODUCT",
       explanation: input.explanation,
       productId: product.id,
+      routineId: input.routineId,
     });
     return { recommendation, product };
   }

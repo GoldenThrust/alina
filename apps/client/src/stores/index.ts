@@ -10,7 +10,7 @@ import { useScanStore } from "./scan.store";
 import { useSubscriptionStore } from "./subscription.store";
 
 export * from "../utils/dates";
-export * from "../utils/entities.store";
+export * from "../utils/entities";
 export * from "./auth.store";
 export * from "./scan.store";
 export * from "./routine.store";

@@ -71,7 +71,7 @@ export default function SkinRadarPanel({ startDate, endDate }: Props) {
   const hasEnough = rows.length >= 3;
 
   return (
-    <section className="panel radar-panel">
+    <section className="panel radar-panel  flex justify-between flex-col">
       <div className="section-heading">
         <div>
           <p className="page-eyebrow">SKIN PROFILE</p>

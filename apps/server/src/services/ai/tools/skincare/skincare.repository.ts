@@ -112,6 +112,8 @@ export class SkincareRepository {
           period: step.period,
           title: step.title,
           instruction: step.instruction,
+
+          
           position: index + 1,
         }),
       );

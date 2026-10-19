@@ -3,7 +3,8 @@ import { useShallow } from "zustand/react/shallow";
 import { newestFirst } from "../utils/dates";
 import {
   emptyEntities, patchOne, removeOne, selectAll, setAll, upsertMany, upsertOne,
-} from "../utils/entities.store";
+} from "../utils/entities";
+import { MOCK_RECOMMENDATIONS } from "../data/recommendation";
 
 interface RecommendationState {
   recommendations: Entities<Recommendation>;
@@ -15,6 +16,7 @@ interface RecommendationState {
   setAccepted: (id: string, accepted: boolean) => void;
   remove: (id: string) => void;
   clear: () => void;
+  setDemoRecommendations: () => void;
 }
 
 export const useRecommendationStore = create<RecommendationState>()((set) => ({
@@ -29,6 +31,9 @@ export const useRecommendationStore = create<RecommendationState>()((set) => ({
     set((s) => ({ recommendations: patchOne(s.recommendations, id, { accepted }) })),
   remove: (id) => set((s) => ({ recommendations: removeOne(s.recommendations, id) })),
   clear: () => set({ recommendations: emptyEntities() }),
+  setDemoRecommendations: () => {
+    useRecommendationStore.getState().setRecommendations(MOCK_RECOMMENDATIONS);
+  },
 }));
 
 export const selectRecommendations = (s: RecommendationState) =>
@@ -36,6 +41,9 @@ export const selectRecommendations = (s: RecommendationState) =>
 
 export const selectPendingRecommendations = (s: RecommendationState) =>
   selectRecommendations(s).filter((r) => !r.accepted);
+
+export const selectPendingRecommendationsOfType = (type: RecommendationType) => (s: RecommendationState) =>
+  selectPendingRecommendations(s).filter((r) => r.type === type);
 
 export const selectRecommendationsOfType =
   (type: RecommendationType) => (s: RecommendationState) =>
@@ -49,3 +57,12 @@ export const useRecommendations = () =>
   useRecommendationStore(useShallow(selectRecommendations));
 export const usePendingRecommendations = () =>
   useRecommendationStore(useShallow(selectPendingRecommendations));
+
+export const usePendingRecommendationsOfType = (type: RecommendationType) =>
+  useRecommendationStore(useShallow(selectPendingRecommendationsOfType(type)));
+
+export const useRecommendationsForScan = (scanId: string | null) =>
+  useRecommendationStore(useShallow(selectRecommendationsForScan(scanId)));
+
+export const useRecommendationsOfType = (type: RecommendationType) =>
+  useRecommendationStore(useShallow(selectRecommendationsOfType(type)));
