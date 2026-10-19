@@ -2092,6 +2092,7 @@ select:focus-visible {
 }
 .conversation-panel {
   min-height: 490px;
+  
   display: flex;
   flex-direction: column;
   padding: 0 17px 12px;
@@ -3807,5 +3808,106 @@ select:focus-visible {
 @media (max-width: 760px) {
   .routine-actions {
     justify-content: flex-start;
+  }
+}
+
+
+/* ---- Chat: scrolling + pagination ---- */
+
+/* The panel needs a definite height, otherwise the list just grows with its content. */
+.conversation-panel {
+  height: clamp(420px, calc(100vh - 230px), 680px);
+  min-height: 0;
+}
+.message-list-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.message-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* useChatScroll restores position itself; native anchoring would double-adjust. */
+  overflow-anchor: none;
+  padding-right: 4px;
+}
+.message-list > * {
+  flex-shrink: 0;
+}
+.message-list-status {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow);
+  color: #7b8092;
+  font-size: 9px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.message-list-start {
+  margin: 0;
+  color: #a0a3b0;
+  text-align: center;
+  font-size: 9px;
+}
+.message-list-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex: 1;
+  color: #8d82d3;
+  font-size: 11px;
+}
+.chat-message.pending p {
+  opacity: 0.6;
+}
+.typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.typing i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #a79de8;
+  animation: typing-bounce 1s infinite ease-in-out;
+}
+.typing i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.typing i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+.spin {
+  animation: chat-spin 0.9s linear infinite;
+}
+@keyframes chat-spin {
+  to {
+    transform: rotate(360deg);
   }
 }

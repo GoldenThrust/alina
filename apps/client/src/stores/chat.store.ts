@@ -3,7 +3,6 @@ import { useShallow } from "zustand/react/shallow";
 import { now, oldestFirst } from "../utils/dates";
 import {
   emptyEntities, removeOne, replaceOne, selectAll, setAll, upsertMany, upsertOne,
-  type Entities,
 } from "../utils/entities";
 
 interface ChatState {
@@ -13,8 +12,17 @@ interface ChatState {
   awaitingReply: boolean;
   error: string | null;
 
+  /** True once the first page of history has loaded. */
+  initialized: boolean;
+  /** Cursor for the next (older) page, or null when nothing older exists. */
+  nextCursor: string | null;
+  hasMore: boolean;
+  loadingOlder: boolean;
+
   setMessages: (messages: Message[]) => void;
   upsertMessages: (messages: Message[]) => void;
+  /** Merges a page of history and records where the next page starts. */
+  applyHistoryPage: (messages: Message[], nextCursor: string | null) => void;
   addMessage: (message: Message) => void;
   /** Adds the user's message immediately and returns its temporary id. */
   addPendingUserMessage: (userId: string, content: string) => string;
@@ -23,6 +31,7 @@ interface ChatState {
   discardMessage: (id: string) => void;
   setDraft: (draft: string) => void;
   setAwaitingReply: (awaiting: boolean) => void;
+  setLoadingOlder: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clear: () => void;
 }
@@ -32,9 +41,20 @@ export const useChatStore = create<ChatState>()((set) => ({
   draft: "",
   awaitingReply: false,
   error: null,
+  initialized: false,
+  nextCursor: null,
+  hasMore: false,
+  loadingOlder: false,
 
   setMessages: (messages) => set({ messages: setAll(messages) }),
   upsertMessages: (messages) => set((s) => ({ messages: upsertMany(s.messages, messages) })),
+  applyHistoryPage: (messages, nextCursor) =>
+    set((s) => ({
+      messages: upsertMany(s.messages, messages),
+      nextCursor,
+      hasMore: nextCursor !== null,
+      initialized: true,
+    })),
   addMessage: (message) => set((s) => ({ messages: upsertOne(s.messages, message) })),
   addPendingUserMessage: (userId, content) => {
     const id = `temp-${crypto.randomUUID()}`;
@@ -57,8 +77,19 @@ export const useChatStore = create<ChatState>()((set) => ({
   discardMessage: (id) => set((s) => ({ messages: removeOne(s.messages, id) })),
   setDraft: (draft) => set({ draft }),
   setAwaitingReply: (awaitingReply) => set({ awaitingReply }),
+  setLoadingOlder: (loadingOlder) => set({ loadingOlder }),
   setError: (error) => set({ error }),
-  clear: () => set({ messages: emptyEntities(), draft: "", awaitingReply: false, error: null }),
+  clear: () =>
+    set({
+      messages: emptyEntities(),
+      draft: "",
+      awaitingReply: false,
+      error: null,
+      initialized: false,
+      nextCursor: null,
+      hasMore: false,
+      loadingOlder: false,
+    }),
 }));
 
 /** Oldest first, the order a chat list renders in. */
