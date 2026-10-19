@@ -1,4 +1,4 @@
-import { get, post } from "../../lib/api";
+import { get, post } from "../../api/auth";
 
 /* =====================================================================
  * Subscriptions  —  /subscriptions  (read + cancel)

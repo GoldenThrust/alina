@@ -7,7 +7,7 @@ import { Link, useNavigate } from "react-router";
 import { motion, useReducedMotion } from "motion/react";
 import { selectIsAuthenticated, useAuthStore } from "../stores";
 import toast from "react-hot-toast";
-import { logout } from "../lib/api";
+import { logout } from "../api/auth";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 

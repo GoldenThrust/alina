@@ -1,4 +1,4 @@
-import { del, get, post } from "../../lib/api";
+import { del, get, post } from "../../api/auth";
 /* =====================================================================
  * Messages  —  /messages  (immutable: no update)
  * ===================================================================== */

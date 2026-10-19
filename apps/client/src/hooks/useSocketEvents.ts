@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import socket from "../lib/socket";
+import socket from "../api/socket";
 import { useNavigate } from "react-router";
 import { toast } from "react-hot-toast";
 

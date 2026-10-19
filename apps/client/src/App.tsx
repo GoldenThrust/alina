@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { bootstrapAuth } from "./lib/api";
+import { bootstrapAuth } from "./api/auth";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import AppLayout from "./layouts/AppLayout";
 import Landing from "./pages/Landing";

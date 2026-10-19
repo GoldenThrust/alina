@@ -1,4 +1,4 @@
-import { del, get, put } from "../../lib/api";
+import { del, get, put } from "../../api/auth";
 
 /* =====================================================================
  * Preferences  —  /preferences  (single resource per user)

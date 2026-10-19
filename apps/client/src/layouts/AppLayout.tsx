@@ -13,7 +13,7 @@ import { NavLink, Navigate, Outlet, useNavigate } from "react-router";
 import { useEffect } from "react";
 import { useLocation } from "react-router";
 
-import { logout } from "../lib/api";
+import { logout } from "../api/auth";
 import { selectIsAuthenticated, useAuthStore } from "../stores";
 import Splash from "../pages/Splash";
 

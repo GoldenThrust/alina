@@ -1,4 +1,4 @@
-import { del, get, post, put } from "../../lib/api";
+import { del, get, post, put } from "../../api/auth";
 
 /* =====================================================================
  * Routines  —  /routines
