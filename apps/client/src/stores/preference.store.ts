@@ -31,6 +31,12 @@ export const usePreferenceStore = create<PreferenceState>()((set) => ({
   clear: () => set({ preferences: null }),
 }));
 
+const EMPTY: string[] = [];
+
+export const selectFavoriteBrands = (s: PreferenceState) =>
+  s.preferences?.favoriteBrands ?? EMPTY;
+export const selectFavoriteIngredients = (s: PreferenceState) =>
+  s.preferences?.favoriteIngredients ?? EMPTY;
 export const selectAvoidedIngredients = (s: PreferenceState) =>
-  s.preferences?.avoidedIngredients ?? [];
+  s.preferences?.avoidedIngredients ?? EMPTY;
 export const selectBudget = (s: PreferenceState) => s.preferences?.budget ?? null;

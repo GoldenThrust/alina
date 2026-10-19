@@ -3911,3 +3911,126 @@ select:focus-visible {
     transform: rotate(360deg);
   }
 }
+
+/* ---- Preferences card additions ---- */
+.preference-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+}
+.budget-input {
+  justify-self: start;
+  width: 120px;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid #e7e8ef;
+  border-radius: 5px;
+  background: #fff;
+  color: #696d7e;
+  font-size: 10px;
+}
+.tag-entry button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---- Profile editing ---- */
+.profile-avatar {
+  overflow: hidden;
+}
+.profile-avatar img {
+  border-radius: 50%;
+  object-fit: cover; /* your global img rule uses contain */
+}
+.verify-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: fit-content;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f3f3f7;
+  color: #8e92a0;
+  font-size: 9px;
+}
+.verify-chip.verified {
+  background: var(--positive-soft);
+  color: var(--positive);
+}
+
+.avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.avatar-actions .button {
+  min-height: 34px;
+  font-size: 11px;
+}
+.upload-button:focus-within {
+  outline: 3px solid rgba(104, 73, 232, 0.25);
+  outline-offset: 2px;
+}
+.upload-button[aria-disabled="true"] {
+  opacity: 0.55;
+}
+
+.profile-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid #eff0f4;
+}
+.profile-facts dt {
+  margin-bottom: 4px;
+  color: #9a9eac;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.profile-facts dd {
+  margin: 0;
+  color: #4a4e60;
+  font-size: 11px;
+}
+
+.profile-form {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #eff0f4;
+}
+.profile-form select {
+  min-height: 37px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #fff;
+}
+.profile-form input[aria-invalid="true"] {
+  border-color: #e3a4ad;
+}
+.field-hint,
+.field-error {
+  font-size: 9px;
+  line-height: 1.5;
+}
+.field-hint {
+  color: #9a9eac;
+}
+.field-error {
+  color: #b94150;
+}
+.profile-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.profile-form-actions .button {
+  margin-top: 0;
+}
