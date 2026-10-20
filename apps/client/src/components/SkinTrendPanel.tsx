@@ -9,13 +9,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useAverageScore, useLatestScan, useScanHistoryInRange } from "../stores";
-import { buildRows } from "../utils/chart/rows";
 import {
-  periods,
-  type Period,
-  type PeriodState,
-} from "../utils/chart/period";
+  useAverageScore,
+  useLatestScan,
+  useScanHistoryInRange,
+} from "../stores";
+import { buildRows } from "../utils/chart/rows";
+import { periods, type Period, type PeriodState } from "../utils/chart/period";
 import { METRICS, OVERALL_KEY } from "../utils/constants";
 
 /* ---------- Shared constants & types (also used by the page) ---------- */
@@ -87,14 +87,18 @@ type Props = {
   onSelectPeriod: (period: Period) => void;
 };
 
-export default function SkinTrendPanel({ startDate, endDate, period, onSelectPeriod }: Props) {
+export default function SkinTrendPanel({
+  startDate,
+  endDate,
+  period,
+  onSelectPeriod,
+}: Props) {
   const [overallOnly, setOverallOnly] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
-const scans = useScanHistoryInRange(startDate, endDate);
-const rows = useMemo(() => buildRows(scans), [scans]);
+  const scans = useScanHistoryInRange(startDate, endDate);
+  const rows = useMemo(() => buildRows(scans), [scans]);
   const latestScan = useLatestScan();
   const averageScore = useAverageScore(startDate, endDate);
-
 
   const toggleSeries = useCallback(
     (label: string) =>
@@ -107,7 +111,6 @@ const rows = useMemo(() => buildRows(scans), [scans]);
     [],
   );
 
-
   const showAllSeries = () => setHidden(new Set());
   const hideAllSeries = () => setHidden(new Set(METRICS.map((m) => m.label)));
 
@@ -118,7 +121,6 @@ const rows = useMemo(() => buildRows(scans), [scans]);
 
   const trendPositive = overallScore >= 0;
   const TrendIcon = trendPositive ? ArrowUpRight : ArrowDownRight;
-
 
   return (
     <section className="panel progress-chart-panel">

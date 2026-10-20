@@ -1,6 +1,8 @@
 // src/lib/crud.ts
 import type { FastifyReply, FastifyRequest } from "fastify";
 import APIError from "../errors/APIError";
+import { decodeCursor, encodeCursor } from "../common/utils/crypto";
+import { db } from "../prisma/db";
 
 export type ListQuery = { page: number; limit: number } & Record<string, any>;
 
@@ -18,7 +20,12 @@ export function pick(payload: Record<string, any>, keys: readonly string[]) {
   );
 }
 
-export function handleError(res: FastifyReply, error: unknown, fallback: string) {
+export function handleError(
+  res: FastifyReply,
+  error: unknown,
+  fallback: string,
+) {
+  // console.log("handleError", error);
   if (error instanceof APIError) {
     return res.status(error.statusCode).send({ message: error.message });
   }
@@ -90,12 +97,24 @@ export function createOwnedService(cfg: OwnedServiceConfig) {
 
   return {
     async list(userId: string, query: ListQuery) {
-      const { page = 1, limit = 20 } = query;
-      return model()
+      const { page = 1, limit = 20, cursor } = query;
+
+      let rows = await model()
+        .include("analysis")
         .where({ ...pick(query, filterFields), userId })
-        .skip((page - 1) * limit)
-        .take(limit)
+        .orderBy([(r: any) => r.createdAt.desc(), (r: any) => r.id.desc()])
+        .cursor(cursor ? decodeCursor(cursor) : {})
+        .offset(cursor ? 0 : (page - 1) * limit)
+        .limit(limit + 1)
         .all();
+
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+
+      return {
+        items,
+        nextCursor: hasMore ? encodeCursor(items[items.length - 1]) : null,
+      };
     },
 
     async get(userId: string, id: string) {
@@ -103,7 +122,10 @@ export function createOwnedService(cfg: OwnedServiceConfig) {
     },
 
     async create(userId: string, payload: Record<string, any>) {
-      let data: Record<string, any> = { ...pick(payload, createFields), userId };
+      let data: Record<string, any> = {
+        ...pick(payload, createFields),
+        userId,
+      };
       if (cfg.prepareCreate) data = await cfg.prepareCreate(userId, data);
       return model().create(data);
     },

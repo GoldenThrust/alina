@@ -1,0 +1,1 @@
+export const isAbort = (e: unknown) => e instanceof DOMException && e.name === "AbortError";

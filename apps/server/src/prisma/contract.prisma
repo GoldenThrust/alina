@@ -134,6 +134,8 @@ model SkinAnalysis {
   tearTrough          Float?
 
   skinType          Json?
+
+  createdAt       DateTime @default(now())
 }
 
 model Routine {

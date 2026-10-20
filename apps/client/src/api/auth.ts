@@ -1,4 +1,4 @@
-import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "../stores";
 
 const API_URL = `${import.meta.env.VITE_SERVER_URL}/api`;
@@ -136,7 +136,7 @@ export async function logout() {
 // Shared request interceptor: attaches the access token if signed in.
 const attachAccessToken = (config: InternalAxiosRequestConfig) => {
   const { session } = useAuthStore.getState();
-  console.log(session);
+  // console.log(session);
 
   if (
     session?.accessToken &&
@@ -197,27 +197,6 @@ useAuthStore.subscribe((state, prev) => {
 });
 
 
-/* =====================================================================
- * Request helper (same error behaviour as the auth module)
- * ===================================================================== */
-
-export async function request<T>(config: AxiosRequestConfig): Promise<T> {
-  try {
-    const response = await axios.request<T>(config);
-    return response.data;
-  } catch (error: AxiosError | any) {
-    const message = error?.response?.data?.message ?? error?.message;
-    console.error(`${config.method?.toUpperCase()} ${config.url} failed`, message);
-    throw new Error(message ?? `Request failed (${error?.status})`);
-  }
-}
-
-export const get = <T>(url: string, params?: object) => request<T>({ method: "GET", url, params });
-export const post = <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
-  request<T>({ method: "POST", url, data, ...config });
-export const put = <T>(url: string, data?: unknown) => request<T>({ method: "PUT", url, data });
-export const del = <T = MessageResponse>(url: string) => request<T>({ method: "DELETE", url });
- 
 
 // Timers are throttled/paused in sleeping tabs; re-check when the tab returns.
 document.addEventListener("visibilitychange", () => {

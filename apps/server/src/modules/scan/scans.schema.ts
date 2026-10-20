@@ -6,7 +6,7 @@ const score = z.number().min(0).max(100);
 export const ScanStatus = z.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]);
 
 export const ListScansQuery = PaginationQuery.extend({ status: ScanStatus.optional() });
-
+export const historyQuery =  z.object({ startDate: z.date().optional() });
 export const UpsertAnalysisBody = z.object({
   redness: score.optional(),
   ageSpot: score.optional(),

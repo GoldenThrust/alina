@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { env } from "./config/env.ts";
 import { allowUrls } from "./common/utils/constant.ts";
 import { readFileSync } from "node:fs";
+import { httpDuration, logger, register } from "./config/logger.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,11 +26,8 @@ const { GOOGLE_CONFIGURATION, FACEBOOK_CONFIGURATION, X_CONFIGURATION } =
   fastifyOauth2;
 
 export function buildApp() {
-  fs.mkdir("log", () => {});
   const app = Fastify({
-    logger: {
-      file: "log/server.txt",
-    },
+    loggerInstance: logger,
     ...(config.env.NODE_ENV === "development"
       ? {
           https: {
@@ -162,6 +160,20 @@ export function buildApp() {
 
   app.get("/hello", function (_, reply) {
     reply.send("Hello from Alina API! Visit /api for API routes.");
+  });
+
+  app.addHook("onResponse", async (req, reply) => {
+    // routeOptions.url avoids high-cardinality labels like /users/123
+    const route = req.routeOptions?.url ?? "unknown";
+    if (route === "/metrics") return;
+    httpDuration
+      .labels(req.method, route, String(reply.statusCode))
+      .observe(reply.elapsedTime / 1000);
+  });
+
+  app.get("/metrics", async (_req, reply) => {
+    reply.header("Content-Type", register.contentType);
+    return register.metrics();
   });
 
   // Hooks

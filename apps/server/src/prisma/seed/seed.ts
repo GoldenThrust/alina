@@ -1,6 +1,7 @@
-import { randomBytes, scryptSync } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { fakerEN_NG as faker } from "@faker-js/faker";
 import { Temporal } from "@js-temporal/polyfill";
+import { hash } from "argon2";
 import {
   repositories as r,
   type Gender,
@@ -12,19 +13,56 @@ import {
 } from "../repositories";
 
 /**
- * Development seed data. Real skincare products, faker-generated people and
- * history. Deterministic for a given seed, so reruns produce the same users
- * and are skipped if they already exist.
+ * Development seed data at load-test scale. Real-looking skincare products,
+ * faker-generated people and a long history per user.
  *
- * All seed users share the SEED_DOMAIN email domain, which is how `reset`
- * finds and removes them without touching real accounts.
+ * Deterministic for a given seed: every random value is generated
+ * synchronously first, and only then written to the database concurrently,
+ * so concurrency never changes which data is produced.
+ *
+ * All seed users share SEED_DOMAIN, which is how `reset` finds and removes
+ * them without touching real accounts. Generated products are kept on reset
+ * (they are matched by findOrCreate).
  */
 
-export const SEED_DOMAIN = "seed.example.com";
-export const DEMO_EMAIL = `demo@${SEED_DOMAIN}`;
+export const SEED_DOMAIN = "alina.com";
+export const DEMO_EMAIL = `reez@${SEED_DOMAIN}`;
 export const DEV_PASSWORD = "Password123!";
 
-console.log("Running Seeder......................")
+/* ------------------------------ domain types ------------------------------ */
+
+/** Fitzpatrick scale, I (very fair) to VI (deeply pigmented). */
+export type FitzpatrickType = "I" | "II" | "III" | "IV" | "V" | "VI";
+
+/** Output of YouCam `hd_skin_type`. Not the Fitzpatrick scale. */
+export const SKIN_TYPE_LABELS = ["oily", "dry", "combination", "normal", "sensitive"] as const;
+export type SkinTypeLabel = (typeof SKIN_TYPE_LABELS)[number];
+
+/*
+ * The Json column payloads below are `type` aliases, not interfaces:
+ * interfaces are not assignable to Prisma's `InputJsonValue` index signature.
+ */
+export type PoreScores = {
+  forehead: number;
+  nose: number;
+  cheek: number;
+  whole: number;
+};
+
+export type WrinkleScores = {
+  forehead: number;
+  glabellar: number;
+  crowfeet: number;
+  periocular: number;
+  nasolabial: number;
+  marionette: number;
+  whole: number;
+};
+
+export type TextureData = { score: number };
+export type SkinTypeData = { type: SkinTypeLabel; confidence: number };
+
+/* ------------------------------ seed types ------------------------------ */
 
 export interface SeedOptions {
   /** Random users to create besides the demo user. Default 5. */
@@ -33,16 +71,227 @@ export interface SeedOptions {
   seed?: number;
   /** Delete existing seed users and recreate them. */
   reset?: boolean;
+  /** Products in the shared catalogue. Default 2000. */
+  products?: number;
+  /** Scans (each with a full analysis) per user. Default 1500. */
+  scansPerUser?: number;
+  /** Routines per user (morning, evening, treatment, habit mix). Default 1500. */
+  routinesPerUser?: number;
+  /** Routine completion logs per user. Default 6000. */
+  logsPerUser?: number;
+  /** Recommendations per user. Default 2000. */
+  recommendationsPerUser?: number;
+  /** Chat message pairs (user + Alina) per user. Default 2000. */
+  messagePairsPerUser?: number;
+  /** Orders per user. Default 150. */
+  ordersPerUser?: number;
+  /** How many days of history the data spans. Default 730. */
+  spanDays?: number;
+  /** Concurrent database writes. Keep at or below your DB pool size. Default 16. */
+  concurrency?: number;
 }
+
+type ResolvedOptions = Required<SeedOptions>;
+
+const DEFAULTS: ResolvedOptions = {
+  users: 1,
+  seed: 2026,
+  reset: false,
+  products: 2000,
+  scansPerUser: 30000,
+  routinesPerUser: 1500,
+  logsPerUser: 6000,
+  recommendationsPerUser: 2000,
+  messagePairsPerUser: 2000,
+  ordersPerUser: 150,
+  spanDays: 10730,
+  concurrency: 16,
+};
+
+/** `??` instead of spread, so an explicit `undefined` falls back to the default. */
+function resolveOptions(options: SeedOptions): ResolvedOptions {
+  return {
+    users: options.users ?? DEFAULTS.users,
+    seed: options.seed ?? DEFAULTS.seed,
+    reset: options.reset ?? DEFAULTS.reset,
+    products: options.products ?? DEFAULTS.products,
+    scansPerUser: options.scansPerUser ?? DEFAULTS.scansPerUser,
+    routinesPerUser: options.routinesPerUser ?? DEFAULTS.routinesPerUser,
+    logsPerUser: options.logsPerUser ?? DEFAULTS.logsPerUser,
+    recommendationsPerUser: options.recommendationsPerUser ?? DEFAULTS.recommendationsPerUser,
+    messagePairsPerUser: options.messagePairsPerUser ?? DEFAULTS.messagePairsPerUser,
+    ordersPerUser: options.ordersPerUser ?? DEFAULTS.ordersPerUser,
+    spanDays: options.spanDays ?? DEFAULTS.spanDays,
+    concurrency: Math.max(1, options.concurrency ?? DEFAULTS.concurrency),
+  };
+}
+
+interface SeedPlanEntry {
+  readonly email: string;
+  readonly fullName?: string;
+  readonly password: boolean;
+  readonly gender?: Gender;
+}
+
+/** Derived from the repositories so they can never drift from the schema. */
+type ScanInput = Parameters<typeof r.scans.create>[0];
+type Scan = Awaited<ReturnType<typeof r.scans.create>>;
+type AnalysisInput = Parameters<typeof r.analyses.upsertForScan>[1];
+type RoutineInput = Parameters<typeof r.routines.createWithSteps>[0];
+type Routine = Awaited<ReturnType<typeof r.routines.createWithSteps>>;
+type RecommendationInput = Parameters<typeof r.recommendations.create>[0];
+type OrderInput = Parameters<typeof r.orders.createWithItems>[0];
+type SubscriptionInput = Parameters<typeof r.subscriptions.create>[0];
+type SubscriptionPlan = SubscriptionInput["plan"];
+type SubscriptionStatus = SubscriptionInput["status"];
+type DeviceInput = Parameters<typeof r.devices.connect>[0];
+type DeviceType = DeviceInput["type"];
+
+type ProductNamer = (category: ProductCategory) => string;
+type StepFactory = (name: ProductNamer) => StepInput;
+
+type RoutineKind = "morning" | "evening" | "treatment" | "habit";
+
+interface RoutineSpec {
+  readonly kind: RoutineKind;
+  readonly accepted: boolean;
+  readonly input: RoutineInput;
+}
+
+interface SeededRoutine {
+  readonly kind: RoutineKind;
+  readonly accepted: boolean;
+  readonly routine: Routine;
+}
+
+interface ScanSpec {
+  readonly scan: ScanInput;
+  readonly analysis: AnalysisInput;
+}
+
+interface GeneratedProduct {
+  readonly input: NewProduct;
+  readonly ingredients: readonly string[];
+}
+
+/* ------------------------------ constants ------------------------------ */
+
+/** Representative skin tone colours (hex) for each Fitzpatrick type, I to VI. */
+const SKIN_TONES_BY_TYPE = {
+  I: ["#F6E7DC", "#F3DCCB"],
+  II: ["#EBCDB5", "#E8C4A8"],
+  III: ["#D9A878", "#D2A06E"],
+  IV: ["#B98355", "#A8744A"],
+  V: ["#8A5A3B", "#7A4E32"],
+  VI: ["#4A2E22", "#3B2419"],
+} as const satisfies Record<FitzpatrickType, readonly string[]>;
+
+const AVOID_POOL = ["fragrance", "alcohol denat.", "essential oils", "parabens", "sulfates"] as const;
+const LIKE_POOL = ["niacinamide", "hyaluronic acid", "ceramides", "vitamin c", "salicylic acid", "squalane"] as const;
+const PHONE_MODELS = ["iPhone", "Pixel", "Galaxy", "Tecno Camon"] as const;
+const OTHER_DEVICE_NAMES = ["Chrome on laptop", "Oura Ring", "Safari on iPad"] as const;
+const BUDGETS = [20, 30, 50, 80, 120] as const;
+const RECOMMENDED_CATEGORIES = [
+  "SERUM",
+  "SUNSCREEN",
+  "MOISTURIZER",
+  "TREATMENT",
+  "CLEANSER",
+  "TONER",
+] as const satisfies readonly ProductCategory[];
+
+const BRANDS = [
+  "CeraVe", "La Roche-Posay", "Klairs", "The Ordinary", "Paula's Choice", "Differin",
+  "Neutrogena", "EltaMD", "Cetaphil", "Bioderma", "Vichy", "Avène", "Eucerin",
+  "Simple", "Nivea", "Garnier", "Inkey List", "Naturium", "Beauty of Joseon", "COSRX",
+] as const;
+
+const DESCRIPTORS = [
+  "Hydrating", "Gentle", "Barrier Repair", "Brightening", "Clarifying", "Soothing",
+  "Daily", "Intensive", "Lightweight", "Rich", "Balancing", "Purifying", "Radiance",
+  "Sensitive", "Oil-Free", "Overnight", "Repairing", "Calming", "Renewing", "Advanced",
+] as const;
+
+const BASE_NAMES: Record<ProductCategory, readonly string[]> = {
+  CLEANSER: ["Facial Cleanser", "Foaming Cleanser", "Cream Cleanser", "Gel Cleanser", "Cleansing Balm"],
+  TONER: ["Toner", "Essence Toner", "Balancing Mist", "Toning Lotion"],
+  SERUM: ["Serum", "Ampoule", "Concentrate", "Booster Serum", "Drops"],
+  MOISTURIZER: ["Moisturizer", "Cream", "Water Gel", "Lotion", "Night Cream"],
+  SUNSCREEN: ["Sunscreen SPF 30", "Sunscreen SPF 50", "Fluid SPF 50+", "Mineral SPF 40", "Daily UV Shield"],
+  TREATMENT: ["Exfoliant", "Spot Treatment", "Retinoid Gel", "Peel Treatment", "Clarifying Treatment"],
+  OTHER: ["Lip Balm", "Eye Cream", "Face Mask"],
+};
+
+const CATEGORY_WEIGHTS: readonly { weight: number; value: ProductCategory }[] = [
+  { weight: 4, value: "CLEANSER" },
+  { weight: 2, value: "TONER" },
+  { weight: 5, value: "SERUM" },
+  { weight: 5, value: "MOISTURIZER" },
+  { weight: 4, value: "SUNSCREEN" },
+  { weight: 3, value: "TREATMENT" },
+  { weight: 1, value: "OTHER" },
+];
+
+const PRICE_RANGE: Record<ProductCategory, readonly [min: number, max: number]> = {
+  CLEANSER: [8, 30],
+  TONER: [10, 35],
+  SERUM: [6, 70],
+  MOISTURIZER: [10, 60],
+  SUNSCREEN: [12, 45],
+  TREATMENT: [10, 50],
+  OTHER: [5, 40],
+};
+
+const CHAT_PAIRS: readonly (readonly [question: string, answer: string])[] = [
+  ["How is my skin doing compared to last time?", "Your score is trending up and moisture has improved. Keep going with your current routine."],
+  ["Should I add an exfoliant?", "A 2% BHA once or twice a week would suit you. I have added it as a suggestion you can accept."],
+  ["Is it okay to use vitamin C in the morning?", "Yes, vitamin C works well in the morning under sunscreen. Start every other day to check tolerance."],
+  ["My cheeks feel tight after cleansing.", "That usually means the cleanser is too stripping. Try a creamy, fragrance-free one and moisturise right after."],
+  ["Do I really need sunscreen indoors?", "Daily SPF still matters, especially near windows. A light fluid sunscreen is easy to wear every day."],
+  ["What helps with dark spots?", "Niacinamide, vitamin C and consistent SPF help fade them over time. Results take 8 to 12 weeks."],
+  ["Can I use retinol and niacinamide together?", "Yes, they pair well. Introduce the retinol slowly, two nights a week, and keep moisturiser on top."],
+  ["Why am I breaking out around my chin?", "Hormones, friction and heavy products are common causes. Keep the routine simple and avoid picking."],
+  ["How long until I see results from my new serum?", "Most serums need 4 to 8 weeks of consistent use. Take a scan every two weeks to track the change."],
+  ["Is my skin dehydrated or just dry?", "Dehydrated skin lacks water and can still be oily; dry skin lacks oil. Your moisture score points to dehydration."],
+  ["What should I do after a long sun day?", "Cleanse gently, use a soothing moisturiser and skip actives for a couple of nights."],
+  ["Does water intake really matter for skin?", "It helps overall, but topical hydration and sleep move your scores more. Keep a bottle nearby anyway."],
+];
+
+const ROUTINE_ADJECTIVES = [
+  "Simple", "Glow", "Barrier", "Clear skin", "Hydration", "Calm", "Reset", "Weekend", "Travel", "Minimal",
+] as const;
+
+const MORNING_STEPS = {
+  cleanse: (name) => ({ period: "MORNING", title: "Cleanse", instruction: `Massage ${name("CLEANSER")} for 30 seconds, then rinse with lukewarm water.` }),
+  serum: (name) => ({ period: "MORNING", title: "Serum", instruction: `Apply a few drops of ${name("SERUM")} to damp skin.` }),
+  moisturise: (name) => ({ period: "MORNING", title: "Moisturise", instruction: `Apply a pea-sized amount of ${name("MOISTURIZER")} to face and neck.` }),
+  spf: (name) => ({ period: "MORNING", title: "Sunscreen", instruction: `Apply two finger-lengths of ${name("SUNSCREEN")} and reapply every 2-3 hours outdoors.` }),
+} as const satisfies Record<string, StepFactory>;
+
+const HABITS: readonly StepInput[] = [
+  { period: "HABIT", title: "Hydration", instruction: "Drink about 8 glasses of water a day; keep a bottle within reach." },
+  { period: "HABIT", title: "Pillowcase", instruction: "Change your pillowcase twice a week to reduce breakouts." },
+  { period: "HABIT", title: "Sleep", instruction: "Aim for 7 to 8 hours of sleep; skin repairs itself overnight." },
+  { period: "HABIT", title: "Phone hygiene", instruction: "Wipe your phone screen daily and avoid touching your face." },
+  { period: "HABIT", title: "Diet", instruction: "Add more fruit, vegetables and omega-3 rich foods to your meals." },
+  { period: "HABIT", title: "Hands off", instruction: "Avoid picking or touching blemishes; use a patch instead." },
+];
+
+const LOG_HOURS: Record<RoutineKind, readonly [start: number, end: number]> = {
+  morning: [6, 8],
+  evening: [20, 22],
+  treatment: [21, 23],
+  habit: [12, 18],
+};
 
 /* ------------------------------ helpers ------------------------------ */
 
 /**
  * Timestamps are Temporal.Instant, calendar dates are Temporal.PlainDate.
- * Calendar-day math (days ago / from now) goes through a ZonedDateTime in the
- * system timezone, because Instant can't add or subtract days.
+ * Calendar-day math goes through a ZonedDateTime in the system timezone,
+ * because Instant can't add or subtract days.
  */
-const nowZoned = () => Temporal.Now.zonedDateTimeISO();
+const nowZoned = (): Temporal.ZonedDateTime => Temporal.Now.zonedDateTimeISO();
 
 const daysAgo = (n: number, hour?: number): Temporal.Instant => {
   let moment = nowZoned().subtract({ days: n });
@@ -58,15 +307,72 @@ const daysAgo = (n: number, hour?: number): Temporal.Instant => {
   }
   return moment.toInstant();
 };
+
 const daysFromNow = (n: number): Temporal.Instant =>
   nowZoned().add({ days: n }).toInstant();
+
 const minutesAgo = (n: number): Temporal.Instant =>
   Temporal.Now.instant().subtract({ minutes: n });
 
-const clamp = (n: number, min: number, max: number) =>
+const clamp = (n: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, n));
-const metric = (min: number, max: number) =>
+
+const metric = (min: number, max: number): number =>
   faker.number.float({ min, max, fractionDigits: 1 });
+
+const jitter = (spread: number): number =>
+  faker.number.int({ min: -spread, max: spread });
+
+const average = (values: readonly number[]): number =>
+  Math.round((values.reduce((sum, v) => sum + v, 0) / values.length) * 10) / 10;
+
+/** Random whole days within the span, skewed toward recent history. */
+const recentDay = (spanDays: number): number =>
+  Math.floor(faker.number.float({ min: 0, max: 1 }) ** 1.6 * spanDays);
+
+/**
+ * `count` timestamps (minutes ago) across the whole span, oldest first.
+ * The oldest scan is pinned to the start of the span and the newest to the
+ * last 12 hours, so the history always covers the full period.
+ */
+function scanOffsets(count: number, totalMinutes: number): number[] {
+  const offsets = Array.from({ length: count }, () =>
+    faker.number.int({ min: 0, max: totalMinutes }),
+  ).sort((a, b) => b - a); // descending: oldest first
+
+  if (count > 0) offsets[0] = totalMinutes;
+  if (count > 1) offsets[count - 1] = Math.min(offsets[count - 1] ?? 0, 12 * 60);
+  return offsets;
+}
+
+/**
+ * Runs `fn` over `items` with at most `limit` in flight. Results keep input
+ * order. All workers share one iterator, so each item is handed out once.
+ */
+async function mapPool<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  const queue = items.entries();
+  const worker = async (): Promise<void> => {
+    for (const [index, item] of queue) {
+      results[index] = await fn(item, index);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+/** Times a phase and logs how long it took. */
+async function phase<T>(label: string, run: () => Promise<T>): Promise<T> {
+  const started = performance.now();
+  const result = await run();
+  const seconds = ((performance.now() - started) / 1000).toFixed(1);
+  console.log(`[seed]   ${label} (${seconds}s)`);
+  return result;
+}
 
 /** Random birth date for someone aged between minAge and maxAge today. */
 function randomBirthDate(minAge: number, maxAge: number): Temporal.Instant {
@@ -78,74 +384,108 @@ function randomBirthDate(minAge: number, maxAge: number): Temporal.Instant {
     .toInstant();
 }
 
-/** scrypt, stored as salt:hash. Swap for your auth module's hasher if different. */
-function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex");
-  return `${salt}:${scryptSync(password, salt, 64).toString("hex")}`;
+/** This is an en-NG seed, so skew toward the darker end of the Fitzpatrick scale. */
+function randomFitzpatrick(): FitzpatrickType {
+  return faker.helpers.weightedArrayElement<FitzpatrickType>([
+    { weight: 1, value: "II" },
+    { weight: 2, value: "III" },
+    { weight: 3, value: "IV" },
+    { weight: 5, value: "V" },
+    { weight: 5, value: "VI" },
+  ]);
 }
 
 /* ------------------------------ catalogue ------------------------------ */
 
-const PRODUCTS: NewProduct[] = [
-  { name: "Hydrating Facial Cleanser", brand: "CeraVe", category: "CLEANSER", description: "Gentle, fragrance-free cleanser with ceramides and hyaluronic acid.", price: 15 },
-  { name: "Toleriane Hydrating Gentle Cleanser", brand: "La Roche-Posay", category: "CLEANSER", description: "Soap-free creamy cleanser for sensitive, dry skin.", price: 17 },
-  { name: "Supple Preparation Facial Toner", brand: "Klairs", category: "TONER", description: "Alcohol-free hydrating toner that preps skin for serums.", price: 22 },
-  { name: "Niacinamide 10% + Zinc 1%", brand: "The Ordinary", category: "SERUM", description: "Lightweight serum that helps with oiliness and visible pores.", price: 6 },
-  { name: "Hyaluronic Acid 2% + B5", brand: "The Ordinary", category: "SERUM", description: "Hydrating serum with multiple weights of hyaluronic acid.", price: 9 },
-  { name: "Skin Perfecting 2% BHA Liquid Exfoliant", brand: "Paula's Choice", category: "TREATMENT", description: "Leave-on salicylic acid exfoliant for clogged pores and uneven texture.", price: 34 },
-  { name: "Adapalene Gel 0.1%", brand: "Differin", category: "TREATMENT", description: "Retinoid gel for acne-prone skin. Start slowly.", price: 15 },
-  { name: "Moisturizing Cream", brand: "CeraVe", category: "MOISTURIZER", description: "Rich ceramide cream for dry to very dry skin.", price: 19 },
-  { name: "Hydro Boost Water Gel", brand: "Neutrogena", category: "MOISTURIZER", description: "Oil-free gel moisturizer with hyaluronic acid.", price: 18 },
-  { name: "Anthelios UV Mune 400 SPF 50+", brand: "La Roche-Posay", category: "SUNSCREEN", description: "Broad-spectrum fluid sunscreen with a light finish.", price: 36 },
-  { name: "UV Clear Broad-Spectrum SPF 46", brand: "EltaMD", category: "SUNSCREEN", description: "Oil-free sunscreen with niacinamide for blemish-prone skin.", price: 41 },
-];
+/** Builds `count` unique products. Pure and synchronous, so it stays deterministic. */
+function generateProducts(count: number): GeneratedProduct[] {
+  const seen = new Set<string>();
+  const products: GeneratedProduct[] = [];
+  let attempts = 0;
 
-const SKIN_TYPES = ["oily", "dry", "combination", "normal", "sensitive"];
-const SKIN_TONES = ["fair", "light", "medium", "tan", "deep", "dark"];
-const AVOID_POOL = ["fragrance", "alcohol denat.", "essential oils", "parabens", "sulfates"];
-const LIKE_POOL = ["niacinamide", "hyaluronic acid", "ceramides", "vitamin c", "salicylic acid", "squalane"];
+  while (products.length < count) {
+    if (++attempts > count * 50) {
+      throw new Error(`Cannot generate ${count} unique products; lower the count.`);
+    }
+    const category = faker.helpers.weightedArrayElement(CATEGORY_WEIGHTS);
+    const brand = faker.helpers.arrayElement(BRANDS);
+    const name = `${faker.helpers.arrayElement(DESCRIPTORS)} ${faker.helpers.arrayElement(BASE_NAMES[category])}`;
+    const key = `${brand}|${name}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
 
-const CHAT_PAIRS: [string, string][] = [
-  ["How is my skin doing compared to last time?", "Your score is trending up and moisture has improved. Keep going with your current routine."],
-  ["Should I add an exfoliant?", "A 2% BHA once or twice a week would suit you. I have added it as a suggestion you can accept."],
-  ["Is it okay to use vitamin C in the morning?", "Yes, vitamin C works well in the morning under sunscreen. Start every other day to check tolerance."],
-  ["My cheeks feel tight after cleansing.", "That usually means the cleanser is too stripping. Try a creamy, fragrance-free one and moisturise right after."],
-  ["Do I really need sunscreen indoors?", "Daily SPF still matters, especially near windows. A light fluid sunscreen is easy to wear every day."],
-  ["What helps with dark spots?", "Niacinamide, vitamin C and consistent SPF help fade them over time. Results take 8 to 12 weeks."],
-];
+    const ingredients = faker.helpers.arrayElements([...AVOID_POOL, ...LIKE_POOL], { min: 1, max: 3 });
+    const containsAvoided = ingredients.some((i) => (AVOID_POOL as readonly string[]).includes(i));
+    const [min, max] = PRICE_RANGE[category];
 
-const MORNING: Record<string, (p: (c: ProductCategory) => string) => StepInput> = {
-  cleanse: (p) => ({ period: "MORNING", title: "Cleanse", instruction: `Massage ${p("CLEANSER")} for 30 seconds, then rinse with lukewarm water.` }),
-  serum: (p) => ({ period: "MORNING", title: "Serum", instruction: `Apply a few drops of ${p("SERUM")} to damp skin.` }),
-  moisturise: (p) => ({ period: "MORNING", title: "Moisturise", instruction: `Apply a pea-sized amount of ${p("MOISTURIZER")} to face and neck.` }),
-  spf: (p) => ({ period: "MORNING", title: "Sunscreen", instruction: `Apply two finger-lengths of ${p("SUNSCREEN")} and reapply every 2-3 hours outdoors.` }),
-};
+    products.push({
+      ingredients,
+      input: {
+        name,
+        brand,
+        category,
+        description: `${name} by ${brand}. Contains ${ingredients.join(", ")}.${containsAvoided ? "" : " Free from common irritants."}`,
+        price: faker.number.int({ min, max }),
+      },
+    });
+  }
+  return products;
+}
 
-const HABITS: StepInput[] = [
-  { period: "HABIT", title: "Hydration", instruction: "Drink about 8 glasses of water a day; keep a bottle within reach." },
-  { period: "HABIT", title: "Pillowcase", instruction: "Change your pillowcase twice a week to reduce breakouts." },
-  { period: "HABIT", title: "Sleep", instruction: "Aim for 7 to 8 hours of sleep; skin repairs itself overnight." },
-  { period: "HABIT", title: "Phone hygiene", instruction: "Wipe your phone screen daily and avoid touching your face." },
-];
+class Catalogue {
+  readonly brands: readonly string[];
+  private readonly byCategory = new Map<ProductCategory, Product[]>();
+  private readonly ingredients = new Map<string, readonly string[]>();
+
+  constructor(
+    readonly all: readonly Product[],
+    ingredientsInOrder: readonly (readonly string[])[],
+  ) {
+    this.brands = [...new Set(all.map((p) => p.brand))];
+    all.forEach((product, i) => {
+      this.ingredients.set(product.id, ingredientsInOrder[i] ?? []);
+      const bucket = this.byCategory.get(product.category) ?? [];
+      bucket.push(product);
+      this.byCategory.set(product.category, bucket);
+    });
+  }
+
+  ofCategory(category: ProductCategory): readonly Product[] {
+    return this.byCategory.get(category) ?? [];
+  }
+
+  /** A random product in the category that has none of the avoided ingredients. */
+  pick(category: ProductCategory, avoid: readonly string[] = []): Product {
+    const options = this.ofCategory(category);
+    if (options.length === 0) throw new Error(`No products in category ${category}`);
+    const safe = options.filter(
+      (p) => !(this.ingredients.get(p.id) ?? []).some((i) => avoid.includes(i)),
+    );
+    return faker.helpers.arrayElement(safe.length > 0 ? safe : options);
+  }
+}
 
 /* ------------------------------ purge ------------------------------ */
 
 /** Deletes one user and everything that belongs to them, children first. */
-export async function purgeUser(userId: string): Promise<void> {
-  for (const order of await r.orders.findMany({ userId })) {
-    await r.orderItems.deleteWhere({ orderId: order.id });
-  }
+export async function purgeUser(
+  userId: string,
+  concurrency: number = DEFAULTS.concurrency,
+): Promise<void> {
+  const orders = await r.orders.findMany({ userId });
+  await mapPool(orders, concurrency, (o) => r.orderItems.deleteWhere({ orderId: o.id }));
   await r.orders.deleteWhere({ userId });
   await r.recommendations.deleteWhere({ userId });
-  for (const routine of await r.routines.findMany({ userId })) {
-    await r.routineSteps.deleteWhere({ routineId: routine.id });
-  }
+
+  const routines = await r.routines.findMany({ userId });
+  await mapPool(routines, concurrency, (x) => r.routineSteps.deleteWhere({ routineId: x.id }));
   await r.routineLogs.deleteWhere({ userId });
   await r.routines.deleteWhere({ userId });
-  for (const scan of await r.scans.findMany({ userId })) {
-    await r.analyses.deleteWhere({ scanId: scan.id });
-  }
+
+  const scans = await r.scans.findMany({ userId });
+  await mapPool(scans, concurrency, (s) => r.analyses.deleteWhere({ scanId: s.id }));
   await r.scans.deleteWhere({ userId });
+
   await r.messages.deleteWhere({ userId });
   await r.preferences.deleteWhere({ userId });
   await r.subscriptions.deleteWhere({ userId });
@@ -160,214 +500,349 @@ async function findSeedUsers(): Promise<User[]> {
   return all.filter((u) => u.email.endsWith(`@${SEED_DOMAIN}`));
 }
 
-/* ------------------------------ per-user data ------------------------------ */
+/* ------------------------------ scans ------------------------------ */
 
-class Catalogue {
-  constructor(readonly all: Product[]) {}
-
-  ofCategory(category: ProductCategory): Product[] {
-    return this.all.filter((p) => p.category === category);
-  }
-
-  pick(category: ProductCategory, avoid: string[] = []): Product {
-    const options = this.ofCategory(category);
-    const safe = options.filter(
-      (p) => !avoid.some((a) => p.description.toLowerCase().includes(a)),
-    );
-    return faker.helpers.arrayElement(safe.length ? safe : options);
-  }
-}
-
-async function seedScans(user: User, avoid: string[]) {
-  const count = faker.number.int({ min: 2, max: 5 });
-  const gapDays = faker.number.int({ min: 12, max: 30 });
-  let score = faker.number.int({ min: 48, max: 68 });
-  let skinAge = faker.number.int({ min: 24, max: 42 });
-  const scans = [];
+/**
+ * Builds the whole scan history synchronously. The score does a mean-reverting
+ * random walk so the timeline has realistic ups and downs, not a straight line.
+ */
+function buildScanSpecs(
+  userId: string,
+  count: number,
+  spanDays: number,
+  avoid: readonly string[],
+): ScanSpec[] {
+  const totalMinutes = spanDays * 24 * 60;
+  const offsets = scanOffsets(count, totalMinutes);
+  const baseAge = faker.number.int({ min: 22, max: 44 });
+  let score = faker.number.int({ min: 45, max: 65 });
+  const specs: ScanSpec[] = [];
 
   for (let i = 0; i < count; i++) {
-    const ago = (count - 1 - i) * gapDays + faker.number.int({ min: 0, max: 2 });
-    const moisture = clamp(score - 10 + faker.number.int({ min: -6, max: 6 }), 20, 95);
-    const oiliness = clamp(95 - score + faker.number.int({ min: -8, max: 8 }), 10, 90);
-    const acne = clamp(80 - score + faker.number.int({ min: -6, max: 6 }), 3, 80);
-    const redness = clamp(70 - score + faker.number.int({ min: -6, max: 6 }), 5, 75);
+    const skinAge = clamp(baseAge + Math.round((60 - score) / 8) + jitter(1), 18, 70);
+    const moisture = clamp(score - 10 + jitter(6), 20, 95);
+    const oiliness = clamp(95 - score + jitter(8), 10, 90);
+    const acne = clamp(80 - score + jitter(6), 3, 80);
+    const redness = clamp(70 - score + jitter(6), 5, 75);
+        const ago = offsets[i] ?? 0;
 
-    const scan = await r.scans.create({
-      userId: user.id,
-      status: "COMPLETED",
-      score,
-      skinAge,
-      createdAt: daysAgo(ago),
-      aiShortSummary: `Skin score ${score}. ${moisture < 55 ? "Hydration is the main focus." : "Hydration looks healthy."}`,
-      aiSummary: `Your skin scored ${score} with an estimated skin age of ${skinAge}. Moisture is ${moisture} and oiliness ${oiliness}. ${acne > 35 ? "Breakouts are the area to watch." : "Breakouts are well controlled."} Keep your routine consistent and use sunscreen daily.`,
-      aiShortObservation: `Oiliness ${oiliness}, moisture ${moisture}.`,
-      aiObservation: `Oiliness measured ${oiliness} and moisture ${moisture}. Acne markers are at ${acne} and redness at ${redness}.${avoid.length ? ` Noting that you avoid ${avoid.join(", ")}.` : ""}`,
+    const texture: TextureData = { score: clamp(score + jitter(6), 20, 98) };
+
+    const poreRegions = {
+      forehead: metric(30, 85),
+      nose: metric(25, 80),
+      cheek: metric(35, 90),
+    };
+    const pore: PoreScores = {
+      ...poreRegions,
+      whole: average(Object.values(poreRegions)),
+    };
+
+    const wrinkleRegions = {
+      forehead: metric(55, 95),
+      glabellar: metric(55, 95),
+      crowfeet: metric(55, 95),
+      periocular: metric(55, 95),
+      nasolabial: metric(55, 95),
+      marionette: metric(55, 95),
+    };
+    const wrinkle: WrinkleScores = {
+      ...wrinkleRegions,
+      whole: average(Object.values(wrinkleRegions)),
+    };
+
+    const skinType: SkinTypeData = {
+      type: faker.helpers.arrayElement(SKIN_TYPE_LABELS),
+      confidence: faker.number.float({ min: 0.6, max: 0.95, fractionDigits: 2 }),
+    };
+
+    specs.push({
+      scan: {
+        userId,
+        status: "COMPLETED",
+        score,
+        skinAge,
+        createdAt: minutesAgo(ago),
+        aiShortSummary: `Skin score ${score}. ${moisture < 55 ? "Hydration is the main focus." : "Hydration looks healthy."}`,
+        aiSummary: `Your skin scored ${score} with an estimated skin age of ${skinAge}. Moisture is ${moisture} and oiliness ${oiliness}. ${acne > 35 ? "Breakouts are the area to watch." : "Breakouts are well controlled."} Keep your routine consistent and use sunscreen daily.`,
+        aiShortObservation: `Oiliness ${oiliness}, moisture ${moisture}.`,
+        aiObservation: `Oiliness measured ${oiliness} and moisture ${moisture}. Acne markers are at ${acne} and redness at ${redness}.${avoid.length > 0 ? ` Noting that you avoid ${avoid.join(", ")}.` : ""}`,
+      },
+      analysis: {
+        redness,
+        ageSpot: metric(5, 45),
+        radiance: clamp(score + jitter(8), 20, 98),
+        moisture,
+        oiliness,
+        darkCircle: metric(10, 60),
+        eyeBag: metric(10, 55),
+        droopyUpperEyelid: metric(5, 35),
+        droopyLowerEyelid: metric(5, 35),
+        firmness: clamp(skinAge < 30 ? 80 : 65 + jitter(10), 30, 98),
+        texture,
+        acne,
+        pore,
+        wrinkle,
+        tearTrough: metric(5, 45),
+        skinType,
+      },
     });
 
-    await r.analyses.upsertForScan(scan.id, {
-      redness,
-      ageSpot: metric(5, 45),
-      radiance: clamp(score + faker.number.int({ min: -8, max: 8 }), 20, 98),
-      moisture,
-      oiliness,
-      darkCircle: metric(10, 60),
-      eyeBag: metric(10, 55),
-      droopyUpperEyelid: metric(5, 35),
-      droopyLowerEyelid: metric(5, 35),
-      firmness: clamp(skinAge < 30 ? 80 : 65 + faker.number.int({ min: -10, max: 10 }), 30, 98),
-      texture: { score: clamp(score + faker.number.int({ min: -6, max: 6 }), 20, 98) },
-      acne,
-      pore: { score: metric(30, 85), forehead: metric(30, 85), nose: metric(25, 80), cheeks: metric(35, 90) },
-      wrinkle: { score: metric(55, 95), forehead: metric(55, 95), eyes: metric(55, 95) },
-      tearTrough: metric(5, 45),
-      skinType: { type: faker.helpers.arrayElement(SKIN_TYPES), confidence: faker.number.float({ min: 0.6, max: 0.95, fractionDigits: 2 }) },
-    });
-
-    scans.push(scan);
-    score = clamp(score + faker.number.int({ min: 0, max: 7 }), 0, 96);
-    skinAge = Math.max(18, skinAge - faker.number.int({ min: 0, max: 1 }));
+    // Drift toward 72 with noise, so scores wander instead of only climbing.
+    score = clamp(score + Math.round((72 - score) * 0.03) + jitter(3), 25, 97);
   }
-  return scans;
+  return specs;
 }
 
-async function seedRoutines(user: User, catalogue: Catalogue, avoid: string[]) {
-  const name = (category: ProductCategory) => {
+async function seedScans(
+  user: User,
+  count: number,
+  spanDays: number,
+  avoid: readonly string[],
+  concurrency: number,
+): Promise<Scan[]> {
+  const specs = buildScanSpecs(user.id, count, spanDays, avoid);
+  return mapPool(specs, concurrency, async (spec) => {
+    const scan = await r.scans.create(spec.scan);
+    await r.analyses.upsertForScan(scan.id, spec.analysis);
+    return scan;
+  });
+}
+
+/* ------------------------------ routines ------------------------------ */
+
+function buildRoutineSpecs(
+  userId: string,
+  count: number,
+  catalogue: Catalogue,
+  avoid: readonly string[],
+): RoutineSpec[] {
+  const name: ProductNamer = (category) => {
     const p = catalogue.pick(category, avoid);
     return `${p.brand} ${p.name}`;
   };
 
-  const morningSteps = [MORNING.cleanse!, MORNING.serum!, MORNING.moisturise!, MORNING.spf!]
-    .filter((_, i) => i !== 1 || faker.datatype.boolean())
-    .map((make) => make(name));
+  /** The first four are fixed so every user always has one of each kind. */
+  const fixedKinds: readonly RoutineKind[] = ["morning", "evening", "treatment", "habit"];
 
-  const morning = await r.routines.createWithSteps({
-    userId: user.id,
-    title: "Morning routine",
-    accepted: true,
-    steps: morningSteps,
-  });
-  const evening = await r.routines.createWithSteps({
-    userId: user.id,
-    title: "Evening routine",
-    accepted: true,
-    steps: [
-      { period: "EVENING", title: "Cleanse", instruction: `Remove sunscreen and impurities with ${name("CLEANSER")}.` },
-      { period: "NIGHT", title: "Treat", instruction: `Apply ${name("SERUM")} to damp skin.` },
-      { period: "NIGHT", title: "Moisturise", instruction: `Seal in with ${name("MOISTURIZER")}.` },
-    ],
-  });
-  const treatment = await r.routines.createWithSteps({
-    userId: user.id,
-    title: "Weekly treatment",
-    accepted: false,
-    steps: [
-      { period: "NIGHT", title: "Exfoliate", instruction: `Twice a week, apply ${name("TREATMENT")} after cleansing. Wait 15 minutes before moisturiser.` },
-    ],
-  });
-  const habitStep = faker.helpers.arrayElement(HABITS);
-  const habit = await r.routines.createWithSteps({
-    userId: user.id,
-    title: habitStep.title,
-    accepted: false,
-    steps: [habitStep],
-  });
-
-  /* logs: ~30 days, mornings on most days, evenings less often */
-  const consistency = faker.number.float({ min: 0.4, max: 0.95 });
-  for (let d = 0; d < 30; d++) {
-    if (faker.number.float() < consistency) {
-      await r.routineLogs.log(user.id, morning.id, daysAgo(d, 6 + faker.number.int({ min: 0, max: 2 })));
+  const build = (kind: RoutineKind, accepted: boolean): RoutineSpec => {
+    const label = faker.helpers.arrayElement(ROUTINE_ADJECTIVES);
+    switch (kind) {
+      case "morning": {
+        const factories: StepFactory[] = [
+          MORNING_STEPS.cleanse,
+          ...(faker.datatype.boolean() ? [MORNING_STEPS.serum] : []),
+          MORNING_STEPS.moisturise,
+          MORNING_STEPS.spf,
+        ];
+        return {
+          kind,
+          accepted,
+          input: { userId, title: `${label} morning routine`, accepted, steps: factories.map((make) => make(name)) },
+        };
+      }
+      case "evening":
+        return {
+          kind,
+          accepted,
+          input: {
+            userId,
+            title: `${label} evening routine`,
+            accepted,
+            steps: [
+              { period: "EVENING", title: "Cleanse", instruction: `Remove sunscreen and impurities with ${name("CLEANSER")}.` },
+              { period: "NIGHT", title: "Treat", instruction: `Apply ${name("SERUM")} to damp skin.` },
+              { period: "NIGHT", title: "Moisturise", instruction: `Seal in with ${name("MOISTURIZER")}.` },
+            ],
+          },
+        };
+      case "treatment":
+        return {
+          kind,
+          accepted,
+          input: {
+            userId,
+            title: `${label} weekly treatment`,
+            accepted,
+            steps: [
+              { period: "NIGHT", title: "Exfoliate", instruction: `Twice a week, apply ${name("TREATMENT")} after cleansing. Wait 15 minutes before moisturiser.` },
+            ],
+          },
+        };
+      case "habit": {
+        const habitStep = faker.helpers.arrayElement(HABITS);
+        return { kind, accepted, input: { userId, title: habitStep.title, accepted, steps: [habitStep] } };
+      }
     }
-    if (faker.number.float() < consistency * 0.7) {
-      await r.routineLogs.log(user.id, evening.id, daysAgo(d, 20 + faker.number.int({ min: 0, max: 2 })));
-    }
-  }
+  };
 
-  return { treatment, habit };
+  return Array.from({ length: Math.max(count, fixedKinds.length) }, (_, i) => {
+    const fixed = fixedKinds[i];
+    if (fixed !== undefined) return build(fixed, fixed === "morning" || fixed === "evening");
+    const kind = faker.helpers.weightedArrayElement<RoutineKind>([
+      { weight: 3, value: "morning" },
+      { weight: 3, value: "evening" },
+      { weight: 2, value: "treatment" },
+      { weight: 2, value: "habit" },
+    ]);
+    return build(kind, faker.datatype.boolean(0.5));
+  });
 }
+
+async function seedRoutines(
+  user: User,
+  count: number,
+  catalogue: Catalogue,
+  avoid: readonly string[],
+  concurrency: number,
+): Promise<SeededRoutine[]> {
+  const specs = buildRoutineSpecs(user.id, count, catalogue, avoid);
+  return mapPool(specs, concurrency, async (spec): Promise<SeededRoutine> => ({
+    kind: spec.kind,
+    accepted: spec.accepted,
+    routine: await r.routines.createWithSteps(spec.input),
+  }));
+}
+
+/* ------------------------------ logs ------------------------------ */
+
+async function seedRoutineLogs(
+  user: User,
+  routines: readonly SeededRoutine[],
+  count: number,
+  spanDays: number,
+  concurrency: number,
+): Promise<void> {
+  // Users log the routines they accepted; fall back to all if none were.
+  const accepted = routines.filter((x) => x.accepted);
+  const pool = accepted.length > 0 ? accepted : routines;
+  if (pool.length === 0) return;
+
+  const consistency = faker.number.float({ min: 0.4, max: 0.95 });
+  const entries = Array.from({ length: count }, () => {
+    const { kind, routine } = faker.helpers.arrayElement(pool);
+    const [start, end] = LOG_HOURS[kind];
+    // Lower consistency pushes logs further into the past (user dropping off).
+    const day = Math.min(spanDays - 1, recentDay(spanDays) + Math.round((1 - consistency) * 10));
+    return { routineId: routine.id, at: daysAgo(day, faker.number.int({ min: start, max: end })) };
+  });
+
+  await mapPool(entries, concurrency, (e) => r.routineLogs.log(user.id, e.routineId, e.at));
+}
+
+/* ------------------------------ recommendations ------------------------------ */
 
 async function seedRecommendations(
   user: User,
-  scanId: string,
+  count: number,
+  spanDays: number,
+  scans: readonly Scan[],
   catalogue: Catalogue,
-  avoid: string[],
-  routines: { treatment: { id: string }; habit: { id: string } },
-) {
-  const picks = faker.helpers.arrayElements(
-    (["SERUM", "SUNSCREEN", "MOISTURIZER", "TREATMENT"] as ProductCategory[]).map(
-      (c) => catalogue.pick(c, avoid),
-    ),
-    { min: 2, max: 3 },
-  );
-  for (const product of picks) {
-    await r.recommendations.create({
+  avoid: readonly string[],
+  routines: readonly SeededRoutine[],
+  concurrency: number,
+): Promise<void> {
+  const treatments = routines.filter((x) => x.kind === "treatment");
+  const habits = routines.filter((x) => x.kind === "habit");
+
+  const specs: RecommendationInput[] = Array.from({ length: count }, () => {
+    const scanId = faker.helpers.arrayElement(scans).id;
+    const createdAt = daysAgo(recentDay(spanDays));
+    const type = faker.helpers.weightedArrayElement<RecommendationInput["type"]>([
+      { weight: 6, value: "PRODUCT" },
+      { weight: 2, value: "ROUTINE" },
+      { weight: 2, value: "HABIT" },
+    ]);
+
+    if (type === "PRODUCT") {
+      const product = catalogue.pick(faker.helpers.arrayElement(RECOMMENDED_CATEGORIES), avoid);
+      return {
+        userId: user.id,
+        scanId,
+        type,
+        explanation: `${product.name} fits your latest scan: ${product.description.toLowerCase()}`,
+        accepted: faker.datatype.boolean(0.4),
+        productId: product.id,
+        createdAt,
+      };
+    }
+    const source = type === "ROUTINE" ? treatments : habits;
+    return {
       userId: user.id,
       scanId,
-      type: "PRODUCT",
-      explanation: `${product.name} fits your latest scan: ${product.description.toLowerCase()}`,
-      accepted: faker.datatype.boolean(0.4),
-      productId: product.id,
-      createdAt: daysAgo(faker.number.int({ min: 0, max: 5 })),
-    });
-  }
-  await r.recommendations.create({
-    userId: user.id,
-    scanId,
-    type: "ROUTINE",
-    explanation: "Gentle weekly exfoliation targets clogged pores without over-drying.",
-    routineId: routines.treatment.id,
+      type,
+      explanation:
+        type === "ROUTINE"
+          ? "Gentle weekly exfoliation targets clogged pores without over-drying."
+          : "Small daily habits compound with your routine over a few weeks.",
+      accepted: faker.datatype.boolean(0.3),
+      routineId: faker.helpers.arrayElement(source).routine.id,
+      createdAt,
+    };
   });
-  await r.recommendations.create({
-    userId: user.id,
-    scanId,
-    type: "HABIT",
-    explanation: "Small daily habits compound with your routine over a few weeks.",
-    routineId: routines.habit.id,
+
+  await mapPool(specs, concurrency, (spec) => r.recommendations.create(spec));
+}
+
+/* ------------------------------ chat, account, orders ------------------------------ */
+
+async function seedChat(
+  user: User,
+  pairsCount: number,
+  spanDays: number,
+  concurrency: number,
+): Promise<void> {
+  const totalMinutes = spanDays * 24 * 60;
+  const pairs = Array.from({ length: pairsCount }, () => {
+    const [question, answer] = faker.helpers.arrayElement(CHAT_PAIRS);
+    const ago = faker.number.int({ min: 2, max: totalMinutes });
+    return { question, answer, ago };
+  });
+
+  await mapPool(pairs, concurrency, async ({ question, answer, ago }) => {
+    await r.messages.addUserMessage(user.id, question, minutesAgo(ago));
+    await r.messages.addAlinaMessage(user.id, answer, minutesAgo(ago - 1));
   });
 }
 
-async function seedChat(user: User) {
-  const pairs = faker.helpers.arrayElements(CHAT_PAIRS, { min: 2, max: 4 });
-  let minutes = pairs.length * 12;
-  for (const [question, answer] of pairs) {
-    await r.messages.addUserMessage(user.id, question, minutesAgo(minutes));
-    minutes -= 1;
-    await r.messages.addAlinaMessage(user.id, answer, minutesAgo(minutes));
-    minutes -= 11;
-  }
-}
+async function seedAccount(user: User, withPassword: boolean): Promise<void> {
+  const plan = faker.helpers.weightedArrayElement<SubscriptionPlan>([
+    { weight: 6, value: "FREE" },
+    { weight: 3, value: "PLUS" },
+    { weight: 1, value: "PREMIUM" },
+  ]);
+  const outcome = faker.helpers.weightedArrayElement<SubscriptionStatus>([
+    { weight: 8, value: "ACTIVE" },
+    { weight: 1, value: "CANCELLED" },
+    { weight: 1, value: "EXPIRED" },
+  ]);
+  const isFree = plan === "FREE";
 
-async function seedAccount(user: User, withPassword: boolean) {
-  const plan = faker.helpers.weightedArrayElement([
-    { weight: 6, value: "FREE" as const },
-    { weight: 3, value: "PLUS" as const },
-    { weight: 1, value: "PREMIUM" as const },
-  ]);
-  const outcome = faker.helpers.weightedArrayElement([
-    { weight: 8, value: "ACTIVE" as const },
-    { weight: 1, value: "CANCELLED" as const },
-    { weight: 1, value: "EXPIRED" as const },
-  ]);
   await r.subscriptions.create({
     userId: user.id,
     plan,
-    status: plan === "FREE" ? "ACTIVE" : outcome,
+    status: isFree ? "ACTIVE" : outcome,
     startedAt: daysAgo(faker.number.int({ min: 20, max: 200 })),
-    expiresAt: plan === "FREE" ? null : outcome === "EXPIRED" ? daysAgo(3) : daysFromNow(faker.number.int({ min: 5, max: 30 })),
+    expiresAt: isFree
+      ? null
+      : outcome === "EXPIRED"
+        ? daysAgo(3)
+        : daysFromNow(faker.number.int({ min: 5, max: 30 })),
   });
 
   await r.devices.connect({
     userId: user.id,
     type: "MOBILE",
     externalId: faker.string.uuid(),
-    name: `${faker.person.firstName()}'s ${faker.helpers.arrayElement(["iPhone", "Pixel", "Galaxy", "Tecno Camon"])}`,
+    name: `${faker.person.firstName()}'s ${faker.helpers.arrayElement(PHONE_MODELS)}`,
   });
   if (faker.datatype.boolean(0.3)) {
+    const secondaryType: DeviceType = faker.helpers.arrayElement(["WEB", "RING"] as const);
     await r.devices.connect({
       userId: user.id,
-      type: faker.helpers.arrayElement(["WEB", "RING"] as const),
+      type: secondaryType,
       externalId: faker.string.uuid(),
-      name: faker.helpers.arrayElement(["Chrome on laptop", "Oura Ring", "Safari on iPad"]),
+      name: faker.helpers.arrayElement(OTHER_DEVICE_NAMES),
     });
   }
 
@@ -384,84 +859,113 @@ async function seedAccount(user: User, withPassword: boolean) {
   }
 }
 
-async function seedOrders(user: User, catalogue: Catalogue) {
-  const orders = faker.number.int({ min: 0, max: 2 });
-  for (let i = 0; i < orders; i++) {
-    const products = faker.helpers.arrayElements(catalogue.all, { min: 1, max: 3 });
-    await r.orders.createWithItems({
-      userId: user.id,
-      paypalOrderId: `SEED-${faker.string.alphanumeric({ length: 12, casing: "upper" })}`,
-      items: products.map((p) => ({
-        productId: p.id,
-        quantity: faker.number.int({ min: 1, max: 2 }),
-      })),
-    });
-  }
+async function seedOrders(
+  user: User,
+  count: number,
+  catalogue: Catalogue,
+  concurrency: number,
+): Promise<void> {
+  const specs: OrderInput[] = Array.from({ length: count }, () => ({
+    userId: user.id,
+    paypalOrderId: `SEED-${faker.string.alphanumeric({ length: 12, casing: "upper" })}`,
+    items: faker.helpers.arrayElements(catalogue.all, { min: 1, max: 4 }).map((p) => ({
+      productId: p.id,
+      quantity: faker.number.int({ min: 1, max: 3 }),
+    })),
+  }));
+  await mapPool(specs, concurrency, (spec) => r.orders.createWithItems(spec));
 }
+
+/* ------------------------------ user ------------------------------ */
 
 async function seedUser(
   catalogue: Catalogue,
-  options: { email: string; fullName?: string; password: boolean; gender?: Gender },
+  entry: SeedPlanEntry,
+  o: ResolvedOptions,
 ): Promise<User> {
-  const gender: Gender = options.gender ?? faker.helpers.arrayElement(["MALE", "FEMALE"] as const);
+  const gender: Gender = entry.gender ?? faker.helpers.arrayElement(["MALE", "FEMALE"] as const);
   const sex = gender === "MALE" ? "male" : "female";
   const firstName = faker.person.firstName(sex);
   const lastName = faker.person.lastName();
   const avoid = faker.helpers.arrayElements(AVOID_POOL, { min: 0, max: 2 });
 
+  // Fitzpatrick type first, then a tone colour that matches it.
+  const fitzpatrick = randomFitzpatrick();
+  const skinTone = faker.helpers.arrayElement(SKIN_TONES_BY_TYPE[fitzpatrick]);
+
   const user = await r.users.create({
-    email: options.email,
-    fullName: options.fullName ?? `${firstName} ${lastName}`,
-    password: options.password ? hashPassword(DEV_PASSWORD) : null,
+    email: entry.email,
+    fullName: entry.fullName ?? `${firstName} ${lastName}`,
+    password: entry.password ? await hash(DEV_PASSWORD) : null,
     phoneNumber: faker.phone.number({ style: "international" }),
     emailVerifiedAt: daysAgo(faker.number.int({ min: 5, max: 120 })),
     gender,
     dateOfBirth: randomBirthDate(18, 48),
     avatar: faker.image.avatar(),
-    skinType: faker.helpers.arrayElement(SKIN_TYPES),
-    skinTone: faker.helpers.arrayElement(SKIN_TONES),
+    skinType: fitzpatrick,
+    skinTone,
   });
 
   await r.preferences.upsert(user.id, {
-    favoriteBrands: faker.helpers.arrayElements([...new Set(catalogue.all.map((p) => p.brand))], { min: 1, max: 3 }),
+    favoriteBrands: faker.helpers.arrayElements(catalogue.brands, { min: 1, max: 4 }),
     favoriteIngredients: faker.helpers.arrayElements(LIKE_POOL, { min: 1, max: 3 }),
     avoidedIngredients: avoid,
-    budget: faker.helpers.arrayElement([20, 30, 50, 80, 120]),
+    budget: faker.helpers.arrayElement(BUDGETS),
   });
 
-  console.log(`[seed] ${user.email} created with skin type ${user.skinType} and tone ${user.skinTone}. Avoids: ${avoid.join(", ") || "none"}.`);
+  console.log(
+    `[seed] ${user.email}: Fitzpatrick ${fitzpatrick}, tone ${skinTone}, avoids ${avoid.join(", ") || "none"}`,
+  );
 
-  await seedAccount(user, options.password);
-  const scans = await seedScans(user, avoid);
-  const latest = scans[scans.length - 1]!;
+  await phase("account", () => seedAccount(user, entry.password));
+
+  const scans = await phase(`${o.scansPerUser} scans + analyses`, () =>
+    seedScans(user, o.scansPerUser, o.spanDays, avoid, o.concurrency),
+  );
   await r.users.setLastScanImage(user.id, null);
-  const routines = await seedRoutines(user, catalogue, avoid);
-  await seedRecommendations(user, latest.id, catalogue, avoid, routines);
-  await seedChat(user);
-  await seedOrders(user, catalogue);
+
+  const routines = await phase(`${o.routinesPerUser} routines`, () =>
+    seedRoutines(user, o.routinesPerUser, catalogue, avoid, o.concurrency),
+  );
+  await phase(`${o.logsPerUser} routine logs`, () =>
+    seedRoutineLogs(user, routines, o.logsPerUser, o.spanDays, o.concurrency),
+  );
+  await phase(`${o.recommendationsPerUser} recommendations`, () =>
+    seedRecommendations(user, o.recommendationsPerUser, o.spanDays, scans, catalogue, avoid, routines, o.concurrency),
+  );
+  await phase(`${o.messagePairsPerUser * 2} messages`, () =>
+    seedChat(user, o.messagePairsPerUser, o.spanDays, o.concurrency),
+  );
+  await phase(`${o.ordersPerUser} orders`, () =>
+    seedOrders(user, o.ordersPerUser, catalogue, o.concurrency),
+  );
+
   return user;
 }
 
 /* ------------------------------ entry ------------------------------ */
 
-export async function seed(options: SeedOptions = {}) {
-  const { users = 5, seed: fakerSeed = 2026, reset = false } = options;
-  faker.seed(fakerSeed);
+export async function seed(options: SeedOptions = {}): Promise<void> {
+  const o = resolveOptions(options);
+  console.log("Running Seeder......................");
+  console.log("seeder options", o)
+  faker.seed(o.seed);
 
-  const catalogue = new Catalogue(
-    await Promise.all(PRODUCTS.map((p) => r.products.findOrCreate(p))),
+  const generated = generateProducts(o.products);
+  const products = await phase(`${o.products} products`, () =>
+    mapPool(generated, o.concurrency, (g) => r.products.findOrCreate(g.input)),
   );
-  console.log(`[seed] products ready (${catalogue.all.length})`);
+  const catalogue = new Catalogue(products, generated.map((g) => g.ingredients));
 
-  if (reset) {
+  if (o.reset) {
     const existing = await findSeedUsers();
-    for (const user of existing) await purgeUser(user.id);
+    for (const user of existing) await purgeUser(user.id, o.concurrency);
     console.log(`[seed] removed ${existing.length} seed users`);
   }
 
-  const plan = [
+  const plan: SeedPlanEntry[] = [
     { email: DEMO_EMAIL, fullName: "Demo User", password: true },
-    ...Array.from({ length: users }, (_, i) => ({
+    ...Array.from({ length: o.users }, (_, i): SeedPlanEntry => ({
       email: faker.internet
         .email({ provider: SEED_DOMAIN })
         .toLowerCase()
@@ -476,7 +980,7 @@ export async function seed(options: SeedOptions = {}) {
       console.log(`[seed] ${entry.email} exists, skipping`);
       continue;
     }
-    await seedUser(catalogue, entry);
+    await seedUser(catalogue, entry, o);
     created++;
     console.log(`[seed] created ${entry.email}`);
   }

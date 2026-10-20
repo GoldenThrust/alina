@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchPreferences, savePreferences } from "../data/preferences";
 import { usePreferenceStore } from "../stores";
-
-export type PreferencesStatus = "loading" | "ready" | "saving" | "loadError" | "saveError";
+import { isAbort } from "../utils/signal";
 
 const SAVE_DELAY_MS = 600;
-
-const isAbort = (e: unknown) => e instanceof DOMException && e.name === "AbortError";
 
 // Only the editable fields, so id/userId never count as a change
 const serialize = (p: Preference | null) =>
@@ -14,7 +11,7 @@ const serialize = (p: Preference | null) =>
 
 export function usePreferences() {
   const preferences = usePreferenceStore((s) => s.preferences);
-  const [status, setStatus] = useState<PreferencesStatus>(preferences ? "ready" : "loading");
+  const [status, setStatus] = useState<Status>(preferences ? "ready" : "loading");
 
   /** Snapshot the server last confirmed. Anything different is an unsaved edit. */
   const saved = useRef(serialize(preferences));

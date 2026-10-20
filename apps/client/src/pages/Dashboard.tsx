@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import {
   AnimatePresence,
   MotionConfig,
@@ -10,10 +10,12 @@ import {
   type Variants,
 } from "motion/react";
 import {
+  AlertTriangle,
   ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
   Minus,
+  RefreshCw,
   ScanFace,
   Sparkles,
   Waves,
@@ -34,20 +36,9 @@ import {
   analysisMeta,
   getAnalysisNote,
 } from "../utils/analysis";
+import { useSkinScan } from "../hooks/useSkinScan";
+import { container, EASE, item } from "../utils/motion";
 
-/* ---------- Motion presets ---------- */
-
-const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-
-// Page-level choreography: children fade up one after another
-const container: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
-};
-const item: Variants = {
-  hidden: { opacity: 0, y: 14 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: EASE } },
-};
 
 // Lists inside a panel stagger a little faster
 const list: Variants = {
@@ -101,7 +92,15 @@ function CountUp({ value }: { value: number }) {
   return <motion.strong>{rounded}</motion.strong>;
 }
 
-function ScoreRing({ score }: { score: number | null }) {
+function ScoreRing({ score, error = false }: { score: number | null; error?: boolean }) {
+  if (error) {
+    return (
+      <div className="score-ring empty error" aria-label="Skin score unavailable">
+        <AlertTriangle size={26} />
+      </div>
+    );
+  }
+
   if (score === null) {
     return (
       <div className="score-ring empty" aria-label="No skin score yet">
@@ -139,21 +138,28 @@ function EmptyState({
   text,
   to,
   cta,
+  onRetry,
 }: {
   icon: LucideIcon;
   title: string;
   text: string;
   to?: string;
   cta?: string;
+  /** When set, the state is rendered as an error with a retry button. */
+  onRetry?: () => void;
 }) {
   return (
-    <div className="empty-panel">
+    <div className={`empty-panel ${onRetry ? "error" : ""}`} role={onRetry ? "alert" : undefined}>
       <span className="empty-panel-icon">
         <Icon size={18} />
       </span>
       <strong>{title}</strong>
       <small>{text}</small>
-      {to && cta ? (
+      {onRetry ? (
+        <button className="button button-secondary retry-button" type="button" onClick={onRetry}>
+          <RefreshCw size={13} /> Try again
+        </button>
+      ) : to && cta ? (
         <Link className="quiet-link" to={to}>
           {cta} <ArrowRight size={14} />
         </Link>
@@ -162,9 +168,76 @@ function EmptyState({
   );
 }
 
+/* ---------- Loading + error UI ---------- */
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <span className={`skeleton ${className}`} aria-hidden="true" />;
+}
+
+function TimelineSkeleton() {
+  return (
+    <div className="timeline-list" aria-hidden="true">
+      {Array.from({ length: 4 }, (_, i) => (
+        <div className="timeline-row" key={i}>
+          <Skeleton className="skeleton-dot" />
+          <Skeleton className="skeleton-date" />
+          <Skeleton className="skeleton-note" />
+          <Skeleton className="skeleton-score" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SignalsSkeleton() {
+  return (
+    <div className="attribute-list" aria-hidden="true">
+      {Array.from({ length: 4 }, (_, i) => (
+        <div key={i}>
+          <Skeleton className="skeleton-icon" />
+          <span className="skeleton-stack">
+            <Skeleton className="skeleton-line" />
+            <Skeleton className="skeleton-line short" />
+          </span>
+          <Skeleton className="skeleton-change" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StatusBanner({ onRetry }: { onRetry: () => void }) {
+  return (
+    <motion.div
+      className="status-banner-wrap"
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+    >
+      <div className="status-banner" role="alert">
+        <span className="status-banner-icon">
+          <AlertTriangle size={16} />
+        </span>
+        <p>
+          <strong>We couldn’t load your scans.</strong>
+          <small>Check your connection and try again.</small>
+        </p>
+        <button className="button button-secondary" type="button" onClick={onRetry}>
+          <RefreshCw size={14} /> Retry
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 /* ---------- Page ---------- */
 
 export default function Dashboard() {
+  const { status, retryLoad } = useSkinScan();
+  const isLoading = status === "loading";
+  const hasError = status === "loadError";
+
   const { date, period } = getDateInfo();
   const user = useAuthStore((state: AuthState) => state.user);
   const latestScan = useLatestScan();
@@ -183,6 +256,10 @@ export default function Dashboard() {
     })
     .slice(0, 5);
 
+  /** One place that decides what a data panel shows. */
+  const panelBody = (opts: { skeleton: ReactNode; error: ReactNode; empty: ReactNode; content: ReactNode; hasData: boolean }) =>
+    isLoading ? opts.skeleton : hasError ? opts.error : opts.hasData ? opts.content : opts.empty;
+
   return (
     <MotionConfig reducedMotion="user">
       <motion.div
@@ -190,7 +267,14 @@ export default function Dashboard() {
         variants={container}
         initial="hidden"
         animate="show"
+        aria-busy={isLoading}
       >
+        {isLoading ? (
+          <p className="sr-only" role="status">
+            Loading your scans…
+          </p>
+        ) : null}
+
         <motion.div variants={item}>
           <PageHeading
             eyebrow={date}
@@ -204,64 +288,101 @@ export default function Dashboard() {
           />
         </motion.div>
 
+        <AnimatePresence initial={false}>
+          {hasError ? <StatusBanner key="status-banner" onRetry={retryLoad} /> : null}
+        </AnimatePresence>
+
         <section className="overview-grid">
           <motion.div className="panel skin-summary" variants={item}>
             <div className="section-kicker">
-              <span className="status-dot" /> YOUR SKIN TODAY
+              <span className={`status-dot ${hasError ? "error" : isLoading ? "loading" : ""}`} /> YOUR SKIN TODAY
             </div>
 
             <div className="summary-main">
-              {/* Crossfades when a new scan arrives */}
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={latestScan?.id ?? "empty"}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  <h2>
-                    {latestScan?.aiShortObservation ??
-                      (latestScan ? "No recent observations" : "Your first scan is waiting")}
-                  </h2>
-                  <p>
-                    {latestScan?.aiSummary ??
-                      (latestScan
-                        ? "No detailed summary available."
-                        : "Take a scan and Alina will start tracking how your skin changes over time.")}
-                  </p>
-                </motion.div>
-              </AnimatePresence>
-              <ScoreRing score={score} />
+              {isLoading ? (
+                <>
+                  <div className="summary-skeleton" aria-hidden="true">
+                    <Skeleton className="skeleton-title" />
+                    <Skeleton className="skeleton-line" />
+                    <Skeleton className="skeleton-line short" />
+                  </div>
+                  <Skeleton className="skeleton-ring" />
+                </>
+              ) : hasError ? (
+                <>
+                  <div>
+                    <h2>We couldn’t load your latest scan</h2>
+                    <p>Check your connection and try again.</p>
+                  </div>
+                  <ScoreRing score={null} error />
+                </>
+              ) : (
+                <>
+                  {/* Crossfades when a new scan arrives */}
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                      key={latestScan?.id ?? "empty"}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <h2>
+                        {latestScan?.aiShortObservation ??
+                          (latestScan ? "No recent observations" : "Your first scan is waiting")}
+                      </h2>
+                      <p>
+                        {latestScan?.aiSummary ??
+                          (latestScan
+                            ? "No detailed summary available."
+                            : "Take a scan and Alina will start tracking how your skin changes over time.")}
+                      </p>
+                    </motion.div>
+                  </AnimatePresence>
+                  <ScoreRing score={score} />
+                </>
+              )}
             </div>
 
             <div className="summary-foot">
-              <div className="summary-foot-left">
-                {delta !== null ? (
-                  <span
-                    className={`delta-pill ${delta > 0 ? "positive" : delta < 0 ? "negative" : "neutral"}`}
-                  >
-                    {delta > 0 ? (
-                      <ArrowUpRight size={14} />
-                    ) : delta < 0 ? (
-                      <ArrowDownRight size={14} />
-                    ) : (
-                      <Minus size={14} />
-                    )}
-                    {delta === 0 ? "No change" : `${Math.abs(delta).toFixed(1)} points`}
-                    <small>vs. previous scan</small>
-                  </span>
-                ) : null}
-                {latestScan ? <small className="last-scan">Last scan {timeAgo(latestScan.createdAt)}</small> : null}
-              </div>
-              {latestScan ? (
-                <Link to="/scan-result">
-                  View last result <ArrowRight size={15} />
-                </Link>
+              {isLoading ? (
+                <Skeleton className="skeleton-pill" />
+              ) : hasError ? (
+                <button className="quiet-link" type="button" onClick={retryLoad}>
+                  <RefreshCw size={13} /> Try again
+                </button>
               ) : (
-                <Link to="/scan">
-                  Start your first scan <ArrowRight size={15} />
-                </Link>
+                <>
+                  <div className="summary-foot-left">
+                    {delta !== null ? (
+                      <span
+                        className={`delta-pill ${delta > 0 ? "positive" : delta < 0 ? "negative" : "neutral"}`}
+                      >
+                        {delta > 0 ? (
+                          <ArrowUpRight size={14} />
+                        ) : delta < 0 ? (
+                          <ArrowDownRight size={14} />
+                        ) : (
+                          <Minus size={14} />
+                        )}
+                        {delta === 0 ? "No change" : `${Math.abs(delta).toFixed(1)} points`}
+                        <small>vs. previous scan</small>
+                      </span>
+                    ) : null}
+                    {latestScan ? (
+                      <small className="last-scan">Last scan {timeAgo(latestScan.createdAt)}</small>
+                    ) : null}
+                  </div>
+                  {latestScan ? (
+                    <Link to="/scan-result">
+                      View last result <ArrowRight size={15} />
+                    </Link>
+                  ) : (
+                    <Link to="/scan">
+                      Start your first scan <ArrowRight size={15} />
+                    </Link>
+                  )}
+                </>
               )}
             </div>
           </motion.div>
@@ -330,33 +451,46 @@ export default function Dashboard() {
               </Link>
             </div>
 
-            {timeline.length > 0 ? (
-              <motion.div className="timeline-list" variants={list}>
-                {timeline.map((scan, index) => (
-                  <motion.div className="timeline-row" key={scan.id} variants={row}>
-                    <span className={`timeline-marker ${index === 0 ? "current" : ""}`} />
-                    <span className="timeline-date">
-                      <strong>{scan.createdAt.toLocaleDateString("en-US", { weekday: "long" })}</strong>
-                      <small>{scan.createdAt.toLocaleString("en-US", { month: "short", day: "numeric" })}</small>
-                    </span>
-                    <span className="timeline-note">{scan.aiShortSummary}</span>
-                    <span
-                      className={`timeline-score ${scan.score != null ? `tone-${scoreTone(scan.score)}` : ""}`}
-                    >
-                      {scan.score ?? "–"}
-                    </span>
-                  </motion.div>
-                ))}
-              </motion.div>
-            ) : (
-              <EmptyState
-                icon={ScanFace}
-                title="No check-ins yet"
-                text="Your scans will show up here as a timeline."
-                to="/scan"
-                cta="Start a scan"
-              />
-            )}
+            {panelBody({
+              hasData: timeline.length > 0,
+              skeleton: <TimelineSkeleton />,
+              error: (
+                <EmptyState
+                  icon={AlertTriangle}
+                  title="Couldn’t load your check-ins"
+                  text="Something went wrong while fetching your scans."
+                  onRetry={retryLoad}
+                />
+              ),
+              empty: (
+                <EmptyState
+                  icon={ScanFace}
+                  title="No check-ins yet"
+                  text="Your scans will show up here as a timeline."
+                  to="/scan"
+                  cta="Start a scan"
+                />
+              ),
+              content: (
+                <motion.div className="timeline-list" variants={list}>
+                  {timeline.map((scan, index) => (
+                    <motion.div className="timeline-row" key={scan.id} variants={row}>
+                      <span className={`timeline-marker ${index === 0 ? "current" : ""}`} />
+                      <span className="timeline-date">
+                        <strong>{scan.createdAt.toLocaleDateString("en-US", { weekday: "long" })}</strong>
+                        <small>{scan.createdAt.toLocaleString("en-US", { month: "short", day: "numeric" })}</small>
+                      </span>
+                      <span className="timeline-note">{scan.aiShortSummary}</span>
+                      <span
+                        className={`timeline-score ${scan.score != null ? `tone-${scoreTone(scan.score)}` : ""}`}
+                      >
+                        {scan.score ?? "–"}
+                      </span>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              ),
+            })}
           </motion.div>
 
           <motion.div className="panel attribute-panel" variants={item}>
@@ -370,49 +504,62 @@ export default function Dashboard() {
               </Link>
             </div>
 
-            {topItems.length > 0 ? (
-              <motion.div className="attribute-list" variants={list}>
-                {topItems.map((entry) => {
-                  const [itemLabel] = entry.key.split(".");
-                  const meta = analysisMeta[itemLabel];
-                  if (!meta) return null;
+            {panelBody({
+              hasData: topItems.length > 0,
+              skeleton: <SignalsSkeleton />,
+              error: (
+                <EmptyState
+                  icon={AlertTriangle}
+                  title="Couldn’t load your signals"
+                  text="We’ll show what changed as soon as your scans load."
+                  onRetry={retryLoad}
+                />
+              ),
+              empty: (
+                <EmptyState
+                  icon={Waves}
+                  title="Nothing in focus yet"
+                  text="Complete two scans and Alina will highlight what changed."
+                />
+              ),
+              content: (
+                <motion.div className="attribute-list" variants={list}>
+                  {topItems.map((entry) => {
+                    const [itemLabel] = entry.key.split(".");
+                    const meta = analysisMeta[itemLabel];
+                    if (!meta) return null;
 
-                  const direction = ANALYSIS_DIRECTION[itemLabel];
-                  const isPositive = entry.value > 0;
-                  const isNegative = entry.value < 0;
-                  const isImprovement =
-                    (direction === "higher" && isPositive) || (direction === "lower" && isNegative);
-                  const Icon = meta.icon;
+                    const direction = ANALYSIS_DIRECTION[itemLabel];
+                    const isPositive = entry.value > 0;
+                    const isNegative = entry.value < 0;
+                    const isImprovement =
+                      (direction === "higher" && isPositive) || (direction === "lower" && isNegative);
+                    const Icon = meta.icon;
 
-                  return (
-                    <motion.div key={entry.key} variants={row}>
-                      <span className={`quick-icon ${meta.color}`}>
-                        <Icon size={16} />
-                      </span>
-                      <span>
-                        <strong>{meta.label}</strong>
-                        <small>{getAnalysisNote(entry.value, direction)}</small>
-                      </span>
-                      <span
-                        className={`attribute-change ${
-                          entry.value === 0 ? "neutral" : isImprovement ? "positive" : "negative"
-                        }`}
-                      >
-                        {isPositive && <ArrowUpRight size={14} />}
-                        {isNegative && <ArrowDownRight size={14} />}
-                        {Math.abs(entry.value)}%
-                      </span>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
-            ) : (
-              <EmptyState
-                icon={Waves}
-                title="Nothing in focus yet"
-                text="Complete two scans and Alina will highlight what changed."
-              />
-            )}
+                    return (
+                      <motion.div key={entry.key} variants={row}>
+                        <span className={`quick-icon ${meta.color}`}>
+                          <Icon size={16} />
+                        </span>
+                        <span>
+                          <strong>{meta.label}</strong>
+                          <small>{getAnalysisNote(entry.value, direction)}</small>
+                        </span>
+                        <span
+                          className={`attribute-change ${
+                            entry.value === 0 ? "neutral" : isImprovement ? "positive" : "negative"
+                          }`}
+                        >
+                          {isPositive && <ArrowUpRight size={14} />}
+                          {isNegative && <ArrowDownRight size={14} />}
+                          {Math.abs(entry.value).toPrecision(3)}%
+                        </span>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              ),
+            })}
           </motion.div>
         </section>
       </motion.div>

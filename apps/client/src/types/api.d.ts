@@ -107,3 +107,4 @@ type CreateRecommendationBody = {
 };
 type UpdateRecommendationBody = Partial<CreateRecommendationBody>;
  
+type Status = "loading" | "ready" | "saving" | "loadError" | "saveError";

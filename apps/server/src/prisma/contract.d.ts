@@ -18,7 +18,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'0ff392a59eb304ea2f2ccdaa312f400da7bb17c55cc51f150c68d18a63c461ba'>;
+  StorageHashBase<'d4ad8aad93837154dd00627fcacbe63eb55cb43e2fd9b4979272b6b21df1cbea'>;
 export type ExecutionHash =
   ExecutionHashBase<'dc1ac6e4db2ee326f04a55c1c0aa0d987b1dc883145cc25cd6bba35f22cc906d'>;
 export type ProfileHash =
@@ -334,6 +334,7 @@ export type FieldOutputTypes = {
     readonly SkinAnalysis: {
       readonly acne: CodecTypes['pg/float8@1']['output'] | null;
       readonly ageSpot: CodecTypes['pg/float8@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly darkCircle: CodecTypes['pg/float8@1']['output'] | null;
       readonly droopyLowerEyelid: CodecTypes['pg/float8@1']['output'] | null;
       readonly droopyUpperEyelid: CodecTypes['pg/float8@1']['output'] | null;
@@ -494,6 +495,7 @@ export type FieldInputTypes = {
     readonly SkinAnalysis: {
       readonly acne: CodecTypes['pg/float8@1']['input'] | null;
       readonly ageSpot: CodecTypes['pg/float8@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly darkCircle: CodecTypes['pg/float8@1']['input'] | null;
       readonly droopyLowerEyelid: CodecTypes['pg/float8@1']['input'] | null;
       readonly droopyUpperEyelid: CodecTypes['pg/float8@1']['input'] | null;
@@ -654,6 +656,7 @@ export type StorageColumnTypes = {
     readonly SkinAnalysis: {
       readonly acne: CodecTypes['pg/float8@1']['output'] | null;
       readonly ageSpot: CodecTypes['pg/float8@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly darkCircle: CodecTypes['pg/float8@1']['output'] | null;
       readonly droopyLowerEyelid: CodecTypes['pg/float8@1']['output'] | null;
       readonly droopyUpperEyelid: CodecTypes['pg/float8@1']['output'] | null;
@@ -814,6 +817,7 @@ export type StorageColumnInputTypes = {
     readonly SkinAnalysis: {
       readonly acne: CodecTypes['pg/float8@1']['input'] | null;
       readonly ageSpot: CodecTypes['pg/float8@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly darkCircle: CodecTypes['pg/float8@1']['input'] | null;
       readonly droopyLowerEyelid: CodecTypes['pg/float8@1']['input'] | null;
       readonly droopyUpperEyelid: CodecTypes['pg/float8@1']['input'] | null;
@@ -1000,6 +1004,7 @@ export namespace Models {
   export type public_SkinAnalysis = {
     acne: CodecTypes['pg/float8@1']['output'] | null;
     ageSpot: CodecTypes['pg/float8@1']['output'] | null;
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     darkCircle: CodecTypes['pg/float8@1']['output'] | null;
     droopyLowerEyelid: CodecTypes['pg/float8@1']['output'] | null;
     droopyUpperEyelid: CodecTypes['pg/float8@1']['output'] | null;
@@ -1930,6 +1935,13 @@ type ContractBase = Omit<
                   readonly dataType: 'pg/float8';
                   readonly codecId: 'pg/float8@1';
                   readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly createdAt: {
+                  readonly dataType: 'pg/timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                   readonly many: false;
                 };
                 readonly darkCircle: {
@@ -3123,6 +3135,13 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
               };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
               readonly darkCircle: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
@@ -3208,6 +3227,7 @@ type ContractBase = Omit<
               readonly fields: {
                 readonly acne: { readonly column: 'acne' };
                 readonly ageSpot: { readonly column: 'ageSpot' };
+                readonly createdAt: { readonly column: 'createdAt' };
                 readonly darkCircle: { readonly column: 'darkCircle' };
                 readonly droopyLowerEyelid: { readonly column: 'droopyLowerEyelid' };
                 readonly droopyUpperEyelid: { readonly column: 'droopyUpperEyelid' };

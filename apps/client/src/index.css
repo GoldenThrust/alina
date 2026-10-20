@@ -4221,3 +4221,342 @@ select:focus-visible {
 .empty-panel .quiet-link {
   margin-top: 6px;
 }
+
+/* ---- Dashboard status UI ---- */
+
+/* Skeletons */
+.skeleton {
+  display: block;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #f1f1f6 25%, #f8f8fb 50%, #f1f1f6 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s infinite linear;
+}
+@keyframes skeleton-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.skeleton-line {
+  height: 10px;
+  width: 100%;
+}
+.skeleton-line.short {
+  width: 62%;
+}
+.skeleton-title {
+  height: 18px;
+  width: min(340px, 80%);
+}
+.skeleton-ring {
+  width: 98px;
+  height: 98px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+.skeleton-pill {
+  width: 170px;
+  height: 24px;
+  border-radius: 999px;
+}
+.summary-skeleton {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 500px;
+}
+.skeleton-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.skeleton-date {
+  width: 60px;
+  height: 22px;
+}
+.skeleton-note {
+  width: 100%;
+  height: 10px;
+}
+.skeleton-score {
+  width: 33px;
+  height: 22px;
+  border-radius: 4px;
+}
+.skeleton-icon {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+}
+.skeleton-stack {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+}
+.skeleton-change {
+  width: 34px;
+  height: 12px;
+}
+
+/* Status dot in the summary kicker */
+.status-dot.loading {
+  background: #cbb87a;
+  animation: dot-pulse 1.2s ease-in-out infinite;
+}
+.status-dot.error {
+  background: #dc4c4c;
+}
+@keyframes dot-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Error banner (the wrapper animates height, so the margin lives on the inner element) */
+.status-banner-wrap {
+  overflow: hidden;
+}
+.status-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid #f1d3d9;
+  border-radius: 6px;
+  background: var(--rose-soft);
+  color: #8f3a56;
+}
+.status-banner-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(197, 95, 131, 0.14);
+  color: var(--rose);
+}
+.status-banner p {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+}
+.status-banner strong {
+  font-size: 12px;
+}
+.status-banner small {
+  color: #a8627c;
+  font-size: 10px;
+}
+.status-banner .button {
+  min-height: 32px;
+  font-size: 11px;
+}
+
+/* Error variants of existing pieces */
+.score-ring.empty.error {
+  border-color: #f1c4cf;
+  color: var(--rose);
+}
+.empty-panel.error {
+  border-color: #f1d3d9;
+  background: #fffafb;
+}
+.empty-panel.error .empty-panel-icon {
+  background: var(--rose-soft);
+  color: var(--rose);
+}
+.retry-button {
+  min-height: 32px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+@media (max-width: 520px) {
+  .status-banner {
+    flex-wrap: wrap;
+  }
+  .status-banner .button {
+    width: 100%;
+  }
+  .skeleton-ring {
+    width: 77px;
+    height: 77px;
+  }
+}
+
+/* ---- Progress page ---- */
+
+.progress-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.stat-card > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.stat-card strong {
+  color: #33374a;
+  font:
+    600 22px/1.1 "Manrope",
+    sans-serif;
+}
+.stat-label {
+  color: #85899a;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.stat-hint {
+  color: #a0a3b0;
+  font-size: 9px;
+}
+.stat-empty {
+  color: #c4c6d1 !important;
+}
+.skeleton-stat {
+  width: 56px;
+  height: 22px;
+}
+.quick-icon.slate {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.history-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: #7b8092;
+  font-size: 10px;
+}
+
+/* Picker */
+.period-hint {
+  margin: 0;
+  color: #9a9eac;
+  font-size: 11px;
+}
+
+/* Movement filters */
+.movement-filters {
+  display: flex;
+  gap: 4px;
+  margin-top: 12px;
+}
+.filter-btn {
+  position: relative;
+  min-height: 29px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #85899a;
+  font-size: 10px;
+  cursor: pointer;
+}
+.filter-btn.selected {
+  color: var(--accent);
+  font-weight: 600;
+}
+.filter-pill {
+  position: absolute;
+  inset: 0;
+  border: 1px solid #e7e2fc;
+  border-radius: 5px;
+  background: #f4f1ff;
+}
+.filter-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.filter-label i {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(104, 73, 232, 0.1);
+  font-size: 8px;
+  font-style: normal;
+}
+
+/* Movement rows: a small magnitude bar before the percentage */
+.movement-bar {
+  width: 64px;
+  height: 5px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f0f1f5;
+}
+.movement-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #aab0c0;
+}
+.movement-bar i.positive {
+  background: var(--positive);
+}
+.movement-bar i.negative {
+  background: var(--rose);
+}
+.movement-list .attribute-change {
+  min-width: 52px;
+  justify-content: flex-end;
+}
+
+/* Empty journey */
+.progress-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 44px 20px;
+  text-align: center;
+}
+.progress-empty h2 {
+  margin: 4px 0 0;
+  color: #33374a;
+  font:
+    600 18px "Manrope",
+    sans-serif;
+}
+.progress-empty p {
+  max-width: 340px;
+  margin: 0 0 8px;
+  color: #85899a;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .progress-stats {
+    grid-template-columns: 1fr;
+  }
+  .movement-bar {
+    display: none;
+  }
+}

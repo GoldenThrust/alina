@@ -25,6 +25,7 @@ interface ScanState {
   scans: Entities<SkinScan>;
   /** Scan the user is currently viewing. */
   selectedScanId: string | null;
+  initialized: boolean;
 
   setScans: (scans: SkinScan[]) => void;
   upsertScan: (scan: SkinScan) => void;
@@ -40,6 +41,7 @@ interface ScanState {
 export const useScanStore = create<ScanState>()((set) => ({
   scans: emptyEntities(),
   selectedScanId: null,
+  initialized: false,
 
   setScans: (scans) => set({ scans: setAll(scans) }),
   upsertScan: (scan) => set((s) => ({ scans: upsertOne(s.scans, scan) })),
