@@ -190,8 +190,8 @@ interface Message {
   sender: Sender;
   content: string;
   createdAt: Date;
-  /** Client-only: true while an optimistic message awaits the server. */
   pending?: boolean;
+  streaming?: boolean;
 }
 
 interface Preference {

@@ -5,11 +5,12 @@ type MessagePage = {
     items: Message[]
     nextCursor: string | null;
 }
-export async function fetchMessages(options: { signal?: AbortSignal } = {}): Promise<MessagePage> {
+
+export async function fetchMessages(options: { cursor?: string; limit?: number; signal?: AbortSignal } = {}) {
     const data = await get<MessagePage>(`/messages`, options);
 
     return {
         ...data,
-        items: stringToDate<Message[]>(data.items),
+        messages: stringToDate<Message[]>(data.items),
     };
 }

@@ -82,12 +82,14 @@ export const productService = {
   async recommended(userId: string, query: ListProductsQuery) {
     const { limit = 10, cursor } = query;
 
+    const decodedCursor = cursor ? decodeCursor(cursor) : null;
+
     let rows = await ORM.Product()
       .where({ ...pick(query, PRODUCT_FIELDS), userId })
       .where((p) => p.recommendation.some({ userId }))
       .include("recommendation")
       .orderBy([(r: any) => r.createdAt.desc(), (r: any) => r.id.desc()])
-      .cursor(cursor ? decodeCursor(cursor) : {})
+      .cursor(decodedCursor ?? {})
       .limit(limit + 1)
       .all();
 

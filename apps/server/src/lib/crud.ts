@@ -96,13 +96,15 @@ export function createOwnedService(cfg: OwnedServiceConfig) {
   const { label, model, createFields, updateFields, filterFields = [] } = cfg;
 
   return {
-    async list(userId: string, query: ListQuery, include?: string, queryOptions?: Record<string, any>) {
+    async list(
+      userId: string,
+      query: ListQuery,
+      include?: string,
+      queryOptions?: Record<string, any>,
+    ) {
       const { page = 1, limit = 20, cursor } = query;
-      const q = model().where({ ...pick(query, filterFields), ...queryOptions, userId });
-
-      if (include) q.include(include);
-
-      let rows = await q
+      const rows = await (include ? model().include(include) : model())
+        .where({ ...pick(query, filterFields), ...queryOptions, userId })
         .orderBy([(r: any) => r.createdAt.desc(), (r: any) => r.id.desc()])
         .cursor(cursor ? decodeCursor(cursor) : {})
         .offset(cursor ? 0 : (page - 1) * limit)
@@ -132,6 +134,7 @@ export function createOwnedService(cfg: OwnedServiceConfig) {
     },
 
     async update(userId: string, id: string, payload: Record<string, any>) {
+      console.log("update", { userId, id, payload });
       const data = pick(payload, updateFields);
       if (Object.keys(data).length === 0) {
         throw new APIError("No valid fields to update", 400);
@@ -170,7 +173,7 @@ export function createOwnedHandlers(
       (req: any) => service.create(getUserId(req), req.body),
       201,
     ),
-    update: handle(`Failed to update ${label}`, (req: any) =>
+    update: handle(`Failed to update ${label}`, (req: any) => 
       service.update(getUserId(req), req.params.id, req.body),
     ),
     remove: handle(`Failed to delete ${label}`, (req: any) =>

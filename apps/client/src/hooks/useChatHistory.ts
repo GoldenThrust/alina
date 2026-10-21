@@ -1,8 +1,9 @@
 import { useCallback, useEffect } from "react";
-import { CHAT_PAGE_SIZE, fetchMessages } from "../data/chat";
 import { useChatStore } from "../stores/chat.store";
+import { fetchMessages } from "../services/api/message";
 
 const isAbort = (e: unknown) => e instanceof DOMException && e.name === "AbortError";
+const CHAT_PAGE_SIZE = 20;
 
 export function useChatHistory() {
   const initialized = useChatStore((s) => s.initialized);
@@ -36,7 +37,7 @@ export function useChatHistory() {
     const store = useChatStore.getState();
     store.setLoadingOlder(true);
     try {
-      const page = await fetchMessages({ before: nextCursor, limit: CHAT_PAGE_SIZE });
+      const page = await fetchMessages({ cursor: nextCursor, limit: CHAT_PAGE_SIZE });
       useChatStore.getState().applyHistoryPage(page.messages, page.nextCursor);
     } catch {
       useChatStore.getState().setError("Couldn't load earlier messages.");

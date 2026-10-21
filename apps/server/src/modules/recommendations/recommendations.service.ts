@@ -5,10 +5,7 @@ import { ORM } from "../../prisma/db";
 
 const EMAIL_TEMPLATE_PATH = path.join(import.meta.dirname, "emails");
 
-
-
-/* ===================== Recommendation ===================== */
-export const recommendationService = createOwnedService({
+const recommendationBase = createOwnedService({
   label: "Recommendation",
   model: ORM.Recommendation,
   createFields: ["type", "explanation", "scanId", "productId", "routineId"],
@@ -24,3 +21,8 @@ export const recommendationService = createOwnedService({
     return data;
   },
 });
+
+/* ===================== Recommendation ===================== */
+export const recommendationService =  {
+  ...recommendationBase
+}

@@ -44,11 +44,13 @@ export const scanService = {
 
     const [last, first] = await Promise.all([
       ORM.Scan()
+        .include("analysis")
         .where(base)
         .orderBy((r) => r.createdAt.asc())
         .first(),
 
       ORM.Scan()
+        .include("analysis")
         .where(base)
         .orderBy((r) => r.createdAt.desc())
         .first(),

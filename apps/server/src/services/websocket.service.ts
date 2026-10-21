@@ -2,12 +2,12 @@ import type { Server as HttpServer } from "http";
 import { Server, type Socket } from "socket.io";
 import { createAdapter } from "@socket.io/redis-streams-adapter";
 
-import { config } from "../config/index.ts";
 import redis from "../config/redis.ts";
 import type { FastifyInstance } from "fastify";
-import { processAI } from "../queues/ai/ai.processor.ts";
 import { allowUrls } from "../common/utils/constant.ts";
+import { AIProcessingJob } from "../queues/ai/ai.producer.ts";
 
+// const testWords = ["hello ", "world ", "this ", "is ", "a ", "test to the server ", "and it ", "is ", "working great", "so ", "far ", "and ", "I ", "am ", "happy ", "with ", "the ", "results ", "of ", "this ", "test.", "I ", "hope ", "you ", "are ", "happy ", "too.", "This ", "is ", "a ", "longer ", "test ", "to ", "see ", "if ", "the ", "server ", "can ", "handle ", "a ", "longer ", "message.", "I ", "think ", "it ", "can.", "Let's ", "see.", "What ", "do ", "you ", "think?", "I ", "think ", "it's ", "a ", "great ", "idea.", "Let's ", "do ", "it!", "I ", "am ", "excited ", "to ", "see ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.",];
 export default class Websocket {
   static io: Server;
 
@@ -40,7 +40,7 @@ export default class Websocket {
 
 
     Websocket.io.on("connection", (socket: Socket) => {
-      const user = socket.data.user;
+      const user = socket.data.user as JwtPayload;
 
       if (!user) {
         socket.disconnect(true);
@@ -48,10 +48,23 @@ export default class Websocket {
       }
 
       socket.on("message", (message) => {
-        processAI({ userId: user.id, message });
+        // const sessionId = "JohDoe";
+        // let index = 0;
+        // const userId = user.sub.toString();
+        // this.io.to(userId).emit("stream:start", { sessionId });
+        // const id = setInterval(() => {
+        //   this.io.to(userId).emit("stream:data", { sessionId, data: testWords[index] });
+        //   index = (index + 1) % testWords.length;
+
+        //   if (index === testWords.length - 1) {
+        //     clearInterval(id);
+        //     this.io.to(userId).emit("stream:end", { sessionId });
+        //   }
+        // }, 50);
+        AIProcessingJob({ userId: user.sub, input: message });
       });
 
-      socket.join(user.id.toString());
+      socket.join(user.sub.toString());
     });
   }
 

@@ -82,6 +82,8 @@ export function buildApp() {
   app.register(import("@fastify/cors"), {
     origin: allowUrls,
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    // headers: ["Content-Type", "Authorization"],
   });
 
   app.register(import("@fastify/jwt"), {

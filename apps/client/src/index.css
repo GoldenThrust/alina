@@ -4670,3 +4670,64 @@ select:focus-visible {
 .alternative-card .skeleton-line {
   margin-top: 8px;
 }
+
+
+/* ---- Chat: streaming + connection status ---- */
+
+.conn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.conn-status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #aaaebe;
+}
+.conn-status.online i {
+  background: #41aa83;
+}
+.conn-status.offline i {
+  background: #d9a437;
+  animation: chat-dot-pulse 1.2s ease-in-out infinite;
+}
+@keyframes chat-dot-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Streamed text keeps its line breaks, and long tokens can't overflow the bubble */
+.chat-message p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Blinking caret at the end of the reply while it streams */
+.chat-message.streaming p::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 12px;
+  margin-left: 3px;
+  vertical-align: -1px;
+  border-radius: 1px;
+  background: var(--accent);
+  animation: caret-blink 1s steps(2, start) infinite;
+}
+@keyframes caret-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.composer-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 8px 0 0;
+  color: #b0852c;
+  font-size: 9px;
+}

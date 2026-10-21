@@ -1,14 +1,39 @@
-import { ArrowUp, CircleHelp, Loader2 } from "lucide-react";
-import type { SubmitEventHandler } from "react";
+import { useRef, type SubmitEventHandler } from "react";
+import { AnimatePresence, MotionConfig, motion, type Variants } from "motion/react";
+import { ArrowDown, ArrowUp, CircleHelp, Loader2, Sparkles, WifiOff } from "lucide-react";
 import PageHeading from "../components/PageHeading";
+import { useSocket } from "../context/SocketContext"; // wherever your provider lives
 import { useChatHistory } from "../hooks/useChatHistory";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useSendMessage } from "../hooks/useSendMessage";
-import { useChatStore, useConversation } from "../stores/chat.store";
 import { useAuthStore } from "../stores";
+import { useChatStore, useConversation } from "../stores/chat.store";
+import { EASE, container, item as fadeUp } from "../utils/motion";
+
+/* ---------- Motion presets ---------- */
+
+const slideIn: Variants = {
+  hidden: { opacity: 0, x: 18 },
+  show: { opacity: 1, x: 0, transition: { duration: 0.5, ease: EASE } },
+};
+const stagger: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.3 } },
+};
+const pop: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE } },
+};
+
+const SUGGESTIONS = [
+  "What changed in my last check-in?",
+  "Why does consistency matter?",
+  "What should I keep simple?",
+];
 
 export default function Chat() {
   const user = useAuthStore((state) => state.user);
+  const { connected } = useSocket();
   const messages = useConversation();
   const draft = useChatStore((s) => s.draft);
   const setDraft = useChatStore((s) => s.setDraft);
@@ -17,145 +42,306 @@ export default function Chat() {
 
   const { initialized, hasMore, loadingOlder, loadOlder, retry } = useChatHistory();
   const send = useSendMessage(user?.id ?? "You");
-  const { listRef, onScroll } = useChatScroll({ messages, hasMore, loadingOlder, error, loadOlder });
+  const { listRef, onScroll, atBottom, scrollToBottom } = useChatScroll({
+    messages,
+    hasMore,
+    loadingOlder,
+    error,
+    loadOlder,
+  });
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // While a reply streams, the empty bubble is hidden and the typing dots stand in for it
+  const last = messages.at(-1);
+  const isStreaming = !!last?.streaming;
+  const visibleMessages = last?.streaming && !last.content ? messages.slice(0, -1) : messages;
+  const showTyping = awaitingReply && !(last && last.sender !== "USER" && last.content.length > 0);
+
+  const canSend = !!draft.trim() && !awaitingReply && connected;
+  const statusText = !connected ? "Connecting…" : awaitingReply ? "Typing…" : "Online";
 
   const sendMessage: SubmitEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
-    void send(draft);
+    send(draft);
+  };
+
+  const pickSuggestion = (question: string) => {
+    setDraft(question);
+    inputRef.current?.focus();
   };
 
   return (
-    <div className="page-content chat-page">
-      <PageHeading
-        eyebrow="A space to ask"
-        title="Ask Alina"
-        description="Talk through a sample skin snapshot and the questions it brings up."
-      />
-      <div className="chat-layout">
-        <section className="panel conversation-panel">
-          <div className="conversation-context">
-            <span className="alina-avatar">
-              <img src="alina.svg" alt="Alina" className="w-5!" />
-            </span>
-            <span>
-              <strong>Alina</strong>
-            </span>
-            <CircleHelp size={17} />
-          </div>
+    <MotionConfig reducedMotion="user">
+      <motion.div className="page-content chat-page" variants={container} initial="hidden" animate="show">
+        <motion.div variants={fadeUp}>
+          <PageHeading
+            eyebrow="A space to ask"
+            title="Ask Alina"
+            description="Talk through a sample skin snapshot and the questions it brings up."
+          />
+        </motion.div>
 
-          <div className="message-list-wrap">
-            {loadingOlder ? (
-              <div className="message-list-status" role="status">
-                <Loader2 size={13} className="spin" /> Loading earlier messages…
-              </div>
-            ) : null}
-
-            <div className="message-list" ref={listRef} onScroll={onScroll} aria-live="polite">
-              {!initialized && !error ? (
-                <div className="message-list-placeholder">
-                  <Loader2 size={18} className="spin" />
-                </div>
-              ) : null}
-
-              {!initialized && error ? (
-                <div className="message-list-placeholder">
-                  <p>{error}</p>
-                  <button className="button button-secondary" type="button" onClick={retry}>
-                    Try again
-                  </button>
-                </div>
-              ) : null}
-
-              {initialized && messages.length === 0 ? (
-                <p className="message-list-start">No messages yet. Ask Alina something to get started.</p>
-              ) : null}
-
-              {initialized && !hasMore && messages.length > 0 ? (
-                <p className="message-list-start">Beginning of your conversation</p>
-              ) : null}
-
-              {messages.map((message) => {
-                const fromUser = message.sender === "USER";
-                return (
-                  <div
-                    className={`chat-message ${fromUser ? "you" : "alina"}${message.pending ? " pending" : ""}`}
-                    key={message.id}
-                  >
-                    {!fromUser ? (
-                      <span className="message-avatar">
-                        <img src="alina.svg" alt="Alina" className="w-3!" />
-                      </span>
-                    ) : null}
-                    <p>{message.content}</p>
-                  </div>
-                );
-              })}
-
-              {awaitingReply ? (
-                <div className="chat-message alina" aria-label="Alina is typing">
-                  <span className="message-avatar">
-                    <img src="alina.svg" alt="" className="w-3!" />
-                  </span>
-                  <p className="typing">
-                    <i />
-                    <i />
-                    <i />
-                  </p>
-                </div>
-              ) : null}
+        <div className="chat-layout">
+          <motion.section className="panel conversation-panel" variants={fadeUp}>
+            <div className="conversation-context">
+              {/* Breathes while Alina is thinking or replying */}
+              <motion.span
+                className="alina-avatar"
+                animate={awaitingReply ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+                transition={
+                  awaitingReply ? { duration: 1.2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }
+                }
+              >
+                <img src="alina.svg" alt="Alina" className="w-5!" />
+              </motion.span>
+              <span>
+                <strong>Alina</strong>
+                <small className={`conn-status ${connected ? "online" : "offline"}`}>
+                  <i />
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={statusText}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {statusText}
+                    </motion.span>
+                  </AnimatePresence>
+                </small>
+              </span>
+              <CircleHelp size={17} />
             </div>
-          </div>
 
-          {initialized && error ? (
-            <p className="form-message form-error" role="alert">
-              {error}
+            <div className="message-list-wrap">
+              <AnimatePresence>
+                {loadingOlder ? (
+                  <motion.div
+                    key="loading-older"
+                    className="message-list-status"
+                    role="status"
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Loader2 size={13} className="spin" /> Loading earlier messages…
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+
+              {/* Announcing every streamed chunk would be noisy, so live updates pause while streaming */}
+              <div
+                className="message-list"
+                ref={listRef}
+                onScroll={onScroll}
+                aria-live={isStreaming ? "off" : "polite"}
+              >
+                {!initialized && !error ? (
+                  <div className="message-list-placeholder">
+                    <Loader2 size={18} className="spin" />
+                  </div>
+                ) : null}
+
+                {!initialized && error ? (
+                  <div className="message-list-placeholder">
+                    <p>{error}</p>
+                    <button className="button button-secondary" type="button" onClick={retry}>
+                      Try again
+                    </button>
+                  </div>
+                ) : null}
+
+                {initialized && visibleMessages.length === 0 && !showTyping ? (
+                  <motion.div
+                    className="chat-empty"
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, ease: EASE }}
+                  >
+                    <span className="chat-empty-icon">
+                      <Sparkles size={18} />
+                    </span>
+                    <strong>Start the conversation</strong>
+                    <small>Ask Alina about your latest check-in, or pick a question from the side.</small>
+                  </motion.div>
+                ) : null}
+
+                {initialized && !hasMore && visibleMessages.length > 0 ? (
+                  <p className="message-list-start">Beginning of your conversation</p>
+                ) : null}
+
+                {visibleMessages.map((message) => {
+                  const fromUser = message.sender === "USER";
+                  const live = !!message.streaming;
+                  // Only messages created in this session animate in; loaded history appears instantly
+                  const isNew = message.pending || live;
+
+                  return (
+                    <motion.div
+                      className={`chat-message ${fromUser ? "you" : "alina"}${message.pending ? " pending" : ""}${live ? " streaming" : ""}`}
+                      key={message.id}
+                      style={{ transformOrigin: fromUser ? "100% 100%" : "0% 100%" }}
+                      initial={isNew ? { opacity: 0, y: 10, x: fromUser ? 14 : -14, scale: 0.97 } : false}
+                      animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    >
+                      {!fromUser ? (
+                        <span className="message-avatar">
+                          <img src="alina.svg" alt="Alina" className="w-3!" />
+                        </span>
+                      ) : null}
+                      <p>{message.content}</p>
+                    </motion.div>
+                  );
+                })}
+
+                <AnimatePresence>
+                  {showTyping ? (
+                    <motion.div
+                      key="typing"
+                      className="chat-message alina"
+                      aria-label="Alina is typing"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <span className="message-avatar">
+                        <img src="alina.svg" alt="" className="w-3!" />
+                      </span>
+                      <p className="typing">
+                        {[0, 1, 2].map((i) => (
+                          <motion.span
+                            key={i}
+                            className="typing-dot"
+                            animate={{ y: [0, -4, 0], opacity: [0.45, 1, 0.45] }}
+                            transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+                          />
+                        ))}
+                      </p>
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+              </div>
+
+              {/* Appears when the user has scrolled up */}
+              <div className="jump-wrap">
+                <AnimatePresence>
+                  {!atBottom && visibleMessages.length > 0 ? (
+                    <motion.button
+                      key="jump"
+                      className="jump-button"
+                      type="button"
+                      onClick={scrollToBottom}
+                      initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ArrowDown size={14} /> {isStreaming ? "Alina is replying" : "Jump to latest"}
+                    </motion.button>
+                  ) : null}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            <AnimatePresence initial={false}>
+              {initialized && error ? (
+                <motion.div
+                  key="error"
+                  className="chat-notice"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                >
+                  <p className="form-message form-error" role="alert">
+                    {error}
+                  </p>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            <form className="chat-composer" onSubmit={sendMessage}>
+              <label className="sr-only" htmlFor="chat-message">
+                Your message
+              </label>
+              <input
+                id="chat-message"
+                ref={inputRef}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder="Ask about your sample results…"
+              />
+              <motion.button
+                className="send-button"
+                type="submit"
+                aria-label="Send message"
+                disabled={!canSend}
+                whileHover={canSend ? { scale: 1.07 } : undefined}
+                whileTap={canSend ? { scale: 0.9 } : undefined}
+              >
+                {/* Arrow morphs into a spinner while a reply is on its way */}
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={awaitingReply ? "wait" : "send"}
+                    className="send-icon"
+                    initial={{ opacity: 0, scale: 0.5, rotate: -45 }}
+                    animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                    exit={{ opacity: 0, scale: 0.5, rotate: 45 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    {awaitingReply ? <Loader2 size={16} className="spin" /> : <ArrowUp size={17} />}
+                  </motion.span>
+                </AnimatePresence>
+              </motion.button>
+            </form>
+
+            <AnimatePresence initial={false}>
+              {!connected ? (
+                <motion.p
+                  key="offline"
+                  className="composer-hint"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                >
+                  <WifiOff size={12} /> Reconnecting… you can send once you’re back online.
+                </motion.p>
+              ) : null}
+            </AnimatePresence>
+            <p className="chat-disclaimer">
+              Alina shares general skincare information, not medical advice.
             </p>
-          ) : null}
+          </motion.section>
 
-          <form className="chat-composer" onSubmit={sendMessage}>
-            <label className="sr-only" htmlFor="chat-message">
-              Your message
-            </label>
-            <input
-              id="chat-message"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder="Ask about your sample results…"
-            />
-            <button
-              className="send-button"
-              type="submit"
-              aria-label="Send message"
-              disabled={!draft.trim() || awaitingReply}
-            >
-              <ArrowUp size={17} />
-            </button>
-          </form>
-          <p className="chat-disclaimer">
-            Alina shares general skincare information, not medical advice.
-          </p>
-        </section>
-
-        <aside className="panel chat-suggestions">
-          <p className="page-eyebrow">SAMPLE QUESTIONS</p>
-          <h2>Where would you like to start?</h2>
-          {[
-            "What changed in my last check-in?",
-            "Why does consistency matter?",
-            "What should I keep simple?",
-          ].map((question) => (
-            <button
-              className="suggestion-button"
-              type="button"
-              key={question}
-              onClick={() => setDraft(question)}
-            >
-              {question}
-              <span>↗</span>
-            </button>
-          ))}
-        </aside>
-      </div>
-    </div>
+          <motion.aside className="panel chat-suggestions" variants={slideIn}>
+            <p className="page-eyebrow">SAMPLE QUESTIONS</p>
+            <h2>Where would you like to start?</h2>
+            <motion.div variants={stagger}>
+              {SUGGESTIONS.map((question) => (
+                <motion.button
+                  className="suggestion-button"
+                  type="button"
+                  key={question}
+                  variants={pop}
+                  whileHover={{ x: 3 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => pickSuggestion(question)}
+                >
+                  {question}
+                  <span>↗</span>
+                </motion.button>
+              ))}
+            </motion.div>
+          </motion.aside>
+        </div>
+      </motion.div>
+    </MotionConfig>
   );
 }

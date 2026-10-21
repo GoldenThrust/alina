@@ -1,5 +1,5 @@
 
-import { get, post } from "./api";
+import { get, post, put } from "./api";
 type RecommendationDTO = Omit<Recommendation, "createdAt"> & { createdAt: string };
 
 type ListResponse = { items: RecommendationDTO[]; nextCursor: string | null };
@@ -55,6 +55,6 @@ export async function getRecommendations(
 
 /** Adds a recommendation's product to the user's routine. Returns the updated recommendation if the server sends one. */
 export async function addRecommendationToRoutine(recommendationId: string): Promise<Recommendation | null> {
-  const dto = await post<RecommendationDTO | null>("/routines/recommendations", { recommendationId });
+  const dto = await put<RecommendationDTO | null>(`/recommendations/${recommendationId}`, { accepted: true });
   return dto ? { ...dto, createdAt: new Date(dto.createdAt) } : null;
 }
