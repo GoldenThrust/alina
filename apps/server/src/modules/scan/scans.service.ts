@@ -25,6 +25,7 @@ export const scanService = {
       .include("analysis")
       .where({
         userId,
+        status: "COMPLETED",
         ...(startDate ? { createdAt: { gte: startDate } } : {}),
       })
       .orderBy([(r: any) => r.createdAt.desc(), (r: any) => r.id.desc()])
@@ -34,6 +35,26 @@ export const scanService = {
       items: rows,
       nextCursor: encodeCursor(rows[rows.length - 1]) || null,
     };
+  },
+  async getFirstAndLastScan(userId: string) {
+    const base: { userId: string; status: "COMPLETED" } = {
+      userId,
+      status: "COMPLETED",
+    };
+
+    const [last, first] = await Promise.all([
+      ORM.Scan()
+        .where(base)
+        .orderBy((r) => r.createdAt.asc())
+        .first(),
+
+      ORM.Scan()
+        .where(base)
+        .orderBy((r) => r.createdAt.desc())
+        .first(),
+    ]);
+
+    return { first, last };
   },
   async create(userId: string, payload: { image: string }) {
     const user = await ORM.User()

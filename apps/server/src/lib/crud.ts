@@ -96,9 +96,9 @@ export function createOwnedService(cfg: OwnedServiceConfig) {
   const { label, model, createFields, updateFields, filterFields = [] } = cfg;
 
   return {
-    async list(userId: string, query: ListQuery, include?: string) {
+    async list(userId: string, query: ListQuery, include?: string, queryOptions?: Record<string, any>) {
       const { page = 1, limit = 20, cursor } = query;
-      const q = model().where({ ...pick(query, filterFields), userId });
+      const q = model().where({ ...pick(query, filterFields), ...queryOptions, userId });
 
       if (include) q.include(include);
 
@@ -156,10 +156,11 @@ export function createOwnedHandlers(
   service: OwnedService,
   label: string,
   include?: string,
+  query?: Record<string, any>,
 ) {
   return {
     list: handle(`Failed to fetch ${label}s`, (req: any) =>
-      service.list(getUserId(req), req.query, include),
+      service.list(getUserId(req), req.query, include, query),
     ),
     get: handle(`Failed to fetch ${label}`, (req: any) =>
       service.get(getUserId(req), req.params.id),

@@ -8,16 +8,21 @@ export type HistoryStatus = "idle" | "loading" | "error";
 
 const DAY_MS = 86_400_000;
 
-/** Timestamp of the oldest scan currently in the store (Infinity if none). */
+/** Timestamp of the second to the last oldest scan currently in the store (Infinity if none). */
 function oldestLoadedMs(): number {
   const { ids, byId } = useScanStore.getState().scans;
   let oldest = Infinity;
+  let prevOldest = oldest;
+
   for (const id of ids) {
     const createdAt = byId[id]?.createdAt;
     const time = createdAt ? new Date(createdAt).getTime() : NaN;
-    if (time < oldest) oldest = time;
+    if (time < oldest) {
+      prevOldest = oldest;
+      oldest = time;
+    }
   }
-  return oldest;
+  return prevOldest;
 }
 
 export function useSkinScan() {
@@ -55,12 +60,18 @@ export function useSkinScan() {
     lastRequest.current = request;
 
     // No startDate means all time, which is older than any date.
-    const requested = request.startDate ? Date.parse(request.startDate) : -Infinity;
+    const requested = request.startDate
+      ? Date.parse(request.startDate)
+      : -Infinity;
     if (Number.isNaN(requested)) return;
 
     const covered = Math.min(coveredFrom.current ?? Infinity, oldestLoadedMs());
     const coveredDay =
-      covered === -Infinity ? -Infinity : Number.isFinite(covered) ? covered - (covered % DAY_MS) : Infinity;
+      covered === -Infinity
+        ? -Infinity
+        : Number.isFinite(covered)
+          ? covered - (covered % DAY_MS)
+          : Infinity;
 
     if (requested >= coveredDay) {
       if (!historyAbort.current) setHistoryStatus("idle");
@@ -101,7 +112,10 @@ export function useSkinScan() {
   useEffect(() => () => historyAbort.current?.abort(), []);
 
   const retryLoad = useCallback(() => void load(), [load]);
-  const retryHistory = useCallback(() => void loadHistory(lastRequest.current), [loadHistory]);
+  const retryHistory = useCallback(
+    () => void loadHistory(lastRequest.current),
+    [loadHistory],
+  );
 
   return { status, historyStatus, loadHistory, retryLoad, retryHistory };
 }

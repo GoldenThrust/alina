@@ -5,10 +5,10 @@ import { useChatHistory } from "../hooks/useChatHistory";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useSendMessage } from "../hooks/useSendMessage";
 import { useChatStore, useConversation } from "../stores/chat.store";
-
-const USER_ID = "user-1"; // TODO: take this from your auth/user store
+import { useAuthStore } from "../stores";
 
 export default function Chat() {
+  const user = useAuthStore((state) => state.user);
   const messages = useConversation();
   const draft = useChatStore((s) => s.draft);
   const setDraft = useChatStore((s) => s.setDraft);
@@ -16,7 +16,7 @@ export default function Chat() {
   const error = useChatStore((s) => s.error);
 
   const { initialized, hasMore, loadingOlder, loadOlder, retry } = useChatHistory();
-  const send = useSendMessage(USER_ID);
+  const send = useSendMessage(user?.id ?? "You");
   const { listRef, onScroll } = useChatScroll({ messages, hasMore, loadingOlder, error, loadOlder });
 
   const sendMessage: SubmitEventHandler<HTMLFormElement> = (event) => {

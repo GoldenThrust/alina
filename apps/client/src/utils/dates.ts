@@ -47,3 +47,16 @@ export function getDateInfo() {
     }`,
   };
 }
+
+
+
+
+
+
+
+export function stringToDate<T extends Record<string, any>[]>(dto: T): T {
+  return dto.map((item) => {
+    item.createdAt = new Date(item.createdAt);
+    return item;
+  }) as T;
+}

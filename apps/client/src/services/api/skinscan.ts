@@ -1,22 +1,38 @@
+import { stringToDate } from "../../stores";
 import { get } from "./api";
 
-type response = { items: SkinScan[] }
+type response = { items: SkinScan[] };
 export async function getSkinScan(params?: object) {
   const response = (await get<response>("/scans", params)).items;
 
-  response.map((scan) => {
-    scan.createdAt = new Date(scan.createdAt);
-  });
+  const { first, last } = await getFirstAndLastScan(params);
 
-  return response;
+  const data = stringToDate<SkinScan[]>(response);
+
+  data.push(first);
+  data.push(last);
+  return data;
 }
 
 export async function getSkinScanHistory(params?: object) {
   const response = (await get<response>("/scans/history", params)).items;
 
-  response.map((scan) => {
-    scan.createdAt = new Date(scan.createdAt);
-  });
+  return stringToDate<SkinScan[]>(response);
+}
 
-  return response;
+export async function getFirstAndLastScan(params?: object) {
+  const response = await get<{ first: SkinScan; last: SkinScan }>(
+    "/scans/first-and-last",
+    params,
+  );
+  const firstScan = response.first;
+  const lastScan = response.last;
+
+  firstScan.createdAt = new Date(firstScan.createdAt);
+  lastScan.createdAt = new Date(lastScan.createdAt);
+
+  return {
+    first: firstScan,
+    last: lastScan,
+  };
 }
