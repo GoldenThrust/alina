@@ -12,6 +12,8 @@ import {
   type User,
 } from "../repositories";
 
+
+
 /**
  * Development seed data at load-test scale. Real-looking skincare products,
  * faker-generated people and a long history per user.
@@ -26,7 +28,7 @@ import {
  */
 
 export const SEED_DOMAIN = "alina.com";
-export const DEMO_EMAIL = `reez@${SEED_DOMAIN}`;
+export const DEMO_EMAIL = `alina@${SEED_DOMAIN}`;
 export const DEV_PASSWORD = "Password123!";
 
 /* ------------------------------ domain types ------------------------------ */
@@ -85,6 +87,8 @@ export interface SeedOptions {
   messagePairsPerUser?: number;
   /** Orders per user. Default 150. */
   ordersPerUser?: number;
+  /** Products per user. Default 100. */
+  productsPerUser?: number;
   /** How many days of history the data spans. Default 730. */
   spanDays?: number;
   /** Concurrent database writes. Keep at or below your DB pool size. Default 16. */
@@ -106,6 +110,7 @@ const DEFAULTS: ResolvedOptions = {
   ordersPerUser: 150,
   spanDays: 10730,
   concurrency: 16,
+  productsPerUser: 100,
 };
 
 /** `??` instead of spread, so an explicit `undefined` falls back to the default. */
@@ -122,6 +127,7 @@ function resolveOptions(options: SeedOptions): ResolvedOptions {
     messagePairsPerUser: options.messagePairsPerUser ?? DEFAULTS.messagePairsPerUser,
     ordersPerUser: options.ordersPerUser ?? DEFAULTS.ordersPerUser,
     spanDays: options.spanDays ?? DEFAULTS.spanDays,
+    productsPerUser: options.productsPerUser ?? DEFAULTS.productsPerUser,
     concurrency: Math.max(1, options.concurrency ?? DEFAULTS.concurrency),
   };
 }
@@ -169,8 +175,9 @@ interface ScanSpec {
   readonly analysis: AnalysisInput;
 }
 
+
 interface GeneratedProduct {
-  readonly input: NewProduct;
+  readonly input: Omit<NewProduct, "userId">;
   readonly ingredients: readonly string[];
 }
 
@@ -374,6 +381,8 @@ async function phase<T>(label: string, run: () => Promise<T>): Promise<T> {
   return result;
 }
 
+
+
 /** Random birth date for someone aged between minAge and maxAge today. */
 function randomBirthDate(minAge: number, maxAge: number): Temporal.Instant {
   const age = faker.number.int({ min: minAge, max: maxAge });
@@ -463,6 +472,13 @@ class Catalogue {
     );
     return faker.helpers.arrayElement(safe.length > 0 ? safe : options);
   }
+
+    /** All products in the category with none of the avoided ingredients. */
+  safeOf(category: ProductCategory, avoid: readonly string[] = []): Product[] {
+    return this.ofCategory(category).filter(
+      (p) => !(this.ingredients.get(p.id) ?? []).some((i) => avoid.includes(i)),
+    );
+  }
 }
 
 /* ------------------------------ purge ------------------------------ */
@@ -492,6 +508,7 @@ export async function purgeUser(
   await r.devices.deleteWhere({ userId });
   await r.oauthAccounts.deleteWhere({ userId });
   await r.sessions.deleteWhere({ userId });
+   await r.products.deleteWhere({ userId }); // new: products belong to the user.
   await r.users.delete(userId);
 }
 
@@ -638,7 +655,7 @@ function buildRoutineSpecs(
         return {
           kind,
           accepted,
-          input: { userId, title: `${label} morning routine`, accepted, steps: factories.map((make) => make(name)) },
+          input: { userId, title: `${label} morning routine`, steps: factories.map((make) => make(name)) },
         };
       }
       case "evening":
@@ -663,7 +680,6 @@ function buildRoutineSpecs(
           input: {
             userId,
             title: `${label} weekly treatment`,
-            accepted,
             steps: [
               { period: "NIGHT", title: "Exfoliate", instruction: `Twice a week, apply ${name("TREATMENT")} after cleansing. Wait 15 minutes before moisturiser.` },
             ],
@@ -671,7 +687,7 @@ function buildRoutineSpecs(
         };
       case "habit": {
         const habitStep = faker.helpers.arrayElement(HABITS);
-        return { kind, accepted, input: { userId, title: habitStep.title, accepted, steps: [habitStep] } };
+        return { kind, accepted, input: { userId, title: habitStep.title, steps: [habitStep] } };
       }
     }
   };
@@ -731,7 +747,6 @@ async function seedRoutineLogs(
 }
 
 /* ------------------------------ recommendations ------------------------------ */
-
 async function seedRecommendations(
   user: User,
   count: number,
@@ -742,10 +757,18 @@ async function seedRecommendations(
   routines: readonly SeededRoutine[],
   concurrency: number,
 ): Promise<void> {
-  const treatments = routines.filter((x) => x.kind === "treatment");
-  const habits = routines.filter((x) => x.kind === "habit");
+  // productId and routineId are unique on Recommendation, so every product
+  // and routine can be recommended at most once: draw without replacement.
+  const productPool = faker.helpers.shuffle(
+    RECOMMENDED_CATEGORIES.flatMap((c) => catalogue.safeOf(c, avoid)),
+  );
+  const routinePool = {
+    ROUTINE: faker.helpers.shuffle(routines.filter((x) => x.kind === "treatment")),
+    HABIT: faker.helpers.shuffle(routines.filter((x) => x.kind === "habit")),
+  };
 
-  const specs: RecommendationInput[] = Array.from({ length: count }, () => {
+  const specs: RecommendationInput[] = [];
+  for (let i = 0; i < count; i++) {
     const scanId = faker.helpers.arrayElement(scans).id;
     const createdAt = daysAgo(recentDay(spanDays));
     const type = faker.helpers.weightedArrayElement<RecommendationInput["type"]>([
@@ -755,8 +778,9 @@ async function seedRecommendations(
     ]);
 
     if (type === "PRODUCT") {
-      const product = catalogue.pick(faker.helpers.arrayElement(RECOMMENDED_CATEGORIES), avoid);
-      return {
+      const product = productPool.pop();
+      if (!product) continue; // pool exhausted
+      specs.push({
         userId: user.id,
         scanId,
         type,
@@ -764,10 +788,13 @@ async function seedRecommendations(
         accepted: faker.datatype.boolean(0.4),
         productId: product.id,
         createdAt,
-      };
+      });
+      continue;
     }
-    const source = type === "ROUTINE" ? treatments : habits;
-    return {
+
+    const source = routinePool[type].pop();
+    if (!source) continue; // pool exhausted
+    specs.push({
       userId: user.id,
       scanId,
       type,
@@ -776,14 +803,17 @@ async function seedRecommendations(
           ? "Gentle weekly exfoliation targets clogged pores without over-drying."
           : "Small daily habits compound with your routine over a few weeks.",
       accepted: faker.datatype.boolean(0.3),
-      routineId: faker.helpers.arrayElement(source).routine.id,
-      createdAt,
-    };
-  });
+      routineId: source.routine.id,
+      createdAt: daysAgo(recentDay(spanDays)),
+    });
+  }
+
+  if (specs.length < count) {
+    console.log(`[seed]   ${user.email}: ${specs.length}/${count} recommendations (limited by unique products/routines)`);
+  }
 
   await mapPool(specs, concurrency, (spec) => r.recommendations.create(spec));
 }
-
 /* ------------------------------ chat, account, orders ------------------------------ */
 
 async function seedChat(
@@ -878,11 +908,7 @@ async function seedOrders(
 
 /* ------------------------------ user ------------------------------ */
 
-async function seedUser(
-  catalogue: Catalogue,
-  entry: SeedPlanEntry,
-  o: ResolvedOptions,
-): Promise<User> {
+async function seedUser(entry: SeedPlanEntry, o: ResolvedOptions): Promise<User> {
   const gender: Gender = entry.gender ?? faker.helpers.arrayElement(["MALE", "FEMALE"] as const);
   const sex = gender === "MALE" ? "male" : "female";
   const firstName = faker.person.firstName(sex);
@@ -905,6 +931,16 @@ async function seedUser(
     skinType: fitzpatrick,
     skinTone,
   });
+
+
+  const generated = generateProducts(o.productsPerUser);
+  const products = await phase(`${o.productsPerUser} products`, () =>
+    mapPool(generated, o.concurrency, (g) =>
+      r.products.findOrCreate({ ...g.input, userId: user.id }),
+    ),
+  );
+  const catalogue = new Catalogue(products, generated.map((g) => g.ingredients));
+
 
   await r.preferences.upsert(user.id, {
     favoriteBrands: faker.helpers.arrayElements(catalogue.brands, { min: 1, max: 4 }),
@@ -948,20 +984,15 @@ async function seedUser(
 export async function seed(options: SeedOptions = {}): Promise<void> {
   const o = resolveOptions(options);
   console.log("Running Seeder......................");
-  console.log("seeder options", o)
+  console.log("seeder options", o);
   faker.seed(o.seed);
-
-  const generated = generateProducts(o.products);
-  const products = await phase(`${o.products} products`, () =>
-    mapPool(generated, o.concurrency, (g) => r.products.findOrCreate(g.input)),
-  );
-  const catalogue = new Catalogue(products, generated.map((g) => g.ingredients));
 
   if (o.reset) {
     const existing = await findSeedUsers();
     for (const user of existing) await purgeUser(user.id, o.concurrency);
     console.log(`[seed] removed ${existing.length} seed users`);
   }
+
 
   const plan: SeedPlanEntry[] = [
     { email: DEMO_EMAIL, fullName: "Demo User", password: true },
@@ -980,10 +1011,11 @@ export async function seed(options: SeedOptions = {}): Promise<void> {
       console.log(`[seed] ${entry.email} exists, skipping`);
       continue;
     }
-    await seedUser(catalogue, entry, o);
+    await seedUser(entry, o);   // no catalogue argument
     created++;
     console.log(`[seed] created ${entry.email}`);
   }
+
 
   console.log(
     `[seed] done: ${created} created, ${plan.length - created} skipped. Password users sign in with "${DEV_PASSWORD}" (demo: ${DEMO_EMAIL}).`,

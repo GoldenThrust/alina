@@ -26,7 +26,7 @@ import {
   useRoutineSteps,
   useStepSuggestions,
   type NewStep,
-} from "../hooks/routineHooks";
+} from "../hooks/useRoutine";
 
 const PERIOD_META: Record<RoutinePeriod, { label: string; short: string; icon: LucideIcon }> = {
   MORNING: { label: "Morning", short: "AM", icon: Sun },

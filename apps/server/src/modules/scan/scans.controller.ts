@@ -1,14 +1,12 @@
 import { fileManager } from "../../common/files/file";
-import { encodeCursor } from "../../common/utils/crypto";
 import APIError from "../../errors/APIError";
 import { createOwnedHandlers, getUserId, handle } from "../../lib/crud";
-import { ORM } from "../../prisma/db";
 import { historyQuery } from "./scans.schema";
 import * as S from "./scans.service";
 
 /* ---------- SkinScan: create needs an image upload ---------- */
 export const scanController = {
-  ...createOwnedHandlers(S.scanService as any, "scan"),
+  ...createOwnedHandlers(S.scanService as any, "scan", "analysis"),
   history: handle(
     "Failed to fetch scan history",
     async (req: any) => {
@@ -16,18 +14,7 @@ export const scanController = {
       const query = historyQuery.parse({ startDate });
       const userId = getUserId(req);
 
-      let rows = await ORM.Scan()
-        .include("analysis")
-        .where({ userId, ...(startDate ? { createdAt: { gte: query.startDate } } : {}) })
-        .orderBy([(r: any) => r.createdAt.desc(), (r: any) => r.id.desc()])
-        .all();
-
-        console.log(rows[rows.length - 1]);
-
-      return {
-        items: rows,
-        nextCursor: encodeCursor(rows[rows.length - 1]) || null,
-      };
+      return S.scanService.history(userId, query.startDate);
     },
     200,
   ),

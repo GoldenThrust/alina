@@ -4,6 +4,7 @@ import { ORM } from "../../prisma/db";
 import APIError from "../../errors/APIError";
 import type { UpsertAnalysisBody } from "./scans";
 import { YouCamAnalysis } from "../../queues/youcam/youcam.producer";
+import { encodeCursor } from "../../common/utils/crypto";
 
 const EMAIL_TEMPLATE_PATH = path.join(import.meta.dirname, "emails");
 
@@ -19,10 +20,27 @@ const scanBase = createOwnedService({
 
 export const scanService = {
   ...scanBase,
+  async history(userId: string, startDate?: Date) {
+    let rows = await ORM.Scan()
+      .include("analysis")
+      .where({
+        userId,
+        ...(startDate ? { createdAt: { gte: startDate } } : {}),
+      })
+      .orderBy([(r: any) => r.createdAt.desc(), (r: any) => r.id.desc()])
+      .all();
+
+    return {
+      items: rows,
+      nextCursor: encodeCursor(rows[rows.length - 1]) || null,
+    };
+  },
   async create(userId: string, payload: { image: string }) {
-    const user = await ORM.User().where({
-      id: userId,
-    }).first();
+    const user = await ORM.User()
+      .where({
+        id: userId,
+      })
+      .first();
 
     if (!user) {
       throw new APIError("User not found!", 401);

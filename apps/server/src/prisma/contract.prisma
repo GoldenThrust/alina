@@ -148,12 +148,11 @@ model Routine {
 
   title         String
 
-  accepted       Boolean @default(false)
-
   createdAt     DateTime @default(now())
 
   steps         RoutineStep[]
 
+  recommendation Recommendation?
 }
 
 model RoutineStep {
@@ -189,6 +188,9 @@ model Product {
 
   id              String @id @default(uuid())
 
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
   name            String
 
   brand           String
@@ -202,6 +204,10 @@ model Product {
   affiliateUrl    String?
 
   price           Float?
+
+  recommendation Recommendation?
+
+  createdAt       DateTime @default(now())
 }
 
 model Recommendation {
@@ -220,11 +226,11 @@ model Recommendation {
 
   accepted       Boolean @default(false)
 
-  productId       String?
+  productId       String?  @unique
 
   product         Product? @relation(fields:[productId], references:[id])
 
-  routineId       String?
+  routineId       String?  @unique
 
   routine         Routine? @relation(fields:[routineId], references:[id])
 

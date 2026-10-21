@@ -1,13 +1,22 @@
+import { Temporal } from "@js-temporal/polyfill";
 import crypto from "crypto";
 
-export function encodeCursor(data: any) {
-  return Buffer.from(JSON.stringify(data)).toString("base64");
+type cursorData = {
+  createdAt: string;
+  id: string;
+}
+export function encodeCursor(data: cursorData) {
+  const { createdAt, id } = data;
+  return Buffer.from(JSON.stringify({ createdAt, id })).toString("base64");
 }
 
-export function decodeCursor(cursor?: string) {
+export function decodeCursor(cursor?: string): cursorData | null {
   if (!cursor) return null;
 
-  return JSON.parse(Buffer.from(cursor, "base64").toString());
+  const data = JSON.parse(Buffer.from(cursor, "base64").toString());
+  data.createdAt = Temporal.Instant.from(data.createdAt);
+
+  return data;
 }
 
 export function encodeToken(token: string) {

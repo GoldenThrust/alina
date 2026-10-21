@@ -18,7 +18,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'d4ad8aad93837154dd00627fcacbe63eb55cb43e2fd9b4979272b6b21df1cbea'>;
+  StorageHashBase<'3ce5cda326ffcf96a61450ed5033f23d90da9704aee5c990102f08e4d651f29b'>;
 export type ExecutionHash =
   ExecutionHashBase<'dc1ac6e4db2ee326f04a55c1c0aa0d987b1dc883145cc25cd6bba35f22cc906d'>;
 export type ProfileHash =
@@ -282,11 +282,13 @@ export type FieldOutputTypes = {
       readonly brand: CodecTypes['pg/text@1']['output'];
       readonly category:
         'CLEANSER' | 'TONER' | 'SERUM' | 'MOISTURIZER' | 'SUNSCREEN' | 'TREATMENT' | 'OTHER';
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly description: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly image: CodecTypes['pg/text@1']['output'] | null;
       readonly name: CodecTypes['pg/text@1']['output'];
       readonly price: CodecTypes['pg/float8@1']['output'] | null;
+      readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly Recommendation: {
       readonly accepted: CodecTypes['pg/bool@1']['output'];
@@ -300,7 +302,6 @@ export type FieldOutputTypes = {
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly Routine: {
-      readonly accepted: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly title: CodecTypes['pg/text@1']['output'];
@@ -443,11 +444,13 @@ export type FieldInputTypes = {
       readonly brand: CodecTypes['pg/text@1']['input'];
       readonly category:
         'CLEANSER' | 'TONER' | 'SERUM' | 'MOISTURIZER' | 'SUNSCREEN' | 'TREATMENT' | 'OTHER';
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly description: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly image: CodecTypes['pg/text@1']['input'] | null;
       readonly name: CodecTypes['pg/text@1']['input'];
       readonly price: CodecTypes['pg/float8@1']['input'] | null;
+      readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly Recommendation: {
       readonly accepted: CodecTypes['pg/bool@1']['input'];
@@ -461,7 +464,6 @@ export type FieldInputTypes = {
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly Routine: {
-      readonly accepted: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly title: CodecTypes['pg/text@1']['input'];
@@ -604,11 +606,13 @@ export type StorageColumnTypes = {
       readonly brand: CodecTypes['pg/text@1']['output'];
       readonly category:
         'CLEANSER' | 'TONER' | 'SERUM' | 'MOISTURIZER' | 'SUNSCREEN' | 'TREATMENT' | 'OTHER';
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly description: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly image: CodecTypes['pg/text@1']['output'] | null;
       readonly name: CodecTypes['pg/text@1']['output'];
       readonly price: CodecTypes['pg/float8@1']['output'] | null;
+      readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly Recommendation: {
       readonly accepted: CodecTypes['pg/bool@1']['output'];
@@ -622,7 +626,6 @@ export type StorageColumnTypes = {
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly Routine: {
-      readonly accepted: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly title: CodecTypes['pg/text@1']['output'];
@@ -765,11 +768,13 @@ export type StorageColumnInputTypes = {
       readonly brand: CodecTypes['pg/text@1']['input'];
       readonly category:
         'CLEANSER' | 'TONER' | 'SERUM' | 'MOISTURIZER' | 'SUNSCREEN' | 'TREATMENT' | 'OTHER';
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly description: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly image: CodecTypes['pg/text@1']['input'] | null;
       readonly name: CodecTypes['pg/text@1']['input'];
       readonly price: CodecTypes['pg/float8@1']['input'] | null;
+      readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly Recommendation: {
       readonly accepted: CodecTypes['pg/bool@1']['input'];
@@ -783,7 +788,6 @@ export type StorageColumnInputTypes = {
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly Routine: {
-      readonly accepted: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly title: CodecTypes['pg/text@1']['input'];
@@ -939,12 +943,16 @@ export namespace Models {
     affiliateUrl: CodecTypes['pg/text@1']['output'] | null;
     brand: CodecTypes['pg/text@1']['output'];
     category: 'CLEANSER' | 'TONER' | 'SERUM' | 'MOISTURIZER' | 'SUNSCREEN' | 'TREATMENT' | 'OTHER';
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     description: CodecTypes['pg/text@1']['output'];
     id: CodecTypes['pg/text@1']['output'];
     image: CodecTypes['pg/text@1']['output'] | null;
     name: CodecTypes['pg/text@1']['output'];
     price: CodecTypes['pg/float8@1']['output'] | null;
-    readonly [RelationKeys]?: never;
+    userId: CodecTypes['pg/text@1']['output'];
+    recommendation: public_Recommendation | null;
+    user: public_User;
+    readonly [RelationKeys]?: 'recommendation' | 'user';
   };
   export type public_Recommendation = {
     accepted: CodecTypes['pg/bool@1']['output'];
@@ -962,14 +970,14 @@ export namespace Models {
     readonly [RelationKeys]?: 'product' | 'routine' | 'user';
   };
   export type public_Routine = {
-    accepted: CodecTypes['pg/bool@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     id: CodecTypes['pg/text@1']['output'];
     title: CodecTypes['pg/text@1']['output'];
     userId: CodecTypes['pg/text@1']['output'];
+    recommendation: public_Recommendation | null;
     steps: public_RoutineStep[];
     user: public_User;
-    readonly [RelationKeys]?: 'steps' | 'user';
+    readonly [RelationKeys]?: 'recommendation' | 'steps' | 'user';
   };
   export type public_RoutineLog = {
     completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -1516,6 +1524,13 @@ type ContractBase = Omit<
                   readonly nullable: false;
                   readonly many: false;
                 };
+                readonly createdAt: {
+                  readonly dataType: 'pg/timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                  readonly many: false;
+                };
                 readonly description: {
                   readonly dataType: 'pg/text';
                   readonly codecId: 'pg/text@1';
@@ -1546,11 +1561,37 @@ type ContractBase = Omit<
                   readonly nullable: true;
                   readonly many: false;
                 };
+                readonly userId: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
               };
               primaryKey: { readonly columns: readonly ['id'] };
               uniques: readonly [];
-              indexes: readonly [];
-              foreignKeys: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'Product_userId_idx_a489d58a';
+                  readonly prefix: 'Product_userId_idx';
+                  readonly columns: readonly ['userId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'Product';
+                    readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'User';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
             };
             readonly Recommendation: {
               columns: {
@@ -1615,20 +1656,11 @@ type ContractBase = Omit<
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
-              uniques: readonly [];
+              uniques: readonly [
+                { readonly columns: readonly ['productId'] },
+                { readonly columns: readonly ['routineId'] },
+              ];
               indexes: readonly [
-                {
-                  readonly name: 'Recommendation_productId_idx_5858600a';
-                  readonly prefix: 'Recommendation_productId_idx';
-                  readonly columns: readonly ['productId'];
-                  readonly unique: false;
-                },
-                {
-                  readonly name: 'Recommendation_routineId_idx_fa038a10';
-                  readonly prefix: 'Recommendation_routineId_idx';
-                  readonly columns: readonly ['routineId'];
-                  readonly unique: false;
-                },
                 {
                   readonly name: 'Recommendation_userId_idx_a489d58a';
                   readonly prefix: 'Recommendation_userId_idx';
@@ -1677,16 +1709,6 @@ type ContractBase = Omit<
             };
             readonly Routine: {
               columns: {
-                readonly accepted: {
-                  readonly dataType: 'pg/bool';
-                  readonly codecId: 'pg/bool@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
-                  };
-                  readonly many: false;
-                };
                 readonly createdAt: {
                   readonly dataType: 'pg/timestamptz';
                   readonly codecId: 'pg/timestamptz-temporal@1';
@@ -2769,6 +2791,13 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
               readonly description: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -2789,8 +2818,34 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
               };
+              readonly userId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
             };
-            readonly relations: Record<string, never>;
+            readonly relations: {
+              readonly recommendation: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Recommendation';
+                };
+                readonly cardinality: '1:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['productId'];
+                };
+              };
+              readonly user: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['userId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
             readonly storage: {
               readonly table: 'Product';
               readonly namespaceId: 'public';
@@ -2798,11 +2853,13 @@ type ContractBase = Omit<
                 readonly affiliateUrl: { readonly column: 'affiliateUrl' };
                 readonly brand: { readonly column: 'brand' };
                 readonly category: { readonly column: 'category' };
+                readonly createdAt: { readonly column: 'createdAt' };
                 readonly description: { readonly column: 'description' };
                 readonly id: { readonly column: 'id' };
                 readonly image: { readonly column: 'image' };
                 readonly name: { readonly column: 'name' };
                 readonly price: { readonly column: 'price' };
+                readonly userId: { readonly column: 'userId' };
               };
             };
           };
@@ -2901,10 +2958,6 @@ type ContractBase = Omit<
           };
           readonly Routine: {
             readonly fields: {
-              readonly accepted: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
-              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -2926,6 +2979,18 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly recommendation: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Recommendation';
+                };
+                readonly cardinality: '1:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['routineId'];
+                };
+              };
               readonly steps: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -2951,7 +3016,6 @@ type ContractBase = Omit<
               readonly table: 'Routine';
               readonly namespaceId: 'public';
               readonly fields: {
-                readonly accepted: { readonly column: 'accepted' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly id: { readonly column: 'id' };
                 readonly title: { readonly column: 'title' };

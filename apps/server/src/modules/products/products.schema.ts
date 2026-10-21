@@ -20,3 +20,7 @@ export const ListProductsQuery = PaginationQuery.extend({
   category: ProductCategory.optional(),
   brand: z.string().optional(),
 });
+
+export const ProductIdsQuery = z.object({
+  q: z.string().min(1),
+});

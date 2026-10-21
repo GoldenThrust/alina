@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getSkinScan, getSkinScanHistory } from "../api/skinScan";
+import { getSkinScan, getSkinScanHistory } from "../services/api/skinScan";
 import { isAbort } from "../utils/signal";
 import type { HistoryRequest } from "../utils/historyRequest";
 import { useScanStore } from "../stores";

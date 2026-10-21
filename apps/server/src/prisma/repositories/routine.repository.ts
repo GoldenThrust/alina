@@ -22,7 +22,6 @@ export class RoutineRepository extends BaseRepository<Routine, NewRoutine> {
     const routine = await this.create({
       userId: data.userId,
       title: data.title,
-      accepted: data.accepted ?? false,
     });
     const steps = await this.steps.addSteps(routine.id, data.steps);
     return { ...routine, steps };
@@ -36,10 +35,8 @@ export class RoutineRepository extends BaseRepository<Routine, NewRoutine> {
 
   async listForUser(
     userId: string,
-    options: { acceptedOnly?: boolean } = {},
   ): Promise<RoutineWithSteps[]> {
-    const routines = await this.findMany(
-      options.acceptedOnly ? { userId, accepted: true } : { userId },
+    const routines = await this.findMany( { userId },
       { orderBy: { field: "createdAt" } },
     );
     return Promise.all(
@@ -50,13 +47,13 @@ export class RoutineRepository extends BaseRepository<Routine, NewRoutine> {
     );
   }
 
-  accept(id: string) {
-    return this.update(id, { accepted: true });
-  }
+  // accept(id: string) {
+  //   return this.update(id, { accepted: true });
+  // }
 
-  unaccept(id: string) {
-    return this.update(id, { accepted: false });
-  }
+  // unaccept(id: string) {
+  //   return this.update(id, { accepted: false });
+  // }
 
   replaceSteps(id: string, steps: StepInput[]) {
     return this.steps.replaceSteps(id, steps);

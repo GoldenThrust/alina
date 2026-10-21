@@ -4560,3 +4560,113 @@ select:focus-visible {
     display: none;
   }
 }
+
+/* ---- Recommendations page ---- */
+
+.recommendation-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+}
+.product-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.product-price {
+  color: #6b7084;
+  font:
+    700 13px ui-monospace,
+    "SFMono-Regular",
+    monospace;
+}
+.recommendation-buttons {
+  align-items: center;
+}
+.recommendation-buttons .quiet-link {
+  margin-left: 4px;
+}
+.recommendation-art img {
+  padding: 18px;
+}
+/* So the bottle cap sits on the bottle even inside the floating wrapper */
+.product-bottle {
+  position: relative;
+}
+
+.rec-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #e7e2fc;
+  border-radius: 999px;
+  background: #f4f1ff;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.alternative-card {
+  display: flex;
+  flex-direction: column;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.alternative-card:hover {
+  border-color: #d4cef7;
+  box-shadow: 0 10px 26px rgba(36, 40, 67, 0.09);
+}
+.alternative-card > div:last-child {
+  margin-top: auto;
+}
+.card-actions {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.alternative-card .icon-button {
+  width: 32px;
+  height: 32px;
+}
+
+/* Pagination footer */
+.load-sentinel {
+  height: 1px;
+}
+.load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  color: #8d82d3;
+  font-size: 11px;
+}
+.end-note {
+  color: #a0a3b0;
+  font-size: 10px;
+}
+
+/* Skeleton shapes */
+.skeleton-art {
+  width: 100px;
+  height: 180px;
+  border-radius: 22px;
+}
+.skeleton-art-sm {
+  width: 100%;
+  height: 98px;
+  margin-bottom: 10px;
+}
+.skeleton-btn {
+  width: 150px;
+  height: 40px;
+  border-radius: 6px;
+}
+.alternative-card .skeleton-line {
+  margin-top: 8px;
+}

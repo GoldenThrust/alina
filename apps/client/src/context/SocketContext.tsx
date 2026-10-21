@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 
-import socket from "../api/socket";
+import socket from "../services/api/socket";
 
 interface SocketContextType {
   connected: boolean;

@@ -150,6 +150,7 @@ interface Routine {
   accepted: boolean;
   createdAt: Date;
   steps: RoutineStep[];
+  recommendation: Recommendation | null;
 }
 
 interface RoutineLog {
@@ -168,6 +169,7 @@ interface Product {
   image: string | null;
   affiliateUrl: string | null;
   price: number | null;
+  recommendation?: Recommendation | null;
 }
 
 interface Recommendation {

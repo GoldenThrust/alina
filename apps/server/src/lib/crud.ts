@@ -96,12 +96,13 @@ export function createOwnedService(cfg: OwnedServiceConfig) {
   const { label, model, createFields, updateFields, filterFields = [] } = cfg;
 
   return {
-    async list(userId: string, query: ListQuery) {
+    async list(userId: string, query: ListQuery, include?: string) {
       const { page = 1, limit = 20, cursor } = query;
+      const q = model().where({ ...pick(query, filterFields), userId });
 
-      let rows = await model()
-        .include("analysis")
-        .where({ ...pick(query, filterFields), userId })
+      if (include) q.include(include);
+
+      let rows = await q
         .orderBy([(r: any) => r.createdAt.desc(), (r: any) => r.id.desc()])
         .cursor(cursor ? decodeCursor(cursor) : {})
         .offset(cursor ? 0 : (page - 1) * limit)
@@ -151,10 +152,14 @@ export function createOwnedService(cfg: OwnedServiceConfig) {
 type OwnedService = ReturnType<typeof createOwnedService>;
 
 /** Generic fastify handlers for an owned service. */
-export function createOwnedHandlers(service: OwnedService, label: string) {
+export function createOwnedHandlers(
+  service: OwnedService,
+  label: string,
+  include?: string,
+) {
   return {
     list: handle(`Failed to fetch ${label}s`, (req: any) =>
-      service.list(getUserId(req), req.query),
+      service.list(getUserId(req), req.query, include),
     ),
     get: handle(`Failed to fetch ${label}`, (req: any) =>
       service.get(getUserId(req), req.params.id),

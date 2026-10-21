@@ -14,5 +14,5 @@ export const CreateRecommendationBody = z.object({
 export const UpdateRecommendationBody = z.object({ accepted: z.boolean() });
 export const ListRecommendationsQuery = PaginationQuery.extend({
   type: RecommendationType.optional(),
-  accepted: z.coerce.boolean().optional(),
+  accepted: z.stringbool().optional(),
 });

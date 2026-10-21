@@ -109,7 +109,6 @@ export interface Routine {
   id: string;
   userId: string;
   title: string;
-  accepted: boolean;
   createdAt: Date;
 }
 
@@ -131,6 +130,7 @@ export interface RoutineLog {
 
 export interface Product {
   id: string;
+  userId: string;
   name: string;
   brand: string;
   category: ProductCategory;
@@ -227,11 +227,11 @@ export type NewSession = NewRecord<Session>;
 export type NewOAuthAccount = NewRecord<OAuthAccount>;
 export type NewSkinScan = NewRecord<SkinScan>;
 export type NewSkinAnalysis = NewRecord<SkinAnalysis>;
-export type NewRoutine = NewRecord<Routine, "accepted">;
+export type NewRoutine = NewRecord<Routine>;
 export type NewRoutineStep = NewRecord<RoutineStep>;
 export type NewRoutineLog = NewRecord<RoutineLog>;
 export type NewProduct = NewRecord<Product>;
-export type NewRecommendation = NewRecord<Recommendation, "accepted">;
+export type NewRecommendation = NewRecord<Recommendation>;
 export type NewMessage = NewRecord<Message>;
 export type NewPreference = NewRecord<
   Preference,

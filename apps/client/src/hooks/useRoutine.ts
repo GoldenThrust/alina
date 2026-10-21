@@ -1,141 +1,358 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
+import { addDays, localDateKey } from "../utils/dates";
+import { selectAll } from "../utils/entities";
+import { selectRoutines, useRoutineStore } from "../stores/routine.store";
+import { selectRecommendations, useRecommendationStore } from "../stores/recommendation.store";
+import { useAuthStore } from "../stores/auth.store";
+import { useProductStore } from "../stores/product.store";
 
-const API = import.meta.env.VITE_API_URL ?? "";
+export const ROUTINE_PERIODS: RoutinePeriod[] = ["MORNING", "AFTERNOON", "EVENING", "NIGHT", "HABIT"];
 
-// Assumed endpoints (adjust to your backend):
-//   GET   /api/routines/active            -> Routine (with steps) | 404/204 when none
-//   PATCH /api/routines/:id/accept        -> Routine
-//   GET   /api/routines/:id/logs          -> RoutineLog[]
-//   POST  /api/routines/:id/logs          -> RoutineLog   (server sets userId, completedAt = now)
+const uid = () => crypto.randomUUID();
 
-async function request<T>(path: string, init?: RequestInit): Promise<T | null> {
-  const res = await fetch(`${API}${path}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    ...init,
-  });
-  if (res.status === 204 || res.status === 404) return null;
-  if (!res.ok) throw new Error(`Request failed (${res.status})`);
-  return (await res.json()) as T;
+export interface NewStep {
+  period: RoutinePeriod;
+  title: string;
+  instruction: string;
+  recommendationId?: string;
+  consumeRecommendation?: boolean;
 }
 
-export const dayKey = (d: Date | string) => {
-  const date = typeof d === "string" ? new Date(d) : d;
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-};
+export interface StepSuggestion {
+  key: string;
+  title: string;
+  instruction: string;
+  recommendationId: string;
+  consumeRecommendation: boolean;
+  source: "Product" | "Habit" | "Routine";
+}
 
-export function useRoutine() {
-  const [routine, setRoutine] = useState<Routine | null>(null);
-  const [logs, setLogs] = useState<RoutineLog[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+/* ------------------------------ active routine ------------------------------ */
 
-  const load = useCallback(async () => {
-    setStatus("loading");
-    try {
-      const active = await request<Routine>("/api/routines/active");
-      setRoutine(active);
-      if (active) {
-        const history = await request<RoutineLog[]>(`/api/routines/${active.id}/logs`);
-        setLogs(history ?? []);
-      } else {
-        setLogs([]);
-      }
-      setError(null);
-      setStatus("ready");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
-      setStatus("error");
-    }
-  }, []);
+export function useActiveRoutine() {
+  const routines = useRoutineStore(useShallow(selectRoutines));
+  const userId = useAuthStore((s) => s.user?.id);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const routine =
+    routines.find((r) => r.id === selectedId) ??
+    routines.find((r) => r.accepted) ??
+    routines[0];
 
-  const accept = useCallback(async () => {
+  const accept = useCallback(() => {
     if (!routine) return;
-    setBusy(true);
-    try {
-      const updated = await request<Routine>(`/api/routines/${routine.id}/accept`, {
-        method: "PATCH",
-      });
-      if (updated) setRoutine(updated);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not accept routine");
-    } finally {
-      setBusy(false);
-    }
+    // TODO(api): persist, roll back with setAccepted(id, false) on failure.
+    useRoutineStore.getState().setAccepted(routine.id, true);
+    const recs = selectAll(useRecommendationStore.getState().recommendations);
+    recs
+      .filter((r) => r.type === "ROUTINE" && r.routineId === routine.id)
+      .forEach((r) => useRecommendationStore.getState().setAccepted(r.id, true));
   }, [routine]);
 
-  const logCompletion = useCallback(async () => {
-    if (!routine) return;
-    try {
-      const log = await request<RoutineLog>(`/api/routines/${routine.id}/logs`, {
-        method: "POST",
-        body: JSON.stringify({ completedAt: new Date().toISOString() }),
-      });
-      if (log) setLogs((current) => [...current, log]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save progress");
-    }
-  }, [routine]);
+  const create = useCallback(
+    (title: string) => {
+      const clean = title.trim();
+      if (!clean || !userId) return;
+      const next: Routine = {
+        id: uid(),
+        userId,
+        title: clean,
+        accepted: true,
+        createdAt: new Date(),
+        steps: [],
+      };
+      // TODO(api): POST routine
+      useRoutineStore.getState().upsertRoutine(next);
+      setSelectedId(next.id);
+    },
+    [userId],
+  );
 
-  // POST /api/routines/:id/steps -> RoutineStep (server may override position)
-  const addStep = useCallback(
-    async (step: Pick<RoutineStep, "period" | "title" | "instruction">) => {
-      if (!routine) return false;
-      const position = routine.steps.reduce((max, s) => Math.max(max, s.position), 0) + 1;
-      setBusy(true);
-      try {
-        const created = await request<RoutineStep>(`/api/routines/${routine.id}/steps`, {
-          method: "POST",
-          body: JSON.stringify({ ...step, position }),
-        });
-        if (created) {
-          setRoutine((current) =>
-            current ? { ...current, steps: [...current.steps, created] } : current,
-          );
-        }
-        setError(null);
-        return true;
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not add step");
-        return false;
-      } finally {
-        setBusy(false);
-      }
+  const rename = useCallback(
+    (title: string) => {
+      if (!routine || !title.trim()) return;
+      useRoutineStore.getState().upsertRoutine({ ...routine, title: title.trim() });
     },
     [routine],
   );
 
-  const loggedDays = useMemo(() => new Set(logs.map((l) => dayKey(l.completedAt))), [logs]);
+  /** Deletes the routine (or dismisses a suggested one) and its linked recommendation. */
+  const remove = useCallback(() => {
+    if (!routine) return;
+    // TODO(api): DELETE routine
+    useRoutineStore.getState().removeRoutine(routine.id);
+    const recStore = useRecommendationStore.getState();
+    selectAll(recStore.recommendations)
+      .filter((r) => r.routineId === routine.id)
+      .forEach((r) => recStore.remove(r.id));
+    setSelectedId(null);
+  }, [routine]);
+
+  return { routine, routines, selectRoutine: setSelectedId, accept, create, rename, remove };
+}
+
+/* ---------------------------------- steps ---------------------------------- */
+
+export function useRoutineSteps(routine: Routine | undefined) {
+  const routineId = routine?.id;
+  const accepted = !!routine?.accepted;
+  const steps = useMemo(() => routine?.steps ?? [], [routine]);
+
+  // Accepted routines show every period so a step can be added anywhere.
+  const periods = useMemo(
+    () =>
+      accepted
+        ? ROUTINE_PERIODS
+        : ROUTINE_PERIODS.filter((p) => steps.some((s) => s.period === p)),
+    [accepted, steps],
+  );
+
+  const stepsFor = useCallback(
+    (period: RoutinePeriod) => steps.filter((s) => s.period === period),
+    [steps],
+  );
+
+  const addStep = useCallback(
+    (input: NewStep) => {
+      if (!routineId || !input.title.trim()) return;
+      const position = steps.reduce((max, s) => Math.max(max, s.position), -1) + 1;
+      const step: RoutineStep = {
+        id: uid(),
+        routineId,
+        period: input.period,
+        title: input.title.trim(),
+        instruction: input.instruction.trim(),
+        position,
+      };
+      // TODO(api): POST step
+      useRoutineStore.getState().upsertStep(step);
+      if (input.recommendationId && input.consumeRecommendation) {
+        useRecommendationStore.getState().setAccepted(input.recommendationId, true);
+      }
+    },
+    [routineId, steps],
+  );
+
+  const removeStep = useCallback(
+    (stepId: string) => {
+      if (!routineId) return;
+      // TODO(api): DELETE step
+      useRoutineStore.getState().removeStep(routineId, stepId);
+    },
+    [routineId],
+  );
+
+  /** Swap with the neighbour inside the same period. */
+  const moveStep = useCallback(
+    (stepId: string, direction: -1 | 1) => {
+      const current = steps.find((s) => s.id === stepId);
+      if (!current) return;
+      const siblings = steps.filter((s) => s.period === current.period);
+      const target = siblings[siblings.findIndex((s) => s.id === stepId) + direction];
+      if (!target) return;
+      const { upsertStep } = useRoutineStore.getState();
+      upsertStep({ ...current, position: target.position });
+      upsertStep({ ...target, position: current.position });
+    },
+    [steps],
+  );
+
+  return { steps, periods, stepsFor, addStep, removeStep, moveStep };
+}
+
+/* ------------------------------ suggestions ------------------------------ */
+
+const CATEGORY_PERIODS: Record<ProductCategory, RoutinePeriod[]> = {
+  CLEANSER: ["MORNING", "EVENING"],
+  TONER: ["MORNING", "EVENING"],
+  SERUM: ["MORNING", "EVENING"],
+  MOISTURIZER: ["MORNING", "EVENING", "NIGHT"],
+  SUNSCREEN: ["MORNING", "AFTERNOON"],
+  TREATMENT: ["EVENING", "NIGHT"],
+  OTHER: ["MORNING", "AFTERNOON", "EVENING", "NIGHT"],
+};
+
+const firstSentence = (text: string, max = 60) => {
+  const s = text.split(/(?<=[.!?])\s/)[0].trim();
+  return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
+};
+
+/**
+ * Step ideas for a period, built only from pending recommendations:
+ *  - PRODUCT recommendations whose category fits the period
+ *  - HABIT recommendations (HABIT period)
+ *  - steps of other ROUTINE recommendations for that period
+ */
+export function useStepSuggestions(
+  period: RoutinePeriod,
+  existingTitles: string[],
+  activeRoutineId?: string,
+): StepSuggestion[] {
+  const recommendations = useRecommendationStore(useShallow(selectRecommendations));
+  const routinesById = useRoutineStore((s) => s.routines.byId);
+  const productsById = useProductStore((s) => s.products.byId);
+
+  return useMemo(() => {
+    const taken = new Set(existingTitles.map((t) => t.toLowerCase()));
+    const out: StepSuggestion[] = [];
+    const push = (s: StepSuggestion) => {
+      const k = s.title.toLowerCase();
+      if (taken.has(k)) return;
+      taken.add(k);
+      out.push(s);
+    };
+
+    for (const rec of recommendations) {
+      if (rec.accepted) continue;
+
+      if (rec.type === "PRODUCT" && rec.productId) {
+        const product = productsById[rec.productId];
+        if (!product || !CATEGORY_PERIODS[product.category].includes(period)) continue;
+        push({
+          key: rec.id,
+          title: product.name,
+          instruction: rec.explanation || product.description,
+          recommendationId: rec.id,
+          consumeRecommendation: true,
+          source: "Product",
+        });
+      } else if (rec.type === "HABIT" && period === "HABIT") {
+        push({
+          key: rec.id,
+          title: firstSentence(rec.explanation),
+          instruction: rec.explanation,
+          recommendationId: rec.id,
+          consumeRecommendation: true,
+          source: "Habit",
+        });
+      } else if (rec.type === "ROUTINE" && rec.routineId && rec.routineId !== activeRoutineId) {
+        routinesById[rec.routineId]?.steps
+          .filter((s) => s.period === period)
+          .forEach((s) =>
+            push({
+              key: `${rec.id}:${s.id}`,
+              title: s.title,
+              instruction: s.instruction,
+              recommendationId: rec.id,
+              consumeRecommendation: false, // the routine itself stays suggested
+              source: "Routine",
+            }),
+          );
+      }
+    }
+    return out;
+  }, [recommendations, routinesById, productsById, period, existingTitles, activeRoutineId]);
+}
+
+/* ------------------------------ today's ticks ------------------------------ */
+
+/** Which steps are ticked off today. Resets each day, kept per routine. */
+export function useRoutineDay(routineId?: string) {
+  const dayKey = localDateKey(new Date());
+  const storageKey = routineId ? `routine-day:${routineId}:${dayKey}` : null;
+  const [done, setDone] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!storageKey) return setDone(new Set());
+    try {
+      setDone(new Set(JSON.parse(localStorage.getItem(storageKey) ?? "[]")));
+    } catch {
+      setDone(new Set());
+    }
+  }, [storageKey]);
+
+  const commit = useCallback(
+    (next: Set<string>) => {
+      setDone(next);
+      if (!storageKey) return;
+      try {
+        localStorage.setItem(storageKey, JSON.stringify([...next]));
+      } catch {
+        /* storage unavailable: state still works for this session */
+      }
+    },
+    [storageKey],
+  );
+
+  const isDone = useCallback((id: string) => done.has(id), [done]);
+  const toggle = useCallback(
+    (id: string) => {
+      const next = new Set(done);
+      next.has(id) ? next.delete(id) : next.add(id);
+      commit(next);
+    },
+    [done, commit],
+  );
+  const markAll = useCallback((ids: string[]) => commit(new Set([...done, ...ids])), [done, commit]);
+  const clear = useCallback(
+    (ids: string[]) => commit(new Set([...done].filter((id) => !ids.includes(id)))),
+    [done, commit],
+  );
+
+  return { isDone, toggle, markAll, clear };
+}
+
+/* ------------------------------ streak & logs ------------------------------ */
+
+export function useRoutineLogs(routine: Routine | undefined) {
+  const routineId = routine?.id;
+  const logs = useRoutineStore((s) => s.logs);
+
+  const days = useMemo(() => {
+    const set = new Set<string>();
+    for (const log of selectAll(logs)) {
+      if (routineId && log.routineId !== routineId) continue;
+      set.add(localDateKey(log.completedAt));
+    }
+    return set;
+  }, [logs, routineId]);
+
+  const todayKey = localDateKey(new Date());
+  const loggedToday = days.has(todayKey);
 
   const streak = useMemo(() => {
-    const cursor = new Date();
-    // Today not logged yet shouldn't break a running streak.
-    if (!loggedDays.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
-    let count = 0;
-    while (loggedDays.has(dayKey(cursor))) {
-      count += 1;
-      cursor.setDate(cursor.getDate() - 1);
+    let cursor = new Date();
+    if (!days.has(localDateKey(cursor))) cursor = addDays(cursor, -1);
+    let n = 0;
+    while (days.has(localDateKey(cursor))) {
+      n++;
+      cursor = addDays(cursor, -1);
     }
-    return count;
-  }, [loggedDays]);
+    return n;
+  }, [days]);
 
-  return {
-    routine,
-    logs,
-    loggedDays,
-    streak,
-    status,
-    error,
-    busy,
-    accept,
-    addStep,
-    logCompletion,
-    reload: load,
-  };
+  const completionRate = useMemo(() => {
+    const today = new Date();
+    let hit = 0;
+    for (let i = 0; i < 30; i++) if (days.has(localDateKey(addDays(today, -i)))) hit++;
+    return hit / 30;
+  }, [days]);
+
+  const week = useMemo(() => {
+    const today = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(today, i - 6);
+      const key = localDateKey(date);
+      return {
+        key,
+        label: date.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 1),
+        hit: days.has(key),
+        today: key === todayKey,
+      };
+    });
+  }, [days, todayKey]);
+
+  const logToday = useCallback(() => {
+    if (!routine || loggedToday) return;
+    // TODO(api): POST log
+    useRoutineStore.getState().addLog({
+      id: uid(),
+      userId: routine.userId,
+      routineId: routine.id,
+      completedAt: new Date(),
+    });
+  }, [routine, loggedToday]);
+
+  return { streak, completionRate, loggedToday, week, logToday };
 }

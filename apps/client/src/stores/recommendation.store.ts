@@ -2,7 +2,13 @@ import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { newestFirst } from "../utils/dates";
 import {
-  emptyEntities, patchOne, removeOne, selectAll, setAll, upsertMany, upsertOne,
+  emptyEntities,
+  patchOne,
+  removeOne,
+  selectAll,
+  setAll,
+  upsertMany,
+  upsertOne,
 } from "../utils/entities";
 import { MOCK_RECOMMENDATIONS } from "../data/recommendation";
 
@@ -11,6 +17,7 @@ interface RecommendationState {
 
   setRecommendations: (items: Recommendation[]) => void;
   upsertRecommendations: (items: Recommendation[]) => void;
+  patchRecommendation: (id: string, patch: Partial<Recommendation>) => void;
   upsertRecommendation: (item: Recommendation) => void;
   /** Optimistic accept; roll back by calling again with `false`. */
   setAccepted: (id: string, accepted: boolean) => void;
@@ -23,13 +30,31 @@ export const useRecommendationStore = create<RecommendationState>()((set) => ({
   recommendations: emptyEntities(),
 
   setRecommendations: (items) => set({ recommendations: setAll(items) }),
+  // recommendation store (and add them to its interface)
   upsertRecommendations: (items) =>
     set((s) => ({ recommendations: upsertMany(s.recommendations, items) })),
+
+  patchRecommendation: (id, patch) =>
+    set((s) => {
+      const current = s.recommendations.byId[id];
+      return current
+        ? {
+            recommendations: upsertOne(s.recommendations, {
+              ...current,
+              ...patch,
+            }),
+          }
+        : s;
+    }),
+
   upsertRecommendation: (item) =>
     set((s) => ({ recommendations: upsertOne(s.recommendations, item) })),
   setAccepted: (id, accepted) =>
-    set((s) => ({ recommendations: patchOne(s.recommendations, id, { accepted }) })),
-  remove: (id) => set((s) => ({ recommendations: removeOne(s.recommendations, id) })),
+    set((s) => ({
+      recommendations: patchOne(s.recommendations, id, { accepted }),
+    })),
+  remove: (id) =>
+    set((s) => ({ recommendations: removeOne(s.recommendations, id) })),
   clear: () => set({ recommendations: emptyEntities() }),
   setDemoRecommendations: () => {
     useRecommendationStore.getState().setRecommendations(MOCK_RECOMMENDATIONS);
@@ -42,8 +67,9 @@ export const selectRecommendations = (s: RecommendationState) =>
 export const selectPendingRecommendations = (s: RecommendationState) =>
   selectRecommendations(s).filter((r) => !r.accepted);
 
-export const selectPendingRecommendationsOfType = (type: RecommendationType) => (s: RecommendationState) =>
-  selectPendingRecommendations(s).filter((r) => r.type === type);
+export const selectPendingRecommendationsOfType =
+  (type: RecommendationType) => (s: RecommendationState) =>
+    selectPendingRecommendations(s).filter((r) => r.type === type);
 
 export const selectRecommendationsOfType =
   (type: RecommendationType) => (s: RecommendationState) =>
