@@ -18,7 +18,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'3ce5cda326ffcf96a61450ed5033f23d90da9704aee5c990102f08e4d651f29b'>;
+  StorageHashBase<'83ea8cee23707daaa91ffc893ac550b388b12df771cab476419305893a60c789'>;
 export type ExecutionHash =
   ExecutionHashBase<'dc1ac6e4db2ee326f04a55c1c0aa0d987b1dc883145cc25cd6bba35f22cc906d'>;
 export type ProfileHash =
@@ -308,7 +308,7 @@ export type FieldOutputTypes = {
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly RoutineLog: {
-      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly routineId: CodecTypes['pg/text@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'];
@@ -470,7 +470,7 @@ export type FieldInputTypes = {
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly RoutineLog: {
-      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly routineId: CodecTypes['pg/text@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'];
@@ -632,7 +632,7 @@ export type StorageColumnTypes = {
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly RoutineLog: {
-      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly routineId: CodecTypes['pg/text@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'];
@@ -794,7 +794,7 @@ export type StorageColumnInputTypes = {
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly RoutineLog: {
-      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly routineId: CodecTypes['pg/text@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'];
@@ -980,7 +980,7 @@ export namespace Models {
     readonly [RelationKeys]?: 'recommendation' | 'steps' | 'user';
   };
   export type public_RoutineLog = {
-    completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     id: CodecTypes['pg/text@1']['output'];
     routineId: CodecTypes['pg/text@1']['output'];
     userId: CodecTypes['pg/text@1']['output'];
@@ -1762,10 +1762,11 @@ type ContractBase = Omit<
             };
             readonly RoutineLog: {
               columns: {
-                readonly completedAt: {
+                readonly createdAt: {
                   readonly dataType: 'pg/timestamptz';
                   readonly codecId: 'pg/timestamptz-temporal@1';
                   readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                   readonly many: false;
                 };
                 readonly id: {
@@ -3025,7 +3026,7 @@ type ContractBase = Omit<
           };
           readonly RoutineLog: {
             readonly fields: {
-              readonly completedAt: {
+              readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
                   readonly kind: 'scalar';
@@ -3050,7 +3051,7 @@ type ContractBase = Omit<
               readonly table: 'RoutineLog';
               readonly namespaceId: 'public';
               readonly fields: {
-                readonly completedAt: { readonly column: 'completedAt' };
+                readonly createdAt: { readonly column: 'createdAt' };
                 readonly id: { readonly column: 'id' };
                 readonly routineId: { readonly column: 'routineId' };
                 readonly userId: { readonly column: 'userId' };

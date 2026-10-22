@@ -147,13 +147,13 @@ export const MOCK_ROUTINE_LOGS: RoutineLog[] = [
       id: `routine-log-1-${i + 1}`,
       userId: "user-1",
       routineId: "routine-1",
-      completedAt: daysAgo(i, 8),
+      createdAt: daysAgo(i, 8),
     })),
   // Weekly reset: once a week
   ...[2, 9, 16].map((days, i) => ({
     id: `routine-log-3-${i + 1}`,
     userId: "user-1",
     routineId: "routine-3",
-    completedAt: daysAgo(days, 21),
+    createdAt: daysAgo(days, 21),
   })),
-].sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime());
+].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());

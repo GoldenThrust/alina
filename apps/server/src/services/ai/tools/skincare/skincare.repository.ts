@@ -101,7 +101,6 @@ export class SkincareRepository {
     const routine = await orm().Routine.create({
       userId: data.userId,
       title: data.title,
-      accepted: data.accepted,
     });
 
     const steps = [];
@@ -130,10 +129,10 @@ export class SkincareRepository {
       : { userId };
     const logs: any[] = await orm()
       .RoutineLog.where(where)
-      .orderBy((l: any) => l.completedAt.desc())
+      .orderBy((l: any) => l.createdAt.desc())
       .limit(opts.limit)
       .all();
-    return logs.filter((l) => new Date(l.completedAt) >= opts.since);
+    return logs.filter((l) => new Date(l.createdAt) >= opts.since);
   }
 
   /* ------------------------- recommendations & products ------------------------- */
@@ -169,6 +168,7 @@ export class SkincareRepository {
   }
 
   async findOrCreateProduct(data: {
+    userId: string;
     name: string;
     brand: string;
     image?: string;

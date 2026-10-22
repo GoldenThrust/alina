@@ -17,8 +17,8 @@ export class RoutineLogRepository extends BaseRepository<
 > {
   protected readonly model = "RoutineLog";
 
-  log(userId: string, routineId: string, completedAt: Date = new Date()) {
-    return this.create({ userId, routineId, completedAt });
+  log(userId: string, routineId: string, createdAt: Date = new Date()) {
+    return this.create({ userId, routineId, createdAt });
   }
 
   /** Logs since a date, newest first. Filters by date in memory. */
@@ -32,9 +32,9 @@ export class RoutineLogRepository extends BaseRepository<
       : { userId };
     const logs = await this.findMany(where, {
       limit: options.limit ?? 500,
-      orderBy: { field: "completedAt" },
+      orderBy: { field: "createdAt" },
     });
-    return logs.filter((log) => new Date(log.completedAt) >= since);
+    return logs.filter((log) => new Date(log.createdAt) >= since);
   }
 
   async adherence(
@@ -45,7 +45,7 @@ export class RoutineLogRepository extends BaseRepository<
     const since = new Date(Date.now() - days * DAY_MS);
     const logs = await this.listSince(userId, since, { routineId });
     const daysWithCompletion = new Set(
-      logs.map((log) => new Date(log.completedAt).toISOString().slice(0, 10)),
+      logs.map((log) => new Date(log.createdAt).toISOString().slice(0, 10)),
     ).size;
     return {
       windowDays: days,

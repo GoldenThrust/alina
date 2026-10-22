@@ -99,11 +99,19 @@ export function createOwnedService(cfg: OwnedServiceConfig) {
     async list(
       userId: string,
       query: ListQuery,
-      include?: string,
+      include?: string[],
       queryOptions?: Record<string, any>,
     ) {
       const { page = 1, limit = 20, cursor } = query;
-      const rows = await (include ? model().include(include) : model())
+
+      let q = model();
+
+      if (include) {
+        include.forEach((relation) => {
+          q = q.include(relation);
+        });
+      }
+      const rows = await q
         .where({ ...pick(query, filterFields), ...queryOptions, userId })
         .orderBy([(r: any) => r.createdAt.desc(), (r: any) => r.id.desc()])
         .cursor(cursor ? decodeCursor(cursor) : {})
@@ -158,7 +166,7 @@ type OwnedService = ReturnType<typeof createOwnedService>;
 export function createOwnedHandlers(
   service: OwnedService,
   label: string,
-  include?: string,
+  include?: string[],
   query?: Record<string, any>,
 ) {
   return {
@@ -173,7 +181,7 @@ export function createOwnedHandlers(
       (req: any) => service.create(getUserId(req), req.body),
       201,
     ),
-    update: handle(`Failed to update ${label}`, (req: any) => 
+    update: handle(`Failed to update ${label}`, (req: any) =>
       service.update(getUserId(req), req.params.id, req.body),
     ),
     remove: handle(`Failed to delete ${label}`, (req: any) =>

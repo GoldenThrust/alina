@@ -2,7 +2,7 @@ import { createOwnedHandlers, getUserId, handle } from "../../lib/crud";
 import * as S from "./routines.service"
 
 /* ---------- plain owner-scoped CRUD ---------- */
-export const routineController = createOwnedHandlers(S.routineService as any, "routine");
+export const routineController = createOwnedHandlers(S.routineService as any, "routine", ["recommendation", "steps"]);
 export const routineLogController = createOwnedHandlers(S.routineLogService, "routine log");
 
 

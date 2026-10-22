@@ -28,7 +28,7 @@ import {
  */
 
 export const SEED_DOMAIN = "alina.com";
-export const DEMO_EMAIL = `alina@${SEED_DOMAIN}`;
+export const DEMO_EMAIL = `kate@${SEED_DOMAIN}`;
 export const DEV_PASSWORD = "Password123!";
 
 /* ------------------------------ domain types ------------------------------ */
@@ -108,7 +108,7 @@ const DEFAULTS: ResolvedOptions = {
   recommendationsPerUser: 2000,
   messagePairsPerUser: 2000,
   ordersPerUser: 150,
-  spanDays: 10730,
+  spanDays: 40,
   concurrency: 16,
   productsPerUser: 100,
 };

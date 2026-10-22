@@ -180,7 +180,7 @@ model RoutineLog {
 
   routineId     String
 
-  completedAt   DateTime
+  createdAt   DateTime @default(now())
 
 }
 

@@ -22,9 +22,9 @@ export const UpdateStepBody = CreateStepBody.partial();
 /* ---------- RoutineLog ---------- */
 export const CreateRoutineLogBody = z.object({
   routineId: z.uuid(),
-  completedAt: z.coerce.date(),
+  createdAt: z.coerce.date(),
 });
-export const UpdateRoutineLogBody = z.object({ completedAt: z.coerce.date() });
+export const UpdateRoutineLogBody = z.object({ createdAt: z.coerce.date() });
 export const ListRoutineLogsQuery = PaginationQuery.extend({
   routineId: z.uuid().optional(),
 });

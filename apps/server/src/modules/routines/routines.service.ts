@@ -92,8 +92,8 @@ export const stepService = {
 export const routineLogService = createOwnedService({
   label: "Routine log",
   model: ORM.RoutineLog,
-  createFields: ["routineId", "completedAt"],
-  updateFields: ["completedAt"],
+  createFields: ["routineId", "createdAt"],
+  updateFields: ["createdAt"],
   filterFields: ["routineId"],
   prepareCreate: async (userId, data) => {
     await assertOwned(ORM.Routine, data.routineId, userId, "Routine");

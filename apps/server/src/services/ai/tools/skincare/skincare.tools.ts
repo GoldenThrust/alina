@@ -188,7 +188,7 @@ export class GetRoutineLogsTool extends SkincareTool<
     });
 
     const activeDays = new Set(
-      logs.map((l) => new Date(l.completedAt).toISOString().slice(0, 10)),
+      logs.map((l) => new Date(l.createdAt).toISOString().slice(0, 10)),
     ).size;
 
     return {
@@ -422,6 +422,7 @@ export class RecommendProductTool extends SkincareTool<
     }
 
     const product = await this.repo.findOrCreateProduct({
+      userId,
       name: input.name,
       brand: input.brand,
       image: input.imageUrl,

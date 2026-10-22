@@ -1198,7 +1198,7 @@
           },
           "RoutineLog": {
             "fields": {
-              "completedAt": {
+              "createdAt": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/timestamptz-temporal@1",
@@ -1230,8 +1230,8 @@
             "relations": {},
             "storage": {
               "fields": {
-                "completedAt": {
-                  "column": "completedAt"
+                "createdAt": {
+                  "column": "createdAt"
                 },
                 "id": {
                   "column": "id"
@@ -3059,9 +3059,13 @@
             },
             "RoutineLog": {
               "columns": {
-                "completedAt": {
+                "createdAt": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "dataType": "pg/timestamptz",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
                   "nullable": false
                 },
                 "id": {
@@ -3824,7 +3828,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "3ce5cda326ffcf96a61450ed5033f23d90da9704aee5c990102f08e4d651f29b"
+    "storageHash": "83ea8cee23707daaa91ffc893ac550b388b12df771cab476419305893a60c789"
   },
   "execution": {
     "executionHash": "dc1ac6e4db2ee326f04a55c1c0aa0d987b1dc883145cc25cd6bba35f22cc906d",

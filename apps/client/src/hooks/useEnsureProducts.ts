@@ -8,8 +8,6 @@ const CHUNK = 50;
 
 /** Fetches any of `ids` that aren't in the product store yet. */
 export function useEnsureProducts(ids: string[]) {
-    console.log("useEnsureProducts called with ids:", ids); // Debugging line
-  // Ids that are not in the store (shallow-compared, so it only re-renders when the list changes)
   const missing = useProductStore(
     useShallow((s) => ids.filter((id) => !s.products.byId[id])),
   );

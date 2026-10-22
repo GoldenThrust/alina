@@ -157,7 +157,7 @@ interface RoutineLog {
   id: string;
   userId: string;
   routineId: string;
-  completedAt: Date;
+  createdAt: Date;
 }
 
 interface Product {
@@ -243,6 +243,7 @@ interface RoutineState {
   setRoutines: (routines: Routine[]) => void;
   upsertRoutine: (routine: Routine) => void;
   removeRoutine: (routineId: string) => void;
+  upsertLogs: (logs: RoutineLog[]) => void;
   /** Optimistic accept/decline of a suggested routine. */
   setAccepted: (routineId: string, accepted: boolean) => void;
   upsertStep: (step: RoutineStep) => void;

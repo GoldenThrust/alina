@@ -4731,3 +4731,54 @@ select:focus-visible {
   color: #b0852c;
   font-size: 9px;
 }
+
+/* ---- Routine page: motion additions ---- */
+
+.routine-items {
+  position: relative; /* exiting rows are positioned against this */
+}
+
+/* The tab underline is now animated by motion */
+.routine-tabs button.selected::after {
+  display: none;
+}
+.tab-underline {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.check-icon {
+  display: grid;
+  place-items: center;
+}
+
+/* Step text: height is animated, so the line height has to be exact */
+.routine-instruction {
+  line-height: 16px;
+}
+.routine-chevron {
+  display: inline-flex;
+  transition: none;
+}
+.routine-items li.open .routine-chevron {
+  transform: none; /* rotation now comes from motion */
+}
+
+/* Numbers that count up inside headings and notes */
+.routine-streak-head h2 strong,
+.routine-streak-note strong {
+  font: inherit;
+  color: inherit;
+}
+
+.modal-option:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.routine-proposal {
+  margin-bottom: 14px;
+}

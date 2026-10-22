@@ -249,7 +249,6 @@ export function register(payload: AuthPayload) {
 
 export async function verifyAccount(token: string): Promise<AuthResponse> {
   try {
-    console.log(`Verifying account with token: ${token}`);
     const response = await axios.get(`/auth/verify-account/${token}`);
     return response.data as AuthResponse;
   } catch (error: AxiosError | any) {

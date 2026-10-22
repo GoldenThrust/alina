@@ -1,5 +1,5 @@
 
-import { get, post, put } from "./api";
+import { get, put } from "./api";
 type RecommendationDTO = Omit<Recommendation, "createdAt"> & { createdAt: string };
 
 type ListResponse = { items: RecommendationDTO[]; nextCursor: string | null };

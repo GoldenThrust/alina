@@ -13,9 +13,10 @@ function applyPage(page: RecommendationPage) {
   useRecommendationStore.getState().upsertRecommendations(page.recommendations);
 }
 
-export function useRecommendations({ type, accepted }: { type?: RecommendationType; accepted?: boolean } = { 
-  type: "PRODUCT", accepted: false
-}) {
+export function useRecommendations({
+  type = "PRODUCT",
+  accepted = false,
+}: { type?: RecommendationType; accepted?: boolean } = {}) {
   const [status, setStatus] = useState<Status>("loading");
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -29,22 +30,21 @@ export function useRecommendations({ type, accepted }: { type?: RecommendationTy
   const lifetime = useRef<AbortController | null>(null);
 
   /** First page. Cached recommendations in the store keep showing while this runs. */
-  const loadFirstPage = useCallback(async (signal?: AbortSignal) => {
+const loadFirstPage = useCallback(async (signal?: AbortSignal) => {
     setStatus("loading");
     try {
       const page = await getRecommendations({ type, accepted, limit: PAGE_SIZE, signal });
       applyPage(page);
       cursor.current = page.nextCursor;
 
-      console.log("loadFirstPage: nextCursor =", page.nextCursor); // Debugging line
-      console.log("pages", useRecommendationStore.getState().recommendations); // Debugging line
       setHasMore(page.nextCursor !== null);
       setStatus("ready");
     } catch (err) {
       if (isAbort(err)) return;
       setStatus("loadError");
     }
-  }, []);
+}, [type, accepted]);
+
 
   useEffect(() => {
     const controller = new AbortController();
@@ -54,7 +54,7 @@ export function useRecommendations({ type, accepted }: { type?: RecommendationTy
   }, [loadFirstPage]);
 
   /** Next page using the server's cursor. Safe to call repeatedly: overlapping calls are ignored. */
-  const loadMore = useCallback(async () => {
+const loadMore = useCallback(async () => {
     const next = cursor.current;
     if (!next || loadingMoreRef.current) return;
 
@@ -78,7 +78,7 @@ export function useRecommendations({ type, accepted }: { type?: RecommendationTy
       loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, []);
+}, [type, accepted]);
 
   /** Sends the recommendation id to the backend. Resolves true on success. */
   const addToRoutine = useCallback(async (recommendationId: string) => {
@@ -107,3 +107,4 @@ export function useRecommendations({ type, accepted }: { type?: RecommendationTy
 
   return { status, hasMore, loadingMore, moreError, addingIds, loadMore, retry, addToRoutine };
 }
+

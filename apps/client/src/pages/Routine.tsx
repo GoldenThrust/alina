@@ -1,4 +1,13 @@
 import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+  type SubmitEventHandler,
+} from "react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import {
   ArrowDown,
   ArrowUp,
   CalendarCheck,
@@ -7,6 +16,7 @@ import {
   Circle,
   Clock3,
   Flame,
+  Loader2,
   Moon,
   MoonStar,
   Plus,
@@ -16,25 +26,34 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import CountUp from "../components/CountUp";
 import PageHeading from "../components/PageHeading";
+import StatusBanner from "../components/StatusBanner";
 import {
   ROUTINE_PERIODS,
   useActiveRoutine,
   useRoutineDay,
   useRoutineLogs,
   useRoutineSteps,
+  useRoutineSync,
   useStepSuggestions,
-  type NewStep,
+  useSuggestionSources,
 } from "../hooks/useRoutine";
+import { EASE, container, item as fadeUp } from "../utils/motion";
+import { acceptedRecommendation } from "../utils/recommendation";
 
-const PERIOD_META: Record<RoutinePeriod, { label: string; short: string; icon: LucideIcon }> = {
+const PERIOD_META: Record<
+  RoutinePeriod,
+  { label: string; short: string; icon: LucideIcon }
+> = {
   MORNING: { label: "Morning", short: "AM", icon: Sun },
   AFTERNOON: { label: "Afternoon", short: "PM", icon: Flame },
   EVENING: { label: "Evening", short: "PM", icon: Moon },
   NIGHT: { label: "Night", short: "NT", icon: MoonStar },
   HABIT: { label: "Habit", short: "H", icon: Sparkles },
 };
+
+const SPRING = { type: "spring", stiffness: 500, damping: 38 } as const;
 
 /* ------------------------------ shared modal shell ------------------------------ */
 
@@ -45,7 +64,7 @@ function Modal({
 }: {
   labelledBy: string;
   onClose: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -54,20 +73,37 @@ function Modal({
   }, [onClose]);
 
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onClose}>
-      <section
+    <motion.div
+      className="modal-backdrop"
+      role="presentation"
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+    >
+      <motion.section
         className="suggestion-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
         onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, y: 16, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.97 }}
+        transition={{ duration: 0.22, ease: EASE }}
       >
-        <button className="modal-close" type="button" aria-label="Close" onClick={onClose}>
+        <button
+          className="modal-close"
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+        >
           ×
         </button>
         {children}
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   );
 }
 
@@ -77,17 +113,20 @@ function CreateRoutineModal({
   onCreate,
   onClose,
 }: {
-  onCreate: (title: string) => void;
+  onCreate: (title: string) => Promise<boolean>;
   onClose: () => void;
 }) {
   const [title, setTitle] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const submit: React.SubmitEventHandler<HTMLFormElement>  = useCallback((e) => {
+  const submit: SubmitEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
-    onCreate(title);
-    onClose();
-  }, [onCreate, onClose]);
+    if (!title.trim() || busy) return;
+    setBusy(true);
+    const ok = await onCreate(title);
+    if (ok) onClose();
+    else setBusy(false);
+  };
 
   return (
     <Modal labelledBy="create-routine-title" onClose={onClose}>
@@ -105,10 +144,16 @@ function CreateRoutineModal({
           />
         </label>
         <p className="text-muted routine-hint">
-          You'll add steps next, with ideas drawn from your scan recommendations.
+          You’ll add steps next, with ideas drawn from your scan
+          recommendations.
         </p>
-        <button className="button button-primary" type="submit" disabled={!title.trim()}>
-          <Plus size={16} /> Create routine
+        <button
+          className="button button-primary"
+          type="submit"
+          disabled={!title.trim() || busy}
+        >
+          {busy ? <Loader2 size={16} className="spin" /> : <Plus size={16} />}{" "}
+          Create routine
         </button>
       </form>
     </Modal>
@@ -135,7 +180,11 @@ function ConfirmModal({
       <h2 id="confirm-title">{title}</h2>
       <p className="routine-confirm-body">{body}</p>
       <div className="routine-confirm-actions">
-        <button className="button button-secondary" type="button" onClick={onClose}>
+        <button
+          className="button button-secondary"
+          type="button"
+          onClick={onClose}
+        >
           Keep it
         </button>
         <button
@@ -165,20 +214,29 @@ function AddStepModal({
   initialPeriod: RoutinePeriod;
   routineId: string;
   existingTitles: string[];
-  onAdd: (step: NewStep) => void;
+  onAdd: (step: NewStep) => Promise<boolean>;
   onClose: () => void;
 }) {
   const [period, setPeriod] = useState<RoutinePeriod>(initialPeriod);
   const [title, setTitle] = useState("");
   const [instruction, setInstruction] = useState("");
+  /** Which option is being saved (a suggestion key, or "custom"). */
+  const [busyKey, setBusyKey] = useState<string | null>(null);
   const suggestions = useStepSuggestions(period, existingTitles, routineId);
 
-  const submit: React.SubmitEventHandler<HTMLFormElement> = useCallback((e) => {
+  const add = async (step: NewStep, key: string) => {
+    if (busyKey) return;
+    setBusyKey(key);
+    const ok = await onAdd(step);
+    if (ok) onClose();
+    else setBusyKey(null);
+  };
+
+  const submit: SubmitEventHandler<HTMLFormElement> = (e) => {
     e.preventDefault();
     if (!title.trim()) return;
-    onAdd({ period, title, instruction });
-    onClose();
-  }, [onAdd, onClose]);
+    void add({ period, title, instruction }, "custom");
+  };
 
   return (
     <Modal labelledBy="add-step-title" onClose={onClose}>
@@ -187,7 +245,10 @@ function AddStepModal({
 
       <label className="routine-form">
         <span>When</span>
-        <select value={period} onChange={(e) => setPeriod(e.target.value as RoutinePeriod)}>
+        <select
+          value={period}
+          onChange={(e) => setPeriod(e.target.value as RoutinePeriod)}
+        >
           {ROUTINE_PERIODS.map((p) => (
             <option key={p} value={p}>
               {PERIOD_META[p].label}
@@ -196,35 +257,51 @@ function AddStepModal({
         </select>
       </label>
 
-      <p className="page-eyebrow routine-modal-section">FROM YOUR RECOMMENDATIONS</p>
+      <p className="page-eyebrow routine-modal-section">
+        FROM YOUR RECOMMENDATIONS
+      </p>
       {suggestions.length ? (
-        suggestions.map((s) => (
-          <button
-            key={s.key}
-            className="modal-option"
-            type="button"
-            onClick={() => {
-              onAdd({
-                period,
-                title: s.title,
-                instruction: s.instruction,
-                recommendationId: s.recommendationId,
-                consumeRecommendation: s.consumeRecommendation,
-              });
-              onClose();
-            }}
-          >
-            <span className="modal-option-copy">
-              <strong>{s.title}</strong>
-              <small>{s.source}</small>
-            </span>
-            <Plus size={16} />
-          </button>
-        ))
+        <AnimatePresence mode="popLayout" initial={false}>
+          {suggestions.map((s) => (
+            <motion.button
+              key={s.key}
+              layout
+              className="modal-option"
+              type="button"
+              disabled={!!busyKey}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() =>
+                void add(
+                  {
+                    period,
+                    title: s.title,
+                    instruction: s.instruction,
+                    recommendationId: s.recommendationId,
+                    consumeRecommendation: s.consumeRecommendation,
+                  },
+                  s.key,
+                )
+              }
+            >
+              <span className="modal-option-copy">
+                <strong>{s.title}</strong>
+                <small>{s.source}</small>
+              </span>
+              {busyKey === s.key ? (
+                <Loader2 size={16} className="spin" />
+              ) : (
+                <Plus size={16} />
+              )}
+            </motion.button>
+          ))}
+        </AnimatePresence>
       ) : (
         <p className="text-muted routine-hint">
-          No recommendations for {PERIOD_META[period].label.toLowerCase()} right now. Run a new scan
-          for fresh ideas, or write your own below.
+          No recommendations for {PERIOD_META[period].label.toLowerCase()} right
+          now. Run a new scan for fresh ideas, or write your own below.
         </p>
       )}
 
@@ -247,27 +324,67 @@ function AddStepModal({
             placeholder="How to do it, in a sentence"
           />
         </label>
-        <button className="button button-primary" type="submit" disabled={!title.trim()}>
-          <Plus size={16} /> Add step
+        <button
+          className="button button-primary"
+          type="submit"
+          disabled={!title.trim() || !!busyKey}
+        >
+          {busyKey === "custom" ? (
+            <Loader2 size={16} className="spin" />
+          ) : (
+            <Plus size={16} />
+          )}{" "}
+          Add step
         </button>
       </form>
     </Modal>
   );
 }
 
+/** Loads suggestion data while the routine is accepted, so the modal opens with ideas ready. */
+function SuggestionPrefetch() {
+  useSuggestionSources();
+  return null;
+}
+
+function RoutineSkeleton() {
+  return (
+    <div className="routine-layout" aria-hidden="true">
+      <div className="panel routine-skeleton">
+        {Array.from({ length: 5 }, (_, i) => (
+          <div className="routine-skeleton-row" key={i} />
+        ))}
+      </div>
+      <div className="routine-side">
+        <div className="panel routine-skeleton">
+          <div className="routine-skeleton-row" />
+          <div className="routine-skeleton-row" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------------------------- page ---------------------------------- */
 
 export default function Routine() {
-  const { routine, routines, selectRoutine, accept, create, remove } = useActiveRoutine();
-  const { steps, periods, stepsFor, addStep, removeStep, moveStep } = useRoutineSteps(routine);
+  const { status, synced, retry } = useRoutineSync();
+  const { routine, routines, selectRoutine, accept, create, remove, busy } =
+    useActiveRoutine();
+  const { steps, periods, stepsFor, addStep, removeStep, moveStep } =
+    useRoutineSteps(routine);
   const day = useRoutineDay(routine?.id);
-  const { streak, completionRate, loggedToday, week, logToday } = useRoutineLogs(routine);
+  const { streak, completionRate, loggedToday, week, logToday } =
+    useRoutineLogs(routine);
 
   const [period, setPeriod] = useState<RoutinePeriod>("MORNING");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const isLoading = status === "loading" && !routine;
+  const accepted = acceptedRecommendation(routine);
 
   // Land on a period that actually exists in this routine.
   useEffect(() => {
@@ -276,143 +393,187 @@ export default function Routine() {
 
   const periodSteps = stepsFor(period);
   const doneCount = periodSteps.filter((s) => day.isDone(s.id)).length;
-  const percent = periodSteps.length ? (doneCount / periodSteps.length) * 100 : 0;
-  const periodComplete = periodSteps.length > 0 && doneCount === periodSteps.length;
-  const accepted = !!routine?.accepted;
+  const percent = periodSteps.length
+    ? (doneCount / periodSteps.length) * 100
+    : 0;
+  const periodComplete =
+    periodSteps.length > 0 && doneCount === periodSteps.length;
   const nextStepId =
-    accepted && !periodComplete ? periodSteps.find((s) => !day.isDone(s.id))?.id : undefined;
+    accepted && !periodComplete
+      ? periodSteps.find((s) => !day.isDone(s.id))?.id
+      : undefined;
+  const periodIds = periodSteps.map((s) => s.id);
+  const existingTitles = useMemo(() => steps.map((s) => s.title), [steps]);
 
-  // Finishing a full period counts the day (one log per day).
+  // Finishing a full period counts the day. Wait for fresh server data so a day isn't logged twice.
   useEffect(() => {
-    if (accepted && periodComplete && !loggedToday) logToday();
-  }, [accepted, periodComplete, loggedToday, logToday]);
+    if (synced && accepted && periodComplete && !loggedToday) void logToday();
+  }, [synced, accepted, periodComplete, loggedToday, logToday]);
 
-  const handleAdd = (step: NewStep) => {
-    addStep(step);
-    setPeriod(step.period);
-  };
+  const closeCreate = useCallback(() => setCreating(false), []);
+  const closeDelete = useCallback(() => setDeleting(false), []);
+  const closeAdd = useCallback(() => setAdding(false), []);
 
-  const handleRemoveStep = (stepId: string) => {
-    removeStep(stepId);
-    if (expanded === stepId) setExpanded(null);
-  };
+  const handleAdd = useCallback(
+    async (step: NewStep) => {
+      const ok = await addStep(step);
+      if (ok) setPeriod(step.period);
+      return ok;
+    },
+    [addStep],
+  );
+
+  const handleRemoveStep = useCallback(
+    (stepId: string) => {
+      void removeStep(stepId);
+      setExpanded((current) => (current === stepId ? null : current));
+    },
+    [removeStep],
+  );
+
+  /* ----- pieces ----- */
 
   const modals = (
-    <>
-      {creating ? <CreateRoutineModal onCreate={create} onClose={() => setCreating(false)} /> : null}
+    <AnimatePresence>
+      {creating ? (
+        <CreateRoutineModal
+          key="create"
+          onCreate={create}
+          onClose={closeCreate}
+        />
+      ) : null}
       {deleting && routine ? (
         <ConfirmModal
+          key="confirm"
           title={accepted ? "Delete this routine?" : "Dismiss this suggestion?"}
           body={
             accepted
-              ? `"${routine.title}", its steps and your streak history will be removed.`
-              : `"${routine.title}" will be removed from your suggestions.`
+              ? `“${routine.title}”, its steps and your streak history will be removed.`
+              : `“${routine.title}” will be removed from your suggestions.`
           }
           confirmLabel={accepted ? "Delete routine" : "Dismiss"}
-          onConfirm={remove}
-          onClose={() => setDeleting(false)}
+          onConfirm={() => void remove()}
+          onClose={closeDelete}
         />
       ) : null}
       {adding && accepted && routine ? (
         <AddStepModal
+          key="add"
           initialPeriod={period}
           routineId={routine.id}
-          existingTitles={steps.map((s) => s.title)}
+          existingTitles={existingTitles}
           onAdd={handleAdd}
-          onClose={() => setAdding(false)}
+          onClose={closeAdd}
         />
       ) : null}
-    </>
+    </AnimatePresence>
   );
 
-  if (!routine) {
-    return (
-      <div className="page-content routine-page">
-        <PageHeading
-          eyebrow="Your everyday rhythm"
-          title="Your routine"
-          description="A simple routine can be easier to follow than a perfect one."
-        />
-        <div className="panel empty-state">
-          <Sparkles size={20} />
-          <h3>No routine yet.</h3>
-          <p>
-            Complete a skin scan and we'll suggest a routine built around your results, or start
-            your own.
-          </p>
-          <button className="button button-primary" type="button" onClick={() => setCreating(true)}>
-            <Plus size={16} /> Create a routine
-          </button>
-        </div>
-        {modals}
-      </div>
-    );
-  }
-
-  const PeriodIcon = PERIOD_META[period].icon;
-  const periodIds = periodSteps.map((s) => s.id);
-
-  return (
-    <div className="page-content routine-page">
-      <PageHeading
-        eyebrow={accepted ? "Your everyday rhythm" : "Suggested for you"}
-        title={routine.title}
-        description="A simple routine can be easier to follow than a perfect one."
-        action={
-          <div className="routine-actions">
-            {routines.length > 1 ? (
-              <select
-                className="routine-picker"
-                aria-label="Choose routine"
-                value={routine.id}
-                onChange={(e) => {
-                  selectRoutine(e.target.value);
-                  setExpanded(null);
-                }}
-              >
-                {routines.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.title}
-                    {r.accepted ? "" : " (suggested)"}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-            <button className="button button-secondary" type="button" onClick={() => setCreating(true)}>
-              <Plus size={16} /> New routine
-            </button>
-            {accepted ? (
-              <button className="button button-primary" type="button" onClick={() => setAdding(true)}>
-                <Plus size={16} /> Add a step
-              </button>
-            ) : (
-              <button className="button button-primary" type="button" onClick={accept}>
-                <Check size={16} /> Accept routine
-              </button>
-            )}
-            <button
-              className="icon-button routine-remove"
-              type="button"
-              aria-label={accepted ? "Delete routine" : "Dismiss suggestion"}
-              onClick={() => setDeleting(true)}
+  const heading = routine ? (
+    <PageHeading
+      eyebrow={accepted ? "Your everyday rhythm" : "Suggested for you"}
+      title={routine.title}
+      description="A simple routine can be easier to follow than a perfect one."
+      action={
+        <div className="routine-actions">
+          {routines.length > 1 ? (
+            <select
+              className="routine-picker"
+              aria-label="Choose routine"
+              value={routine.id}
+              onChange={(e) => {
+                selectRoutine(e.target.value);
+                setExpanded(null);
+              }}
             >
-              {accepted ? <Trash2 size={15} /> : <X size={15} />}
-            </button>
-          </div>
-        }
-      />
-
-      {!accepted ? (
-        <div className="routine-proposal" role="status">
-          <Sparkles size={16} />
-          <p>
-            <strong>This routine is a suggestion.</strong> Take a look at the steps below. Accept it
-            to start ticking them off, editing steps and tracking your progress.
-          </p>
+              {routines.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.title}
+                  {acceptedRecommendation(r) ? "" : " (suggested)"}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <motion.button
+            className="button button-secondary"
+            type="button"
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setCreating(true)}
+          >
+            <Plus size={16} /> New routine
+          </motion.button>
+          {accepted ? (
+            <motion.button
+              className="button button-primary"
+              type="button"
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setAdding(true)}
+            >
+              <Plus size={16} /> Add a step
+            </motion.button>
+          ) : (
+            <motion.button
+              className="button button-primary"
+              type="button"
+              disabled={busy}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => void accept()}
+            >
+              {busy ? (
+                <Loader2 size={16} className="spin" />
+              ) : (
+                <Check size={16} />
+              )}{" "}
+              Accept routine
+            </motion.button>
+          )}
+          <motion.button
+            className="icon-button routine-remove"
+            type="button"
+            whileTap={{ scale: 0.92 }}
+            aria-label={accepted ? "Delete routine" : "Dismiss suggestion"}
+            onClick={() => setDeleting(true)}
+          >
+            {accepted ? <Trash2 size={15} /> : <X size={15} />}
+          </motion.button>
         </div>
-      ) : null}
+      }
+    />
+  ) : (
+    <PageHeading
+      eyebrow="Your everyday rhythm"
+      title="Your routine"
+      description="A simple routine can be easier to follow than a perfect one."
+    />
+  );
 
-      <div className="routine-layout">
+  let body: ReactNode;
+
+  if (!routine) {
+    body = isLoading ? (
+      <RoutineSkeleton />
+    ) : status === "loadError" ? null : (
+      <motion.div className="panel empty-state" variants={fadeUp}>
+        <Sparkles size={20} />
+        <h3>No routine yet.</h3>
+        <p>
+          Complete a skin scan and we’ll suggest a routine built around your
+          results, or start your own.
+        </p>
+        <button
+          className="button button-primary"
+          type="button"
+          onClick={() => setCreating(true)}
+        >
+          <Plus size={16} /> Create a routine
+        </button>
+      </motion.div>
+    );
+  } else {
+    const PeriodIcon = PERIOD_META[period].icon;
+
+    body = (
+      <motion.div className="routine-layout" variants={fadeUp}>
         <section className="panel routine-list-panel">
           <div className="routine-tabs" role="tablist">
             {periods.map((p) => (
@@ -428,13 +589,22 @@ export default function Routine() {
                 }}
               >
                 {PERIOD_META[p].label} <span>{PERIOD_META[p].short}</span>
+                {period === p ? (
+                  <motion.i
+                    className="tab-underline"
+                    layoutId="routine-tab-underline"
+                    transition={SPRING}
+                  />
+                ) : null}
               </button>
             ))}
           </div>
 
           <div className="routine-list-heading">
             <div>
-              <p className="page-eyebrow">{PERIOD_META[period].label} routine</p>
+              <p className="page-eyebrow">
+                {PERIOD_META[period].label} routine
+              </p>
               <h2>Your steps</h2>
             </div>
             <span className="text-muted routine-count">
@@ -442,101 +612,171 @@ export default function Routine() {
             </span>
           </div>
 
-          {periodSteps.length ? (
-            <ol className="routine-items">
-              {periodSteps.map((step, index) => {
-                const isDone = day.isDone(step.id);
-                const isOpen = expanded === step.id;
-                return (
-                  <li key={step.id} className={`${isDone ? "completed" : ""} ${isOpen ? "open" : ""}`}>
+          {/* Switching tabs or routines slides the whole list */}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={`${routine.id}-${period}`}
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.18, ease: EASE }}
+            >
+              {periodSteps.length ? (
+                <ol className="routine-items">
+                  {/* Adding, removing and reordering steps all glide */}
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {periodSteps.map((step, index) => {
+                      const isDone = day.isDone(step.id);
+                      const isOpen = expanded === step.id;
+                      return (
+                        <motion.li
+                          key={step.id}
+                          layout="position"
+                          className={`${isDone ? "completed" : ""} ${isOpen ? "open" : ""}`}
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, x: 24 }}
+                          transition={SPRING}
+                        >
+                          <motion.button
+                            className="routine-check"
+                            type="button"
+                            disabled={!accepted}
+                            aria-pressed={isDone}
+                            aria-label={`${isDone ? "Unmark" : "Complete"} ${step.title}`}
+                            whileTap={accepted ? { scale: 0.85 } : undefined}
+                            onClick={() => day.toggle(step.id)}
+                          >
+                            <AnimatePresence mode="wait" initial={false}>
+                              <motion.span
+                                key={isDone ? "on" : "off"}
+                                className="check-icon"
+                                initial={{ scale: 0.4, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.4, opacity: 0 }}
+                                transition={{ duration: 0.12 }}
+                              >
+                                {isDone ? (
+                                  <Check size={15} />
+                                ) : (
+                                  <Circle size={15} />
+                                )}
+                              </motion.span>
+                            </AnimatePresence>
+                          </motion.button>
+                          <span className="routine-step-number">
+                            {String(index + 1).padStart(2, "0")}
+                          </span>
+                          <button
+                            className="routine-step-body"
+                            type="button"
+                            aria-expanded={isOpen}
+                            onClick={() => setExpanded(isOpen ? null : step.id)}
+                          >
+                            <span className="routine-item-copy">
+                              <strong>
+                                {step.title}
+                                {step.id === nextStepId ? (
+                                  <motion.em
+                                    className="routine-next"
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{
+                                      type: "spring",
+                                      stiffness: 400,
+                                      damping: 20,
+                                    }}
+                                  >
+                                    Up next
+                                  </motion.em>
+                                ) : null}
+                              </strong>
+                              {step.instruction ? (
+                                <motion.small
+                                  className={`routine-instruction${isOpen ? " open" : ""}`}
+                                  initial={false}
+                                  animate={{ height: isOpen ? "auto" : 16 }}
+                                  transition={{ duration: 0.25, ease: EASE }}
+                                >
+                                  {step.instruction}
+                                </motion.small>
+                              ) : null}
+                            </span>
+                            <motion.span
+                              className="routine-chevron"
+                              animate={{ rotate: isOpen ? 180 : 0 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <ChevronDown size={16} />
+                            </motion.span>
+                          </button>
+                          {accepted ? (
+                            <>
+                              <button
+                                className="icon-button"
+                                type="button"
+                                aria-label={`Move ${step.title} up`}
+                                disabled={index === 0}
+                                onClick={() => void moveStep(step.id, -1)}
+                              >
+                                <ArrowUp size={15} />
+                              </button>
+                              <button
+                                className="icon-button"
+                                type="button"
+                                aria-label={`Move ${step.title} down`}
+                                disabled={index === periodSteps.length - 1}
+                                onClick={() => void moveStep(step.id, 1)}
+                              >
+                                <ArrowDown size={15} />
+                              </button>
+                              <button
+                                className="icon-button routine-remove"
+                                type="button"
+                                aria-label={`Remove ${step.title}`}
+                                onClick={() => handleRemoveStep(step.id)}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </>
+                          ) : null}
+                        </motion.li>
+                      );
+                    })}
+                  </AnimatePresence>
+                </ol>
+              ) : (
+                <div className="empty-state">
+                  <Sparkles size={20} />
+                  <h3>
+                    {accepted
+                      ? `No ${PERIOD_META[period].label.toLowerCase()} steps yet.`
+                      : "Nothing here yet."}
+                  </h3>
+                  <p>
+                    {accepted
+                      ? "Pick one from your recommendations or write your own."
+                      : "Accept this routine to start adding steps."}
+                  </p>
+                  {accepted ? (
                     <button
-                      className="routine-check"
+                      className="quiet-link"
                       type="button"
-                      disabled={!accepted}
-                      aria-pressed={isDone}
-                      aria-label={`${isDone ? "Unmark" : "Complete"} ${step.title}`}
-                      onClick={() => day.toggle(step.id)}
+                      onClick={() => setAdding(true)}
                     >
-                      {isDone ? <Check size={15} /> : <Circle size={15} />}
+                      Add a step <Plus size={15} />
                     </button>
-                    <span className="routine-step-number">{String(index + 1).padStart(2, "0")}</span>
-                    <button
-                      className="routine-step-body"
-                      type="button"
-                      aria-expanded={isOpen}
-                      onClick={() => setExpanded(isOpen ? null : step.id)}
-                    >
-                      <span className="routine-item-copy">
-                        <strong>
-                          {step.title}
-                          {step.id === nextStepId ? <em className="routine-next">Up next</em> : null}
-                        </strong>
-                        {step.instruction ? (
-                          <small className={isOpen ? "routine-instruction open" : "routine-instruction"}>
-                            {step.instruction}
-                          </small>
-                        ) : null}
-                      </span>
-                      <ChevronDown size={16} className="routine-chevron" />
-                    </button>
-                    {accepted ? (
-                      <>
-                        <button
-                          className="icon-button"
-                          type="button"
-                          aria-label={`Move ${step.title} up`}
-                          disabled={index === 0}
-                          onClick={() => moveStep(step.id, -1)}
-                        >
-                          <ArrowUp size={15} />
-                        </button>
-                        <button
-                          className="icon-button"
-                          type="button"
-                          aria-label={`Move ${step.title} down`}
-                          disabled={index === periodSteps.length - 1}
-                          onClick={() => moveStep(step.id, 1)}
-                        >
-                          <ArrowDown size={15} />
-                        </button>
-                        <button
-                          className="icon-button routine-remove"
-                          type="button"
-                          aria-label={`Remove ${step.title}`}
-                          onClick={() => handleRemoveStep(step.id)}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ol>
-          ) : (
-            <div className="empty-state">
-              <Sparkles size={20} />
-              <h3>
-                {accepted
-                  ? `No ${PERIOD_META[period].label.toLowerCase()} steps yet.`
-                  : "Nothing here yet."}
-              </h3>
-              <p>
-                {accepted
-                  ? "Pick one from your recommendations or write your own."
-                  : "Accept this routine to start adding steps."}
-              </p>
-              {accepted ? (
-                <button className="quiet-link" type="button" onClick={() => setAdding(true)}>
-                  Add a step <Plus size={15} />
-                </button>
-              ) : null}
-            </div>
-          )}
+                  ) : null}
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
 
           <div className="routine-progress">
             <div>
-              <span>Today's {PERIOD_META[period].label.toLowerCase()} progress</span>
+              <span>
+                Today’s {PERIOD_META[period].label.toLowerCase()} progress
+              </span>
               <strong>
                 {doneCount} of {periodSteps.length} complete
               </strong>
@@ -548,13 +788,27 @@ export default function Routine() {
               aria-valuemax={periodSteps.length}
               aria-valuenow={doneCount}
             >
-              <span style={{ width: `${percent}%` }} />
+              <motion.span
+                initial={false}
+                animate={{ width: `${percent}%` }}
+                transition={{ duration: 0.5, ease: EASE }}
+              />
             </div>
-            {periodComplete ? (
-              <p className="routine-done-note">
-                <Check size={13} /> {PERIOD_META[period].label} routine done. Nicely done.
-              </p>
-            ) : null}
+            <AnimatePresence initial={false}>
+              {periodComplete ? (
+                <motion.p
+                  key="done"
+                  className="routine-done-note"
+                  initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                >
+                  <Check size={13} /> {PERIOD_META[period].label} routine done.
+                  Nicely done.
+                </motion.p>
+              ) : null}
+            </AnimatePresence>
             {accepted && periodSteps.length ? (
               <div className="routine-tools">
                 <button
@@ -578,27 +832,67 @@ export default function Routine() {
           </div>
         </section>
 
-        <aside className="routine-side">
+        <motion.aside
+          className="routine-side"
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.25, ease: EASE }}
+        >
           <section className="panel routine-streak">
             <div className="routine-streak-head">
-              <span className="quick-icon rose">
+              <motion.span
+                className="quick-icon rose"
+                animate={streak > 0 ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+                transition={
+                  streak > 0
+                    ? { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
+                    : undefined
+                }
+              >
                 <Flame size={17} />
-              </span>
+              </motion.span>
               <div>
                 <p className="page-eyebrow">CONSISTENCY</p>
                 <h2>
-                  {streak} day{streak === 1 ? "" : "s"} in a row
+                  <CountUp value={streak} /> day{streak === 1 ? "" : "s"} in a
+                  row
                 </h2>
               </div>
             </div>
-            <div className="routine-week" aria-label="Last seven days">
+
+            <motion.div
+              className="routine-week"
+              aria-label="Last seven days"
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: {},
+                show: {
+                  transition: { staggerChildren: 0.05, delayChildren: 0.4 },
+                },
+              }}
+            >
               {week.map((d) => (
-                <span key={d.key} className={`routine-day ${d.hit ? "hit" : ""} ${d.today ? "today" : ""}`}>
-                  <i>{d.hit ? <Check size={11} /> : null}</i>
+                <motion.span
+                  key={d.key}
+                  className={`routine-day ${d.hit ? "hit" : ""} ${d.today ? "today" : ""}`}
+                  variants={{
+                    hidden: { opacity: 0, y: 6 },
+                    show: { opacity: 1, y: 0 },
+                  }}
+                >
+                  <motion.i
+                    initial={false}
+                    animate={d.hit ? { scale: [0.6, 1.2, 1] } : { scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {d.hit ? <Check size={11} /> : null}
+                  </motion.i>
                   <small>{d.label}</small>
-                </span>
+                </motion.span>
               ))}
-            </div>
+            </motion.div>
+
             <p className="routine-streak-note">
               <CalendarCheck size={13} />{" "}
               {loggedToday
@@ -606,7 +900,10 @@ export default function Routine() {
                 : "A day counts once you finish a full routine."}
             </p>
             <p className="routine-streak-note">
-              {Math.round(completionRate * 100)}% of the last 30 days completed
+              <span>
+                <CountUp value={Math.round(completionRate * 100)} />% of the
+                last 30 days completed
+              </span>
             </p>
           </section>
 
@@ -617,14 +914,70 @@ export default function Routine() {
             <p className="page-eyebrow">A GENTLE REMINDER</p>
             <h2>Keep it comfortable.</h2>
             <p>
-              Introduce one new product at a time so it's easier to notice how your skin responds. If
-              something stings or feels tight, skip that step and let it settle.
+              Introduce one new product at a time so it’s easier to notice how
+              your skin responds. If something stings or feels tight, skip that
+              step and let it settle.
             </p>
           </section>
-        </aside>
-      </div>
+        </motion.aside>
+      </motion.div>
+    );
+  }
 
-      {modals}
-    </div>
+  return (
+    <MotionConfig reducedMotion="user">
+      <motion.div
+        className="page-content routine-page"
+        variants={container}
+        initial="hidden"
+        animate="show"
+        aria-busy={isLoading}
+      >
+        {accepted ? <SuggestionPrefetch /> : null}
+
+        <motion.div variants={fadeUp}>{heading}</motion.div>
+
+        <AnimatePresence initial={false}>
+          {status === "loadError" ? (
+            <StatusBanner
+              key="load-error"
+              title="We couldn’t load your routine."
+              text={
+                routine
+                  ? "Showing what we have saved. Check your connection and retry."
+                  : "Check your connection and try again."
+              }
+              onRetry={retry}
+            />
+          ) : null}
+
+          {routine && !accepted ? (
+            <motion.div
+              key="proposal"
+              className="status-banner-wrap"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3, ease: EASE }}
+            >
+              <div className="routine-proposal" role="status">
+                <Sparkles size={16} />
+                <p>
+                  <strong>This routine is a suggestion.</strong>{" "}
+                  {routine.recommendation?.explanation
+                    ? `${routine.recommendation.explanation} `
+                    : null}
+                  Take a look at the steps below. Accept it to start ticking
+                  them off, editing steps and tracking your progress.
+                </p>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        {body}
+        {modals}
+      </motion.div>
+    </MotionConfig>
   );
 }

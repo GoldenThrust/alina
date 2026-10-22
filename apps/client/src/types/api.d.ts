@@ -85,8 +85,8 @@ type ListRoutineLogsParams = PaginationParams & {
   from?: ISODate;
   to?: ISODate;
 };
-type CreateRoutineLogBody = { routineId: ID; completedAt: ISODate };
-type UpdateRoutineLogBody = Partial<Pick<CreateRoutineLogBody, "completedAt">>;
+type CreateRoutineLogBody = { routineId: ID; createdAt: ISODate };
+type UpdateRoutineLogBody = Partial<Pick<CreateRoutineLogBody, "createdAt">>;
  
 type UpsertPreferenceBody = Partial<
   Pick<Preference, "favoriteBrands" | "favoriteIngredients" | "avoidedIngredients" | "budget">

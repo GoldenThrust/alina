@@ -125,7 +125,7 @@ export interface RoutineLog {
   id: string;
   userId: string;
   routineId: string;
-  completedAt: Date;
+  createdAt: Date;
 }
 
 export interface Product {
