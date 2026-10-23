@@ -22,10 +22,12 @@ import register, {
   resetEmail,
   revertResetEmail,
   getUser,
+  deleteAvatar,
 } from "./auth.service.ts";
 import APIError from "../../errors/APIError.ts";
 import { fileManager } from "../../common/files/file.ts";
 import { logger } from "../../config/logger.ts";
+import fs from "fs";
 
 /**
  * OAuth2 callback handler for Google sign-in
@@ -184,7 +186,6 @@ export async function loginHandler(
     console.error("Login failed", error);
     logger.error("User login failed", error);
 
-
     res.status(500).send({ message: "User Login failed" });
   }
 }
@@ -278,7 +279,7 @@ export async function resetPasswordHandler(
 
     return res.status(200).send(response);
   } catch (error: any) {
-        if (error instanceof APIError) {
+    if (error instanceof APIError) {
       return res.status(error.statusCode).send({
         message: error.message,
       });
@@ -309,7 +310,7 @@ export async function refreshTokenHandler(
 
     return res.send(response);
   } catch (error: any) {
-        if (error instanceof APIError) {
+    if (error instanceof APIError) {
       return res.status(error.statusCode).send({
         message: error.message,
       });
@@ -337,7 +338,7 @@ export async function logoutHandler(req: FastifyRequest, res: FastifyReply) {
 
     return res.send(response);
   } catch (error: any) {
-        if (error instanceof APIError) {
+    if (error instanceof APIError) {
       return res.status(error.statusCode).send({
         message: error.message,
       });
@@ -364,7 +365,7 @@ export async function getUserHandler(req: FastifyRequest, res: FastifyReply) {
     const response = await getUser(payload.sub);
     return res.send(response);
   } catch (error: any) {
-        if (error instanceof APIError) {
+    if (error instanceof APIError) {
       return res.status(error.statusCode).send({
         message: error.message,
       });
@@ -386,26 +387,45 @@ export async function updateProfileHandler(
 ) {
   try {
     const user = req.user as JwtPayload;
+    const existingUser = await getUser(user.sub);
     if (!user) {
       throw new APIError("User not found", 404);
     }
 
     let imagePath;
+    const oldImagePath = existingUser.user.avatar;
 
     try {
       imagePath = await fileManager.uploadFile(req, "image");
-    } catch (error) {}
+
+      if (oldImagePath && !oldImagePath.includes("http")) {
+        fs.unlink(oldImagePath, (err) => {
+          if (err) {
+            console.error("Failed to delete old image:", err);
+          } else {
+            console.log("Old image deleted successfully");
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Image upload failed:", error);
+      throw new APIError("Image upload failed", 500);
+    }
 
     const payload = {
       ...req.body,
-      image: imagePath,
+      avatar: imagePath,
     };
+
+    console.log("updateProfileHandler payload", payload);
 
     const response = await updateProfile(user, payload);
 
     return res.send(response);
   } catch (error: any) {
-        if (error instanceof APIError) {
+    res.log.error(error);
+
+    if (error instanceof APIError) {
       return res.status(error.statusCode).send({
         message: error.message,
       });
@@ -433,7 +453,7 @@ export async function requestResetEmailHandler(
 
     return res.send(response);
   } catch (error: any) {
-        if (error instanceof APIError) {
+    if (error instanceof APIError) {
       return res.status(error.statusCode).send({
         message: error.message,
       });
@@ -461,7 +481,7 @@ export async function resetEmailHandler(
 
     return res.send(response);
   } catch (error: any) {
-        if (error instanceof APIError) {
+    if (error instanceof APIError) {
       return res.status(error.statusCode).send({
         message: error.message,
       });
@@ -491,12 +511,96 @@ export async function revertResetEmailHandler(
 
     return res.send(response);
   } catch (error: any) {
-        if (error instanceof APIError) {
+    if (error instanceof APIError) {
       return res.status(error.statusCode).send({
         message: error.message,
       });
     }
 
     res.status(500).send({ message: "Failed to revert email reset" });
+  }
+}
+
+export async function updateAvatarHandler(
+  req: FastifyRequest,
+  res: FastifyReply,
+) {
+  try {
+    const user = req.user as JwtPayload;
+    const existingUser = (await getUser(user.sub)).user;
+    if (!user) {
+      throw new APIError("User not found", 404);
+    }
+
+    let imagePath;
+    const oldImagePath = existingUser?.avatar;
+
+    
+    try {
+      imagePath = await fileManager.uploadFile(req, "image");
+      
+      if (oldImagePath && !oldImagePath.includes("http")) {
+        fs.unlink(oldImagePath, (err) => {
+          if (err) {
+            console.error("Failed to delete old image:", err);
+          } else {
+            console.log("Old image deleted successfully");
+          }
+        });
+      }
+      
+    } catch (error) {
+      console.error("Image upload failed:", error);
+      throw new APIError("Image upload failed", 500);
+    }
+
+    const response = await updateProfile(user, { avatar: imagePath });
+
+    return res.send(response);
+  } catch (error: any) {
+    res.log.error(error);
+
+    if (error instanceof APIError) {
+      return res.status(error.statusCode).send({
+        message: error.message,
+      });
+    }
+
+    res.status(500).send({ message: "Failed to update profile" });
+  }
+}
+
+export async function deleteAvatarHandler(
+  req: FastifyRequest,
+  res: FastifyReply,
+) {
+  try {
+    const user = req.user as JwtPayload;
+    const existingUser = await getUser(user.sub);
+    if (!user) {
+      throw new APIError("User not found", 404);
+    }
+
+    const oldImagePath = existingUser.user.avatar;
+
+    await deleteAvatar(user.sub);
+    if (oldImagePath && !oldImagePath.includes("http")) {
+      fs.unlink(oldImagePath, (err) => {
+        if (err) {
+          console.error("Failed to delete old image:", err);
+        } else {
+          console.log("Old image deleted successfully");
+        }
+      });
+    } else {
+      throw new APIError("No avatar to delete", 400);
+    }
+  } catch (error: any) {
+    if (error instanceof APIError) {
+      return res.status(error.statusCode).send({
+        message: error.message,
+      });
+    }
+    res.status(500).send({ message: "Failed to delete avatar" });
   }
 }

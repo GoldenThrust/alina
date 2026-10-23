@@ -78,7 +78,7 @@ export function buildApp() {
     max: 100,
     timeWindow: "1 minute",
   });
-  app.register(import("@fastify/helmet"));
+  // app.register(import("@fastify/helmet"));
   app.register(import("@fastify/cors"), {
     origin: allowUrls,
     credentials: true,

@@ -54,6 +54,7 @@ interface User {
   lastScanImage: string | null;
   lastInteractionId: string | null;
   role: UserRole;
+  preferences: Preference | null;
   createdAt: Date;
   updatedAt: Date;
 }

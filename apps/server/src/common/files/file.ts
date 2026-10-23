@@ -65,12 +65,13 @@ export default class FileManager {
     const filename = this.safeFilename(ext);
     const folderPath = path.join(this.filePath, type, directory);
     const filePath = path.join(folderPath, filename);
+
     
     await mkdir(folderPath, { recursive: true });
 
     await pipeline(stream, fs.createWriteStream(filePath));
 
-    return filePath;
+    return path.join("public", type, directory, filename);
   }
 
   async uploadFiles(req: FastifyRequest, type: string): Promise<string[]> {

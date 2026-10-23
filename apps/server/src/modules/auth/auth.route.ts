@@ -24,6 +24,8 @@ import {
   resetPasswordHandler,
   resetEmailHandler,
   revertResetEmailHandler,
+  deleteAvatarHandler,
+  updateAvatarHandler,
 } from "./auth.controller.ts";
 
 export default async function authRoutes(fastify: FastifyInstance) {
@@ -46,6 +48,22 @@ export default async function authRoutes(fastify: FastifyInstance) {
       schema: updateSchema,
     },
     updateProfileHandler,
+  );
+
+  fastify.put(
+    "/avatar",
+    {
+      preHandler: [fastify.authenticate],
+    },
+    updateAvatarHandler,
+  );
+
+  fastify.delete(
+    "/avatar",
+    {
+      preHandler: [fastify.authenticate],
+    },
+    deleteAvatarHandler,
   );
 
   fastify.post(

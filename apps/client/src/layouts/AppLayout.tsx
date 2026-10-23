@@ -78,8 +78,8 @@ export default function AppLayout() {
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-profile">
-            <span className="avatar avatar-small">
-              {user.avatar ? <img src={user.avatar} alt="Avatar" className="rounded" /> : user.fullName.slice(0, 1).toUpperCase()}
+            <span className="avatar avatar-small rounded!">
+              {user.avatar ? <img src={user.avatar} alt="Avatar" /> : user.fullName.slice(0, 1).toUpperCase()}
             </span>
             <span className="sidebar-profile-copy">
               <strong>{user.fullName}</strong>
@@ -106,7 +106,7 @@ export default function AppLayout() {
               A little more in tune, every day.
             </span>
           </div>
-          <div className="topbar-user">
+          {/* <div className="topbar-user">
             <button
               className="avatar"
               type="button"
@@ -115,7 +115,7 @@ export default function AppLayout() {
             >
               {user.avatar ? <img src={user.avatar} alt="Avatar" className="rounded-full" /> : user.fullName.slice(0, 1).toUpperCase()}
             </button>
-          </div>
+          </div> */}
         </header>
         <main className="workspace">
           <Outlet />

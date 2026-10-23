@@ -1,11 +1,9 @@
 import { useCallback, useState } from "react";
 import {
   removeAvatar as removeAvatarRequest,
-  updateProfile,
-  uploadAvatar,
-  type UpdateProfileInput,
 } from "../data/user";
 import { useAuthStore } from "../stores";
+import { updateProfile, uploadAvatar } from "../services/api/profile";
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
@@ -18,7 +16,7 @@ export function useProfileActions() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   /** Resolves true on success so the caller can close the form. */
-  const saveProfile = useCallback(async (input: UpdateProfileInput) => {
+  const saveProfile = useCallback(async (input: Partial<User>) => {
     setSaving(true);
     setSaveError(null);
     try {
@@ -40,7 +38,7 @@ export function useProfileActions() {
 
     setAvatarBusy(true);
     try {
-      const url = await uploadAvatar(file);
+      const url = (await uploadAvatar(file)).avatar;
       useAuthStore.getState().patchUser({ avatar: url });
     } catch (err) {
       setAvatarError(messageOf(err, "Couldn't upload that photo."));

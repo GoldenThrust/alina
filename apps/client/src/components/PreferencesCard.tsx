@@ -1,9 +1,10 @@
 import { Loader2, Plus, X } from "lucide-react";
 import { useState, type SubmitEventHandler } from "react";
-import { usePreferences, type PreferencesStatus } from "../hooks/usePreferences";
+import { usePreferences } from "../hooks/usePreferences";
 import { selectBudget, usePreferenceStore } from "../stores";
 
 type ListKey = "favoriteBrands" | "favoriteIngredients" | "avoidedIngredients";
+type PreferencesStatus = "loading" | "loadError" | "saving" | "saveError" | "saved" | "ready";
 
 const EMPTY: string[] = [];
 
@@ -24,6 +25,7 @@ function TagRow({
 
   const add: SubmitEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
+
     const value = draft.trim();
     if (!value) return;
     // toggle() would remove an existing value, so only call it when adding something new
@@ -31,7 +33,7 @@ function TagRow({
     if (!exists) toggle(listKey, value);
     setDraft("");
   };
-
+  
   return (
     <div className="preference-row">
       <span>
@@ -83,31 +85,9 @@ function SaveStatus({ status, onRetry }: { status: PreferencesStatus; onRetry: (
 }
 
 export default function PreferencesCard() {
-  const { preferences, status, retryLoad, retrySave } = usePreferences();
+  const { status, retrySave } = usePreferences();
   const budget = usePreferenceStore(selectBudget);
   const setBudget = usePreferenceStore((s) => s.setBudget);
-
-  if (!preferences) {
-    return (
-      <section className="panel preference-card">
-        <div className="section-heading">
-          <h2>Preferences</h2>
-        </div>
-        {status === "loadError" ? (
-          <div className="empty-state">
-            <p>Couldn’t load your preferences.</p>
-            <button className="button button-secondary" type="button" onClick={retryLoad}>
-              Try again
-            </button>
-          </div>
-        ) : (
-          <div className="empty-state">
-            <Loader2 size={18} className="spin" />
-          </div>
-        )}
-      </section>
-    );
-  }
 
   return (
     <section className="panel preference-card">

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { usePreferenceStore } from "./preference.store";
 
 export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
@@ -7,7 +8,13 @@ export const useAuthStore = create<AuthState>()((set) => ({
   setAuthReady: () => set({ authReady: true }),
 
   signIn: (user, session) => set({ user, session }),
-  setUser: (user) => set({ user }),
+  setUser: (user) => {
+    set({ user });
+
+    if (user.preferences) {
+      usePreferenceStore.getState().setPreferences(user.preferences);
+    }
+  },
   patchUser: (patch) =>
     set((s) => (s.user ? { user: { ...s.user, ...patch } } : s)),
   setSession: (session) => set({ session }),
@@ -27,3 +34,13 @@ export function isSessionExpired(
   if (!session) return true;
   return session.expiresAt.getTime() <= Date.now() + skewMs;
 }
+
+
+const unsubscribe = useAuthStore.subscribe((state) => {
+  console.log("Auth store changed:", state.user?.avatar);
+  if (!(state.user?.avatar?.includes("http"))) {
+    useAuthStore.getState().patchUser({
+      avatar: `${import.meta.env.VITE_SERVER_URL}\\${state.user?.avatar}`,
+    })
+  }
+});

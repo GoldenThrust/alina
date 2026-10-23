@@ -72,8 +72,9 @@ export const LoginBody = z.object({
 });
 
 export const UpdateBody = z.object({
-  name: nameSchema.optional(),
-  gender: z.enum(["male", "female", "none"]).optional(),
+  fullName: nameSchema.optional(),
+  phoneNumber: phoneNumberSchema.optional(),
+  gender: z.enum(["MALE", "FEMALE"]).optional(),
   dateOfBirth: dateOfBirthSchema.optional(),
 });
 

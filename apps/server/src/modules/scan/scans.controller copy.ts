@@ -11,7 +11,7 @@ export async function scanAnalysisHandler(
   const payload = req.user as JwtPayload;
 
   try {
-    const imagePath = await fileManager.uploadFile(req, "image");
+    const imagePath = await fileManager.uploadFile(req, "image", "scans");
     // console.log("File uploaded successfully:", imagePath);
 
     const user = await db.orm.public.User.where({

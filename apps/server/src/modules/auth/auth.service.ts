@@ -28,9 +28,9 @@ const EMAIL_REVERT_TTL_DAYS = EMAIL_REVERT_TTL_SECONDS / (60 * 60 * 24);
 
 // Only these fields can be changed through updateProfile.
 const UPDATABLE_PROFILE_FIELDS = [
-  "name",
+  "fullName",
   "phoneNumber",
-  "image",
+  "avatar",
   "gender",
   "dateOfBirth",
 ] as const;
@@ -155,7 +155,10 @@ export default async function register(payload: {
     template: path.join(EMAIL_TEMPLATE_PATH, "account-verification.mjml"),
     payload: {
       name: payload.name,
-      firstName: payload.name?.split(" ")[0] ?? payload.email.split("@")[0] ?? "Alina member",
+      firstName:
+        payload.name?.split(" ")[0] ??
+        payload.email.split("@")[0] ??
+        "Alina member",
       verifyIllustrationUrl: `${config.env.CLIENT_URL}/images/verify-illustration.png`,
       verifyUrl: `${config.env.CLIENT_URL}/account-verification/${token}`,
       expiryMinutes: TOKEN_TTL_MINUTES,
@@ -231,7 +234,10 @@ export async function verifyAccountToken(
     subject: "Welcome to Alina",
     template: path.join(EMAIL_TEMPLATE_PATH, "welcome.mjml"),
     payload: {
-      firstName: user.fullName?.split(" ")[0] ?? user.email.split("@")[0] ?? "Alina member",
+      firstName:
+        user.fullName?.split(" ")[0] ??
+        user.email.split("@")[0] ??
+        "Alina member",
       heroImageUrl: `${config.env.CLIENT_URL}/images/main.png`,
       scanIconUrl: `${config.env.CLIENT_URL}/images/camera-icon.png`,
       trackIconUrl: `${config.env.CLIENT_URL}/images/chart-icon.png`,
@@ -358,17 +364,27 @@ export async function updateProfile(jwt: JwtPayload, payload: any) {
   // Whitelist fields so a client can't set password, email or emailVerifiedAt here.
   const data = Object.fromEntries(
     UPDATABLE_PROFILE_FIELDS.filter((key) => payload[key] !== undefined).map(
-      (key) => [key, payload[key]],
+      (key) => {
+        if (key === "dateOfBirth") {
+          return [
+            key,
+            Temporal.Instant.from(new Date(payload[key]).toISOString()),
+          ];
+        }
+        return [key, payload[key]];
+      },
     ),
   );
+
+  console.log("updateProfile data", data, payload);
 
   const user = await db.orm.public.User.where({ id: jwt.sub }).update(data);
 
   if (!user) {
-    throw new APIError("User not found", 404);
+    throw new APIError("Profile update failed", 404);
   }
 
-  return { message: "Profile updated successfully" };
+  return { message: "Profile updated successfully", user: toPublicUser(user) };
 }
 
 export async function requestResetEmail(
@@ -398,7 +414,7 @@ export async function requestResetEmail(
   if (existingUser && existingUser.emailVerifiedAt) {
     throw new APIError("Email already in use", 400);
   }
-sendEmailJob
+  sendEmailJob;
   const token = crypto.randomUUID();
   const revertToken = crypto.randomUUID();
 
@@ -546,7 +562,9 @@ export async function revertResetEmail(token: string, password: string) {
 }
 
 export async function getUser(id: string) {
-  const user = await db.orm.public.User.where({ id }).first();
+  const user = await db.orm.public.User.include("preferences")
+    .where({ id })
+    .first();
 
   if (!user) {
     throw new APIError("User not found", 404);
@@ -556,4 +574,12 @@ export async function getUser(id: string) {
     message: "User retrieved successfully",
     user: toPublicUser(user),
   };
+}
+
+
+
+export async function deleteAvatar(id: string) {
+  await db.orm.public.User.where({ id }).update({
+    avatar: null,
+  });
 }

@@ -768,6 +768,7 @@ select:focus-visible {
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  overflow: hidden;
 }
 .avatar-small {
   width: 30px;
@@ -2553,6 +2554,7 @@ select:focus-visible {
   border-radius: 50%;
   background: #f5f3fd;
   color: #8c82c9;
+  overflow: hidden;
 }
 .profile-details > div {
   display: flex;
@@ -3936,9 +3938,7 @@ select:focus-visible {
 }
 
 /* ---- Profile editing ---- */
-.profile-avatar {
-  overflow: hidden;
-}
+
 .profile-avatar img {
   border-radius: 50%;
   object-fit: cover; /* your global img rule uses contain */
