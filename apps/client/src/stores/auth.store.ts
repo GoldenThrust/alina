@@ -36,7 +36,7 @@ export function isSessionExpired(
 }
 
 
-const unsubscribe = useAuthStore.subscribe((state) => {
+useAuthStore.subscribe((state) => {
   console.log("Auth store changed:", state.user?.avatar);
   if (!(state.user?.avatar?.includes("http"))) {
     useAuthStore.getState().patchUser({

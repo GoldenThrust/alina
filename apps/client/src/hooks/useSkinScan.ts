@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getSkinScan, getSkinScanHistory } from "../services/api/skinScan";
+import {
+  getSkinScan,
+  fetchSkinScanById,
+  getSkinScanHistory,
+} from "../services/api/skinScan";
 import { isAbort } from "../utils/signal";
 import type { HistoryRequest } from "../utils/historyRequest";
 import { useScanStore } from "../stores";
@@ -30,10 +34,6 @@ export function useSkinScan() {
   const [status, setStatus] = useState<Status>(hasScans ? "ready" : "loading");
   const [historyStatus, setHistoryStatus] = useState<HistoryStatus>("idle");
 
-  /**
-   * How far back we've already fetched, as a timestamp.
-   * -Infinity means "everything" (an all-time fetch succeeded).
-   */
   const coveredFrom = useRef<number | null>(null);
   const lastRequest = useRef<HistoryRequest>(null);
   const historyAbort = useRef<AbortController | null>(null);
@@ -118,4 +118,79 @@ export function useSkinScan() {
   );
 
   return { status, historyStatus, loadHistory, retryLoad, retryHistory };
+}
+
+
+export type ScanByIdStatus = "loading" | "ready" | "notFound" | "empty" | "error";
+
+const time = (scan: SkinScan) => new Date(scan.createdAt).getTime();
+
+function latestOf(scans: SkinScan[]): SkinScan | undefined {
+  let latest: SkinScan | undefined;
+  for (const scan of scans) if (!latest || time(scan) > time(latest)) latest = scan;
+  return latest;
+}
+
+function latestInStore(): SkinScan | undefined {
+  const { ids, byId } = useScanStore.getState().scans;
+  return latestOf(ids.map((id) => byId[id]).filter(Boolean));
+}
+
+/**
+ * - `id` given     -> store first, otherwise fetch that scan.
+ * - `id` undefined -> latest scan (store first, otherwise fetch the list).
+ *
+ * Hooks can't be async, so this exposes `{ scan, status, retry }` instead of a promise.
+ */
+export function useSkinScanById(id: string | undefined) {
+  const [fetched, setFetched] = useState<SkinScan | undefined>();
+  const [status, setStatus] = useState<ScanByIdStatus>("loading");
+  const [attempt, setAttempt] = useState(0);
+
+  // Subscribing keeps the page in sync if the store is updated elsewhere.
+  const stored = useScanStore((s) =>
+    id ? s.scans.byId[id] : latestOf(s.scans.ids.map((k) => s.scans.byId[k]).filter(Boolean)),
+  );
+
+  useEffect(() => {
+    // Already have it: nothing to fetch.
+    if (id ? useScanStore.getState().scans.byId[id] : latestInStore()) {
+      setStatus("ready");
+      return;
+    }
+
+    const controller = new AbortController();
+    const { signal } = controller;
+    setStatus("loading");
+
+    (async () => {
+      try {
+        if (id) {
+          const scan = await fetchSkinScanById(id, { signal });
+          if (!scan) return setStatus("notFound");
+          useScanStore.getState().upsertScans([scan]);
+          setFetched(scan);
+        } else {
+          const list = await getSkinScan({ signal });
+          const latest = latestOf(list);
+          if (!latest) return setStatus("empty");
+          useScanStore.getState().upsertScans(list);
+          setFetched(latest);
+        }
+        setStatus("ready");
+      } catch (err) {
+        if (isAbort(err)) return;
+        setStatus("error");
+      }
+    })();
+
+    return () => controller.abort();
+  }, [id, attempt]);
+
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+
+  // A stale `fetched` from a previous id must never be shown for the current one.
+  const scan = stored ?? (fetched && (!id || fetched.id === id) ? fetched : null);
+
+  return { scan, status: scan ? ("ready" as const) : status, retry };
 }

@@ -16,6 +16,7 @@ import { useLocation } from "react-router";
 import { logout } from "../services/api/auth";
 import { selectIsAuthenticated, useAuthStore } from "../stores";
 import Splash from "../pages/Splash";
+import { useSocketEvents } from "../hooks/useSocketEvents";
 
 const navigation = [
   { to: "/dashboard", label: "Home", icon: House },
@@ -35,6 +36,7 @@ export default function AppLayout() {
   const location = useLocation();
   const AuthReady = useAuthStore((s: AuthState) => s.authReady);
   const isAuthed = useAuthStore(selectIsAuthenticated);
+  useSocketEvents();
   
   useEffect(() => {
     window.scrollTo(0, 0);

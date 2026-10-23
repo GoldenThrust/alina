@@ -36,3 +36,11 @@ export async function getFirstAndLastScan(params?: object) {
     last: lastScan,
   };
 }
+
+export async function fetchSkinScanById(id: string, params: {signal: AbortSignal}) {
+  const response = await get<SkinScan>(`/scans/${id}`, params);
+
+  response.createdAt = new Date(response.createdAt);
+
+  return response;
+}

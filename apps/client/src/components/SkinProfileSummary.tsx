@@ -24,7 +24,7 @@ export default function SkinProfileSummary({
   const toneValid = !!skinTone && isValidColor(skinTone);
 
   return (
-    <section className="skin-profile">
+    <section className="skin-profile justify-center">
       {skinType && (
         <div className="skin-profile-tile skin-profile-wide">
           <span className="skin-profile-label">
