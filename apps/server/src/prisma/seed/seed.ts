@@ -500,31 +500,7 @@ class Catalogue {
 /* ------------------------------ purge ------------------------------ */
 
 /** Deletes one user and everything that belongs to them, children first. */
-export async function purgeUser(
-  userId: string,
-  concurrency: number = DEFAULTS.concurrency,
-): Promise<void> {
-  const orders = await r.orders.findMany({ userId });
-  await mapPool(orders, concurrency, (o) => r.orderItems.deleteWhere({ orderId: o.id }));
-  await r.orders.deleteWhere({ userId });
-  await r.recommendations.deleteWhere({ userId });
-
-  const routines = await r.routines.findMany({ userId });
-  await mapPool(routines, concurrency, (x) => r.routineSteps.deleteWhere({ routineId: x.id }));
-  await r.routineLogs.deleteWhere({ userId });
-  await r.routines.deleteWhere({ userId });
-
-  const scans = await r.scans.findMany({ userId });
-  await mapPool(scans, concurrency, (s) => r.analyses.deleteWhere({ scanId: s.id }));
-  await r.scans.deleteWhere({ userId });
-
-  await r.messages.deleteWhere({ userId });
-  await r.preferences.deleteWhere({ userId });
-  await r.subscriptions.deleteWhere({ userId });
-  await r.devices.deleteWhere({ userId });
-  await r.oauthAccounts.deleteWhere({ userId });
-  await r.sessions.deleteWhere({ userId });
-   await r.products.deleteWhere({ userId }); // new: products belong to the user.
+export async function purgeUser(userId: string): Promise<void> {
   await r.users.delete(userId);
 }
 
@@ -738,7 +714,6 @@ async function seedRoutines(
 }
 
 /* ------------------------------ logs ------------------------------ */
-
 async function seedRoutineLogs(
   user: User,
   routines: readonly SeededRoutine[],
@@ -748,21 +723,30 @@ async function seedRoutineLogs(
 ): Promise<void> {
   // Users log the routines they accepted; fall back to all if none were.
   const accepted = routines.filter((x) => x.accepted);
-  const pool = accepted.length > 0 ? accepted : routines;
+  const source = accepted.length > 0 ? accepted : routines;
+  const pool = source.filter((x) => x.routine.steps.length > 0);
   if (pool.length === 0) return;
 
   const consistency = faker.number.float({ min: 0.4, max: 0.95 });
-  const entries = Array.from({ length: count }, () => {
+  const entries: { routineStepId: string; at: Temporal.Instant }[] = [];
+
+  // One "session" = the user completing a routine, which logs each of its
+  // steps a couple of minutes apart. Stops exactly at `count` rows.
+  while (entries.length < count) {
     const { kind, routine } = faker.helpers.arrayElement(pool);
     const [start, end] = LOG_HOURS[kind];
     // Lower consistency pushes logs further into the past (user dropping off).
     const day = Math.min(spanDays - 1, recentDay(spanDays) + Math.round((1 - consistency) * 10));
-    return { routineId: routine.id, at: daysAgo(day, faker.number.int({ min: start, max: end })) };
-  });
+    const startedAt = daysAgo(day, faker.number.int({ min: start, max: end }));
 
-  await mapPool(entries, concurrency, (e) => r.routineLogs.log(user.id, e.routineId, e.at));
+    for (const [i, step] of routine.steps.entries()) {
+      if (entries.length >= count) break;
+      entries.push({ routineStepId: step.id, at: startedAt.add({ minutes: i * 2 }) });
+    }
+  }
+
+  await mapPool(entries, concurrency, (e) => r.routineLogs.log(user.id, e.routineStepId, e.at));
 }
-
 /* ------------------------------ recommendations ------------------------------ */
 type RecType = RecommendationInput["type"];
 
@@ -1050,7 +1034,7 @@ export async function seed(options: SeedOptions = {}): Promise<void> {
 
   if (o.reset) {
     const existing = await findSeedUsers();
-    for (const user of existing) await purgeUser(user.id, o.concurrency);
+    for (const user of existing) await purgeUser(user.id);
     console.log(`[seed] removed ${existing.length} seed users`);
   }
 

@@ -124,7 +124,7 @@ export interface RoutineStep {
 export interface RoutineLog {
   id: string;
   userId: string;
-  routineId: string;
+  routineStepId: string;
   completedAt: Date;
 }
 

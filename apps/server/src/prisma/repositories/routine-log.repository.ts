@@ -1,3 +1,4 @@
+import type { Temporal } from "@js-temporal/polyfill";
 import { BaseRepository } from "./base.repository";
 import type { NewRoutineLog, RoutineLog } from "./types";
 
@@ -17,8 +18,12 @@ export class RoutineLogRepository extends BaseRepository<
 > {
   protected readonly model = "RoutineLog";
 
-  log(userId: string, routineId: string, completedAt: Date = new Date()) {
-    return this.create({ userId, routineId, completedAt });
+  log(userId: string, routineStepId: string, at?: Temporal.Instant) {
+    return this.create({
+      userId,
+      routineStepId,
+      ...(at ? { completedAt: at } : {}),
+    });
   }
 
   /** Logs since a date, newest first. Filters by date in memory. */

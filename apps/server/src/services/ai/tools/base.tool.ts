@@ -32,9 +32,9 @@ export abstract class BaseTool<TInput, TResult = unknown>
                 context
             );
 
-            console.log(
-                `[Tool] ${this.name} (${Date.now() - startedAt}ms)`
-            );
+            // console.log(
+            //     `[Tool] ${this.name} (${Date.now() - startedAt}ms)`
+            // );
 
             return {
                 success: true,

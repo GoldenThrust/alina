@@ -27,7 +27,7 @@ export const routineService = {
   async list(userId: string, query: ListQuery) {
     const { page = 1, limit = 100, cursor } = query;
 
-    console.log("list", { userId, query });
+    // console.log("list", { userId, query });
 
     const rows = await ORM.Routine()
       .include("recommendation")
@@ -149,7 +149,8 @@ export const routineLogService = {
     let ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    const { routineId, startDate = ninetyDaysAgo.toDateString() } = query;
+    const { routineId, startDate = ninetyDaysAgo } = query;
+
     let q = ORM.RoutineLog().include("routineStep").where({ userId });
 
     if (routineId) {
@@ -158,7 +159,11 @@ export const routineLogService = {
 
     const items = await q
       .where((r) => r.completedAt.isNotNull())
-      .where((r) => r.completedAt.gte(Temporal.Instant.from(startDate)))
+      .where((r) =>
+        r.completedAt.gte(
+          Temporal.Instant.from(new Date(startDate).toISOString()),
+        ),
+      )
       .orderBy([(r: any) => r.completedAt.desc(), (r: any) => r.id.desc()])
       .all();
 
@@ -169,18 +174,23 @@ export const routineLogService = {
   },
   async create(userId: string, payload: Record<string, any>) {
     const { routineStepId, completedAt } = payload;
-    await assertOwned(ORM.Step, routineStepId, userId, "Routine Step");
+    const row = await ORM.Step()
+      .where({ id: routineStepId })
+      .where((s) => s.routine.some({ userId }))
+      .first();
+    if (!row) throw new APIError(`Routine step not found`, 404);
+
     const data = {
       routineStepId,
       completedAt: completedAt
-        ? Temporal.Instant.from(completedAt)
+        ? Temporal.Instant.from(new Date(completedAt).toISOString())
         : Temporal.Now.instant(),
     };
 
     return ORM.RoutineLog()
       .include("routineStep")
       .create({
-        ...pick(data, ["routineId", "completedAt"]),
+        ...pick(data, ["routineStepId", "completedAt"]),
         userId,
       });
   },
