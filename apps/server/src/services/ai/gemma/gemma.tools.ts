@@ -74,7 +74,10 @@ const getRecommendations = fn(
   "get_recommendations",
   "Fetch products, routines and habits already recommended to the user, with their details and whether they were accepted. Use so you never repeat or contradict them.",
   {
-    type: { type: "string", enum: ["PRODUCT", "ROUTINE", "HABIT"] },
+    type: {
+      type: "string",
+      enum: ["PRODUCT", "ROUTINE", "HABIT", "ROUTINE_STEP"],
+    },
     accepted: {
       type: "boolean",
       description: "Filter by whether the user accepted it.",
@@ -169,16 +172,24 @@ const recommendRoutine = fn(
   ["title", "explanation", "steps"],
 );
 
-const recommendHabit = fn(
-  "recommend_habit",
-  "Suggest one lifestyle habit that helps the skin (sleep, hydration, sun behavior, pillowcase hygiene, etc.).",
+const recommendRoutineStep = fn(
+  "recommend_routine_step",
+  "Suggest a routine step that helps the skin (sleep, hydration, sun behavior, pillowcase hygiene, etc.).",
   {
-    scanId: { type: "string", description: "Scan this is based on, if any." },
-    title: { type: "string", description: "Short habit name." },
-    instruction: { type: "string", description: "What to do and how often." },
+    routineId: { type: "string", description: "Limit to one routine." },
+    period: {
+      type: "string",
+      enum: ["MORNING", "AFTERNOON", "EVENING", "NIGHT", "HABIT"],
+      description: "When this step is done.",
+    },
+    title: { type: "string", description: "Short step name." },
+    instruction: {
+      type: "string",
+      description: "What to do, including amount or duration.",
+    },
     explanation: { type: "string", description: "Why it helps this user." },
   },
-  ["title", "instruction", "explanation"],
+  ["routineId", "period", "title", "instruction", "explanation"],
 );
 
 const recommendProduct = fn(
@@ -212,7 +223,10 @@ const recommendProduct = fn(
       description:
         "Main active ingredients. Used to check against avoided ingredients. Use an empty array only if unknown.",
     },
-    price: { type: "number", description: "Approximate price in dollar amount, if known." },
+    price: {
+      type: "number",
+      description: "Approximate price in dollar amount, if known.",
+    },
     imageUrl: { type: "string", description: "Product image, if known." },
     affiliateUrl: { type: "string", description: "Purchase link, if known." },
   },
@@ -249,7 +263,7 @@ export const analyserTools = [
   createSummary,
   createObservation,
   recommendRoutine,
-  recommendHabit,
+  recommendRoutineStep,
   recommendProduct,
 ];
 
@@ -258,7 +272,7 @@ export const streamTools = [
   ...baseTools,
   ...readTools,
   recommendRoutine,
-  recommendHabit,
+  recommendRoutineStep,
   recommendProduct,
   createRoutine,
 ];

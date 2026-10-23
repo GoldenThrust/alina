@@ -1,7 +1,13 @@
 import { z } from "zod";
 import { PaginationQuery } from "../../lib/schemas";
 
-export const RoutinePeriod = z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT", "HABIT"]);
+export const RoutinePeriod = z.enum([
+  "MORNING",
+  "AFTERNOON",
+  "EVENING",
+  "NIGHT",
+  "HABIT",
+]);
 
 /* ---------- Routine ---------- */
 export const CreateRoutineBody = z.object({
@@ -21,16 +27,18 @@ export const UpdateStepBody = CreateStepBody.partial();
 
 /* ---------- RoutineLog ---------- */
 export const CreateRoutineLogBody = z.object({
-  routineId: z.uuid(),
-  createdAt: z.coerce.date(),
+  routineStepId: z.uuid(),
+  completedAt: z.coerce.date().optional(),
 });
-export const UpdateRoutineLogBody = z.object({ createdAt: z.coerce.date() });
+
+export const UpdateRoutineLogBody = z.object({ completedAt: z.coerce.date() });
+
 export const ListRoutineLogsQuery = PaginationQuery.extend({
   routineId: z.uuid().optional(),
+  startDate: z.coerce.date().optional(),
 });
 
 export const RoutineIdParams = z.object({ routineId: z.uuid() });
-
 
 export const StepParams = z.object({
   routineId: z.uuid(),

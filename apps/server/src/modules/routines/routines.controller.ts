@@ -2,8 +2,19 @@ import { createOwnedHandlers, getUserId, handle } from "../../lib/crud";
 import * as S from "./routines.service"
 
 /* ---------- plain owner-scoped CRUD ---------- */
-export const routineController = createOwnedHandlers(S.routineService as any, "routine", ["recommendation", "steps"]);
-export const routineLogController = createOwnedHandlers(S.routineLogService, "routine log");
+export const routineController = {
+  ...createOwnedHandlers(S.routineService as any, "routine", ["recommendation", "steps"]),
+  list: handle("Failed to fetch routines", (req: any) =>
+    S.routineService.list(getUserId(req), req.query),
+  ),
+};
+
+export const routineLogController = {
+  ...createOwnedHandlers(S.routineLogService, "routine log"),
+  list: handle("Failed to fetch routine logs", (req: any) =>
+    S.routineLogService.list(getUserId(req), req.query),
+  ),
+};
 
 
 /* ---------- RoutineStep (nested under a routine) ---------- */

@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useShallow } from "zustand/react/shallow";
 import {
-  acceptRoutine,
+  // acceptRoutine,
   createRoutine,
   createRoutineLog,
   createRoutineStep,
   deleteRoutine,
+  deleteRoutineLog,
   deleteRoutineStep,
   getRoutineLogs,
   getRoutines,
@@ -24,6 +25,8 @@ import { useProduct } from "./useProduct";
 import { useRecommendations } from "./useRecommendations";
 import { useProductStore } from "../stores/product.store";
 import { acceptedRecommendation } from "../utils/recommendation";
+import { addRecommendationToRoutine } from "../services/api/recommendation";
+import { useAuthStore } from "../stores";
 
 export const ROUTINE_PERIODS: RoutinePeriod[] = [
   "MORNING",
@@ -37,7 +40,6 @@ export const ROUTINE_PERIODS: RoutinePeriod[] = [
 const LOG_WINDOW_DAYS = 90;
 
 // NewStep, StepSuggestion, CATEGORY_PERIODS, firstSentence, useStepSuggestions, useRoutineDay: unchanged
-
 
 const firstSentence = (text: string, max = 60) => {
   const s = text.split(/(?<=[.!?])\s/)[0].trim();
@@ -56,49 +58,99 @@ const CATEGORY_PERIODS: Record<ProductCategory, RoutinePeriod[]> = {
   OTHER: ["MORNING", "AFTERNOON", "EVENING", "NIGHT"],
 };
 
-
-
 /** Which steps are ticked off today. Resets each day, kept per routine. */
-export function useRoutineDay(routineId?: string) {
-  const dayKey = localDateKey(new Date());
-  const storageKey = routineId ? `routine-day:${routineId}:${dayKey}` : null;
-  const [done, setDone] = useState<Set<string>>(new Set());
+export function useRoutineDay() {
+  const logs = useRoutineStore((s) => s.logs);
+  /** Steps with a request in flight. Stops double taps from creating duplicate logs. */
+  const pending = useRef(new Set<string>());
 
-  useEffect(() => {
-    if (!storageKey) return setDone(new Set());
-    try {
-      setDone(new Set(JSON.parse(localStorage.getItem(storageKey) ?? "[]")));
-    } catch {
-      setDone(new Set());
+  // step id -> today's logs for that step
+  const todays = useMemo(() => {
+    const todayKey = localDateKey(new Date());
+    const byStep = new Map<string, RoutineLog[]>();
+    for (const log of selectAll(logs)) {
+      if (localDateKey(log.completedAt) !== todayKey) continue;
+      byStep.set(log.routineStepId, [
+        ...(byStep.get(log.routineStepId) ?? []),
+        log,
+      ]);
     }
-  }, [storageKey]);
+    return byStep;
+  }, [logs]);
 
-  const commit = useCallback(
-    (next: Set<string>) => {
-      setDone(next);
-      if (!storageKey) return;
+  const isDone = useCallback((stepId: string) => todays.has(stepId), [todays]);
+
+  /** Optimistic: shows as done immediately, rolls back if the server refuses. */
+  const complete = useCallback(async (stepId: string) => {
+    if (pending.current.has(stepId)) return;
+    pending.current.add(stepId);
+
+    const tempId = `temp-${crypto.randomUUID()}`;
+    useRoutineStore.getState().addLog({
+      id: tempId,
+      userId: useAuthStore.getState().user?.id ?? "",
+      routineStepId: stepId,
+      completedAt: new Date(),
+    });
+
+    try {
+      const saved = await createRoutineLog(stepId);
+      useRoutineStore.getState().replaceLog(tempId, saved);
+    } catch {
+      useRoutineStore.getState().removeLog(tempId);
+      toast.error("Couldn’t save that step. Please try again.", {
+        id: "routine-log",
+      });
+    } finally {
+      pending.current.delete(stepId);
+    }
+  }, []);
+
+  /** Removes every log for the step from today (there can be more than one if two devices raced). */
+  const undo = useCallback(
+    async (stepId: string) => {
+      const existing = todays.get(stepId) ?? [];
+      if (!existing.length || pending.current.has(stepId)) return;
+      pending.current.add(stepId);
+
+      const store = useRoutineStore.getState();
+      existing.forEach((log) => store.removeLog(log.id));
+
       try {
-        localStorage.setItem(storageKey, JSON.stringify([...next]));
-      } catch {
-        /* storage unavailable: state still works for this session */
+        const results = await Promise.allSettled(
+          existing.map((log) => deleteRoutineLog(log.id)),
+        );
+        const failed = existing.filter(
+          (_, i) => results[i].status === "rejected",
+        );
+        if (failed.length) {
+          useRoutineStore.getState().upsertLogs(failed); // put back only what the server kept
+          toast.error("Couldn’t undo that step. Please try again.", {
+            id: "routine-log",
+          });
+        }
+      } finally {
+        pending.current.delete(stepId);
       }
     },
-    [storageKey],
+    [todays],
   );
 
-  const isDone = useCallback((id: string) => done.has(id), [done]);
   const toggle = useCallback(
-    (id: string) => {
-      const next = new Set(done);
-      next.has(id) ? next.delete(id) : next.add(id);
-      commit(next);
-    },
-    [done, commit],
+    (stepId: string) => (isDone(stepId) ? undo(stepId) : complete(stepId)),
+    [isDone, undo, complete],
   );
-  const markAll = useCallback((ids: string[]) => commit(new Set([...done, ...ids])), [done, commit]);
+
+  const markAll = useCallback(
+    (ids: string[]) =>
+      Promise.all(ids.filter((id) => !todays.has(id)).map(complete)),
+    [todays, complete],
+  );
+
   const clear = useCallback(
-    (ids: string[]) => commit(new Set([...done].filter((id) => !ids.includes(id)))),
-    [done, commit],
+    (ids: string[]) =>
+      Promise.all(ids.filter((id) => todays.has(id)).map(undo)),
+    [todays, undo],
   );
 
   return { isDone, toggle, markAll, clear };
@@ -154,7 +206,7 @@ export function useRoutineSync() {
 /** Loads the pending recommendations the "Add a step" modal suggests from. */
 export function useSuggestionSources() {
   useProduct(); // PRODUCT recommendations and their products
-  useRecommendations({ type: "HABIT", accepted: false });
+  useRecommendations();
   // useRecommendations({ type: "ROUTINE", accepted: false });
 }
 
@@ -163,7 +215,9 @@ export function useStepSuggestions(
   existingTitles: string[],
   activeRoutineId?: string,
 ): StepSuggestion[] {
-  const recommendations = useRecommendationStore(useShallow(selectRecommendations));
+  const recommendations = useRecommendationStore(
+    useShallow(selectRecommendations),
+  );
   const routinesById = useRoutineStore((s) => s.routines.byId);
   const productsById = useProductStore((s) => s.products.byId);
 
@@ -178,11 +232,12 @@ export function useStepSuggestions(
     };
 
     for (const rec of recommendations) {
-      if (rec.accepted) continue;
+      if (rec.accepted || rec.routineId !== activeRoutineId) continue;
 
       if (rec.type === "PRODUCT" && rec.productId) {
         const product = productsById[rec.productId];
-        if (!product || !CATEGORY_PERIODS[product.category].includes(period)) continue;
+        if (!product || !CATEGORY_PERIODS[product.category].includes(period))
+          continue;
         push({
           key: rec.id,
           title: product.name,
@@ -200,7 +255,7 @@ export function useStepSuggestions(
           consumeRecommendation: true,
           source: "Habit",
         });
-      } else if (rec.type === "ROUTINE" && rec.routineId && rec.routineId !== activeRoutineId) {
+      } else if (rec.type === "ROUTINE_STEP" && rec.routineId) {
         routinesById[rec.routineId]?.steps
           .filter((s) => s.period === period)
           .forEach((s) =>
@@ -216,9 +271,15 @@ export function useStepSuggestions(
       }
     }
     return out;
-  }, [recommendations, routinesById, productsById, period, existingTitles, activeRoutineId]);
+  }, [
+    recommendations,
+    routinesById,
+    productsById,
+    period,
+    existingTitles,
+    activeRoutineId,
+  ]);
 }
-
 
 /* ------------------------------ active routine ------------------------------ */
 
@@ -234,26 +295,29 @@ export function useActiveRoutine() {
 
   /** Optimistic: flips immediately, rolls back if the server refuses. */
   const accept = useCallback(async () => {
-  if (!routine || busy) return;
-  const routineId = routine.id;
-  const recStore = useRecommendationStore.getState();
-  const rec = routine.recommendation ? recStore.recommendations.byId[routine.recommendation.id] : undefined;
-  const flipRec = !!rec && !rec.accepted;
+    if (!routine || busy) return;
+    const routineId = routine.id;
+    const recStore = useRecommendationStore.getState();
+    const rec = routine.recommendation
+      ? recStore.recommendations.byId[routine.recommendation.id]
+      : undefined;
+    const flipRec = !!rec && !rec.accepted;
 
-  setBusy(true);
-  useRoutineStore.getState().setAccepted(routineId, true);
-  if (flipRec) recStore.setAccepted(rec.id, true);
-  try {
-    await acceptRoutine(routineId);
-  } catch {
-    useRoutineStore.getState().setAccepted(routineId, false);
-    if (flipRec) useRecommendationStore.getState().setAccepted(rec.id, false);
-    toast.error("Couldn’t accept this routine. Please try again.");
-  } finally {
-    setBusy(false);
-  }
-}, [routine, busy]);
+    if (!rec?.id) return;
 
+    setBusy(true);
+    useRoutineStore.getState().setAccepted(routineId, true);
+    if (flipRec) recStore.setAccepted(rec.id, true);
+    try {
+      await addRecommendationToRoutine(rec?.id ?? "");
+    } catch {
+      useRoutineStore.getState().setAccepted(routineId, false);
+      if (flipRec) useRecommendationStore.getState().setAccepted(rec.id, false);
+      toast.error("Couldn’t accept this routine. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }, [routine, busy]);
 
   /** Waits for the server so the new routine has its real id. Resolves true on success. */
   const create = useCallback(async (title: string): Promise<boolean> => {
@@ -404,18 +468,22 @@ export function useRoutineSteps(routine: Routine | undefined) {
 /* ------------------------------ streak & logs ------------------------------ */
 
 export function useRoutineLogs(routine: Routine | undefined) {
-  const routineId = routine?.id;
   const logs = useRoutineStore((s) => s.logs);
-  const logging = useRef(false);
+
+  // Logs belong to steps, so a routine's logs are the ones for its steps
+  const stepIds = useMemo(
+    () => new Set((routine?.steps ?? []).map((s) => s.id)),
+    [routine],
+  );
 
   const days = useMemo(() => {
     const set = new Set<string>();
     for (const log of selectAll(logs)) {
-      if (routineId && log.routineId !== routineId) continue;
-      set.add(localDateKey(log.createdAt));
+      if (stepIds.has(log.routineStepId))
+        set.add(localDateKey(log.completedAt));
     }
     return set;
-  }, [logs, routineId]);
+  }, [logs, stepIds]);
 
   const todayKey = localDateKey(new Date());
   const loggedToday = days.has(todayKey);
@@ -455,19 +523,5 @@ export function useRoutineLogs(routine: Routine | undefined) {
     });
   }, [days, todayKey]);
 
-  /** Records today's completion once. The ref stops overlapping requests. */
-  const logToday = useCallback(async () => {
-    if (!routine || loggedToday || logging.current) return;
-    logging.current = true;
-    try {
-      const log = await createRoutineLog(routine.id);
-      useRoutineStore.getState().addLog(log);
-    } catch {
-      toast.error("Couldn’t save today’s progress.", { id: "routine-log" });
-    } finally {
-      logging.current = false;
-    }
-  }, [routine, loggedToday]);
-
-  return { streak, completionRate, loggedToday, week, logToday };
+  return { streak, completionRate, loggedToday, week };
 }

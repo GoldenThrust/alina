@@ -368,14 +368,14 @@ function RoutineSkeleton() {
 /* ---------------------------------- page ---------------------------------- */
 
 export default function Routine() {
-  const { status, synced, retry } = useRoutineSync();
+  const { status, retry } = useRoutineSync();
   const { routine, routines, selectRoutine, accept, create, remove, busy } =
     useActiveRoutine();
   const { steps, periods, stepsFor, addStep, removeStep, moveStep } =
     useRoutineSteps(routine);
-  const day = useRoutineDay(routine?.id);
-  const { streak, completionRate, loggedToday, week, logToday } =
-    useRoutineLogs(routine);
+  const day = useRoutineDay();
+
+  const { streak, completionRate, loggedToday, week } = useRoutineLogs(routine);
 
   const [period, setPeriod] = useState<RoutinePeriod>("MORNING");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -391,7 +391,10 @@ export default function Routine() {
     if (periods.length && !periods.includes(period)) setPeriod(periods[0]);
   }, [periods, period]);
 
-  const periodSteps = stepsFor(period);
+  // const periodSteps = stepsFor(period);
+  const periodSteps = stepsFor(period).filter(
+    (p) => !p.recommendation || p.recommendation.accepted,
+  );
   const doneCount = periodSteps.filter((s) => day.isDone(s.id)).length;
   const percent = periodSteps.length
     ? (doneCount / periodSteps.length) * 100
@@ -406,9 +409,9 @@ export default function Routine() {
   const existingTitles = useMemo(() => steps.map((s) => s.title), [steps]);
 
   // Finishing a full period counts the day. Wait for fresh server data so a day isn't logged twice.
-  useEffect(() => {
-    if (synced && accepted && periodComplete && !loggedToday) void logToday();
-  }, [synced, accepted, periodComplete, loggedToday, logToday]);
+  // useEffect(() => {
+  //   if (synced && accepted && periodComplete && !loggedToday) void logToday();
+  // }, [synced, accepted, periodComplete, loggedToday, logToday]);
 
   const closeCreate = useCallback(() => setCreating(false), []);
   const closeDelete = useCallback(() => setDeleting(false), []);
@@ -628,6 +631,7 @@ export default function Routine() {
                     {periodSteps.map((step, index) => {
                       const isDone = day.isDone(step.id);
                       const isOpen = expanded === step.id;
+
                       return (
                         <motion.li
                           key={step.id}
@@ -645,7 +649,7 @@ export default function Routine() {
                             aria-pressed={isDone}
                             aria-label={`${isDone ? "Unmark" : "Complete"} ${step.title}`}
                             whileTap={accepted ? { scale: 0.85 } : undefined}
-                            onClick={() => day.toggle(step.id)}
+                            onClick={() => void day.toggle(step.id)}
                           >
                             <AnimatePresence mode="wait" initial={false}>
                               <motion.span
@@ -815,7 +819,7 @@ export default function Routine() {
                   className="quiet-link"
                   type="button"
                   disabled={periodComplete}
-                  onClick={() => day.markAll(periodIds)}
+                  onClick={() => void day.markAll(periodIds)}
                 >
                   Mark all done
                 </button>
@@ -823,7 +827,7 @@ export default function Routine() {
                   className="quiet-link"
                   type="button"
                   disabled={doneCount === 0}
-                  onClick={() => day.clear(periodIds)}
+                  onClick={() => void day.clear(periodIds)}
                 >
                   Reset
                 </button>
@@ -897,7 +901,7 @@ export default function Routine() {
               <CalendarCheck size={13} />{" "}
               {loggedToday
                 ? "Today counts toward your streak."
-                : "A day counts once you finish a full routine."}
+                : "A day counts once you complete a step."}
             </p>
             <p className="routine-streak-note">
               <span>

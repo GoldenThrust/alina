@@ -31,6 +31,11 @@ model User {
   orders        Order[]
   devices       ConnectedDevice[]
 
+  products        Product[]
+  recommendations Recommendation[]
+
+  routineLogs   RoutineLog[]
+
   sessions  Session[]
   oauthAccounts       OAuthAccount[]
 }
@@ -72,7 +77,7 @@ model SkinScan {
   id              String   @id @default(uuid())
 
   userId          String
-  user            User @relation(fields:[userId], references:[id])
+  user            User @relation(fields:[userId], references:[id], onDelete: Cascade)
 
   status          ScanStatus
 
@@ -101,7 +106,7 @@ model SkinAnalysis {
 
   scanId             String @unique
 
-  scan               SkinScan @relation(fields:[scanId], references:[id])
+  scan               SkinScan @relation(fields:[scanId], references:[id], onDelete: Cascade)
 
   redness          Float?
 
@@ -144,7 +149,7 @@ model Routine {
 
   userId        String
 
-  user          User @relation(fields:[userId], references:[id])
+  user          User @relation(fields:[userId], references:[id], onDelete: Cascade)
 
   title         String
 
@@ -161,7 +166,7 @@ model RoutineStep {
 
   routineId     String
 
-  routine       Routine @relation(fields:[routineId], references:[id])
+  routine       Routine @relation(fields:[routineId], references:[id], onDelete: Cascade)
 
   period        RoutinePeriod
 
@@ -170,18 +175,22 @@ model RoutineStep {
   instruction   String
 
   position      Int
+
+  recommendation Recommendation?
+
+  routineLogs   RoutineLog[]
 }
 
 model RoutineLog {
-
   id            String @id @default(uuid())
 
   userId        String
+  user          User @relation(fields:[userId], references:[id], onDelete: Cascade)
 
-  routineId     String
+  routineStepId   String
+  routineStep     RoutineStep @relation(fields:[routineStepId], references:[id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
-
+  completedAt   DateTime @default(now())
 }
 
 model Product {
@@ -216,7 +225,7 @@ model Recommendation {
 
   userId          String
 
-  user            User @relation(fields:[userId], references:[id])
+  user            User @relation(fields:[userId], references:[id], onDelete: Cascade)
 
   scanId          String?
 
@@ -228,11 +237,15 @@ model Recommendation {
 
   productId       String?  @unique
 
-  product         Product? @relation(fields:[productId], references:[id])
+  product         Product? @relation(fields:[productId], references:[id], onDelete: Cascade)
 
   routineId       String?  @unique
 
-  routine         Routine? @relation(fields:[routineId], references:[id])
+  routine         Routine? @relation(fields:[routineId], references:[id], onDelete: Cascade)
+
+  routineStepId       String?  @unique
+
+  routineStep         RoutineStep? @relation(fields:[routineStepId], references:[id], onDelete: Cascade)
 
   createdAt       DateTime @default(now())
 
@@ -245,7 +258,7 @@ model Message {
 
   userId        String
 
-  user          User @relation(fields:[userId], references:[id])
+  user          User @relation(fields:[userId], references:[id], onDelete: Cascade)
 
   sender        Sender
 
@@ -261,7 +274,7 @@ model Preference {
 
   userId            String @unique
 
-  user              User @relation(fields:[userId], references:[id])
+  user              User @relation(fields:[userId], references:[id], onDelete: Cascade)
 
   favoriteBrands    String[]
 
@@ -279,7 +292,7 @@ model Order {
 
   userId          String
 
-  user            User @relation(fields:[userId], references:[id])
+  user            User @relation(fields:[userId], references:[id], onDelete: Cascade)
 
   total           Float
 
@@ -296,11 +309,11 @@ model OrderItem {
 
   orderId       String
 
-  order         Order @relation(fields:[orderId], references:[id])
+  order         Order @relation(fields:[orderId], references:[id], onDelete: Cascade)
 
   productId     String
 
-  product       Product @relation(fields:[productId], references:[id])
+  product       Product @relation(fields:[productId], references:[id], onDelete: Cascade)
 
   quantity      Int
 
@@ -312,7 +325,7 @@ model ConnectedDevice {
 
   userId        String
 
-  user          User @relation(fields:[userId], references:[id])
+  user          User @relation(fields:[userId], references:[id], onDelete: Cascade)
 
   type          DeviceType
 
@@ -328,7 +341,7 @@ model Subscription {
 
   userId          String
 
-  user            User @relation(fields:[userId], references:[id])
+  user            User @relation(fields:[userId], references:[id], onDelete: Cascade)
 
   plan            SubscriptionPlan
 
@@ -364,6 +377,7 @@ enum RecommendationType {
   PRODUCT
   ROUTINE
   HABIT
+  ROUTINE_STEP
 }
 
 enum Sender {

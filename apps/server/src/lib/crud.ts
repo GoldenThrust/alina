@@ -2,7 +2,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import APIError from "../errors/APIError";
 import { decodeCursor, encodeCursor } from "../common/utils/crypto";
-import { db } from "../prisma/db";
+import { Temporal } from "@js-temporal/polyfill";
 
 export type ListQuery = { page: number; limit: number } & Record<string, any>;
 
@@ -142,7 +142,11 @@ export function createOwnedService(cfg: OwnedServiceConfig) {
     },
 
     async update(userId: string, id: string, payload: Record<string, any>) {
-      console.log("update", { userId, id, payload });
+      for (const key of Object.keys(payload)) {
+        if (payload[key] instanceof Date) {
+          payload[key] = Temporal.Instant.from(payload[key].toISOString());
+        }
+      }
       const data = pick(payload, updateFields);
       if (Object.keys(data).length === 0) {
         throw new APIError("No valid fields to update", 400);

@@ -2,7 +2,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import crypto from "crypto";
 
 type cursorData = {
-  createdAt: string;
+  createdAt: Date;
   id: string;
 }
 export function encodeCursor(data: cursorData) {

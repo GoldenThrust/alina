@@ -4,7 +4,7 @@ type RecommendationDTO = Omit<Recommendation, "createdAt"> & { createdAt: string
 
 type ListResponse = { items: RecommendationDTO[]; nextCursor: string | null };
 
-export interface RecommendationPage {
+interface RecommendationPage {
   recommendations: Recommendation[];
   /** Pass back as `cursor` for the next page. null means there are no more pages. */
   nextCursor: string | null;

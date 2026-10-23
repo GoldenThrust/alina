@@ -68,12 +68,12 @@ export const selectPendingRecommendations = (s: RecommendationState) =>
   selectRecommendations(s).filter((r) => !r.accepted);
 
 export const selectPendingRecommendationsOfType =
-  (type: RecommendationType) => (s: RecommendationState) =>
-    selectPendingRecommendations(s).filter((r) => r.type === type);
+  (type?: RecommendationType) => (s: RecommendationState) =>
+    selectPendingRecommendations(s).filter((r) => !type || r.type === type);
 
 export const selectRecommendationsOfType =
-  (type: RecommendationType) => (s: RecommendationState) =>
-    selectRecommendations(s).filter((r) => r.type === type);
+  (type?: RecommendationType) => (s: RecommendationState) =>
+    selectRecommendations(s).filter((r) => !type || r.type === type);
 
 export const selectRecommendationsForScan =
   (scanId: string | null) => (s: RecommendationState) =>
@@ -84,7 +84,7 @@ export const useRecommendations = () =>
 export const usePendingRecommendations = () =>
   useRecommendationStore(useShallow(selectPendingRecommendations));
 
-export const usePendingRecommendationsOfType = (type: RecommendationType) =>
+export const usePendingRecommendationsOfType = (type?: RecommendationType) =>
   useRecommendationStore(useShallow(selectPendingRecommendationsOfType(type)));
 
 export const useRecommendationsForScan = (scanId: string | null) =>

@@ -12,7 +12,7 @@ import {
   GetRoutineLogsTool,
   GetRoutinesTool,
   GetScanHistoryTool,
-  RecommendHabitTool,
+  RecommendRoutineStepTool,
   RecommendProductTool,
   RecommendRoutineTool,
 } from "./skincare.tools";
@@ -36,7 +36,7 @@ export function registerSkincareTools(
     new CreateObservationTool(repo),
     new CreateRoutineTool(repo),
     new RecommendRoutineTool(repo),
-    new RecommendHabitTool(repo),
+    new RecommendRoutineStepTool(repo),
     new RecommendProductTool(repo),
   ];
 

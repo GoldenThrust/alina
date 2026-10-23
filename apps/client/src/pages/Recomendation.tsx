@@ -253,8 +253,16 @@ function AlternativeCard({
 /* ---------- Page ---------- */
 
 export default function Recommendation() {
-
-const { status, hasMore, loadingMore, moreError, addingIds, loadMore, retry, addToRoutine } = useProduct();
+  const {
+    status,
+    hasMore,
+    loadingMore,
+    moreError,
+    addingIds,
+    loadMore,
+    retry,
+    addToRoutine,
+  } = useProduct();
 
   const productRecommendations = usePendingRecommendationsOfType("PRODUCT");
   const productIds = useMemo(

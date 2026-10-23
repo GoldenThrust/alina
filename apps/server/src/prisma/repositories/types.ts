@@ -14,7 +14,7 @@ export type RoutinePeriod =
   | "EVENING"
   | "NIGHT"
   | "HABIT";
-export type RecommendationType = "PRODUCT" | "ROUTINE" | "HABIT";
+export type RecommendationType = "PRODUCT" | "ROUTINE" | "HABIT" | "ROUTINE_STEP";
 export type Sender = "USER" | "ALINA";
 export type DeviceType = "RING" | "MOBILE" | "WEB";
 export type SubscriptionPlan = "FREE" | "PLUS" | "PREMIUM";
@@ -125,7 +125,7 @@ export interface RoutineLog {
   id: string;
   userId: string;
   routineId: string;
-  createdAt: Date;
+  completedAt: Date;
 }
 
 export interface Product {

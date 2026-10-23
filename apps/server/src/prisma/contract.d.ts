@@ -18,7 +18,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'83ea8cee23707daaa91ffc893ac550b388b12df771cab476419305893a60c789'>;
+  StorageHashBase<'eb33510268cb6c612cbd42c5f29c605f4c1e5794cf2bb068718610aa20afbf4a'>;
 export type ExecutionHash =
   ExecutionHashBase<'dc1ac6e4db2ee326f04a55c1c0aa0d987b1dc883145cc25cd6bba35f22cc906d'>;
 export type ProfileHash =
@@ -297,8 +297,9 @@ export type FieldOutputTypes = {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly productId: CodecTypes['pg/text@1']['output'] | null;
       readonly routineId: CodecTypes['pg/text@1']['output'] | null;
+      readonly routineStepId: CodecTypes['pg/text@1']['output'] | null;
       readonly scanId: CodecTypes['pg/text@1']['output'] | null;
-      readonly type: 'PRODUCT' | 'ROUTINE' | 'HABIT';
+      readonly type: 'PRODUCT' | 'ROUTINE' | 'HABIT' | 'ROUTINE_STEP';
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly Routine: {
@@ -308,9 +309,9 @@ export type FieldOutputTypes = {
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly RoutineLog: {
-      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
-      readonly routineId: CodecTypes['pg/text@1']['output'];
+      readonly routineStepId: CodecTypes['pg/text@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly RoutineStep: {
@@ -459,8 +460,9 @@ export type FieldInputTypes = {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly productId: CodecTypes['pg/text@1']['input'] | null;
       readonly routineId: CodecTypes['pg/text@1']['input'] | null;
+      readonly routineStepId: CodecTypes['pg/text@1']['input'] | null;
       readonly scanId: CodecTypes['pg/text@1']['input'] | null;
-      readonly type: 'PRODUCT' | 'ROUTINE' | 'HABIT';
+      readonly type: 'PRODUCT' | 'ROUTINE' | 'HABIT' | 'ROUTINE_STEP';
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly Routine: {
@@ -470,9 +472,9 @@ export type FieldInputTypes = {
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly RoutineLog: {
-      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
-      readonly routineId: CodecTypes['pg/text@1']['input'];
+      readonly routineStepId: CodecTypes['pg/text@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly RoutineStep: {
@@ -621,8 +623,9 @@ export type StorageColumnTypes = {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly productId: CodecTypes['pg/text@1']['output'] | null;
       readonly routineId: CodecTypes['pg/text@1']['output'] | null;
+      readonly routineStepId: CodecTypes['pg/text@1']['output'] | null;
       readonly scanId: CodecTypes['pg/text@1']['output'] | null;
-      readonly type: 'PRODUCT' | 'ROUTINE' | 'HABIT';
+      readonly type: 'PRODUCT' | 'ROUTINE' | 'HABIT' | 'ROUTINE_STEP';
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly Routine: {
@@ -632,9 +635,9 @@ export type StorageColumnTypes = {
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly RoutineLog: {
-      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
-      readonly routineId: CodecTypes['pg/text@1']['output'];
+      readonly routineStepId: CodecTypes['pg/text@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly RoutineStep: {
@@ -783,8 +786,9 @@ export type StorageColumnInputTypes = {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly productId: CodecTypes['pg/text@1']['input'] | null;
       readonly routineId: CodecTypes['pg/text@1']['input'] | null;
+      readonly routineStepId: CodecTypes['pg/text@1']['input'] | null;
       readonly scanId: CodecTypes['pg/text@1']['input'] | null;
-      readonly type: 'PRODUCT' | 'ROUTINE' | 'HABIT';
+      readonly type: 'PRODUCT' | 'ROUTINE' | 'HABIT' | 'ROUTINE_STEP';
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly Routine: {
@@ -794,9 +798,9 @@ export type StorageColumnInputTypes = {
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly RoutineLog: {
-      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
-      readonly routineId: CodecTypes['pg/text@1']['input'];
+      readonly routineStepId: CodecTypes['pg/text@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly RoutineStep: {
@@ -961,13 +965,15 @@ export namespace Models {
     id: CodecTypes['pg/text@1']['output'];
     productId: CodecTypes['pg/text@1']['output'] | null;
     routineId: CodecTypes['pg/text@1']['output'] | null;
+    routineStepId: CodecTypes['pg/text@1']['output'] | null;
     scanId: CodecTypes['pg/text@1']['output'] | null;
-    type: 'PRODUCT' | 'ROUTINE' | 'HABIT';
+    type: 'PRODUCT' | 'ROUTINE' | 'HABIT' | 'ROUTINE_STEP';
     userId: CodecTypes['pg/text@1']['output'];
     product: public_Product | null;
     routine: public_Routine | null;
+    routineStep: public_RoutineStep | null;
     user: public_User;
-    readonly [RelationKeys]?: 'product' | 'routine' | 'user';
+    readonly [RelationKeys]?: 'product' | 'routine' | 'routineStep' | 'user';
   };
   export type public_Routine = {
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -980,11 +986,13 @@ export namespace Models {
     readonly [RelationKeys]?: 'recommendation' | 'steps' | 'user';
   };
   export type public_RoutineLog = {
-    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     id: CodecTypes['pg/text@1']['output'];
-    routineId: CodecTypes['pg/text@1']['output'];
+    routineStepId: CodecTypes['pg/text@1']['output'];
     userId: CodecTypes['pg/text@1']['output'];
-    readonly [RelationKeys]?: never;
+    routineStep: public_RoutineStep;
+    user: public_User;
+    readonly [RelationKeys]?: 'routineStep' | 'user';
   };
   export type public_RoutineStep = {
     id: CodecTypes['pg/text@1']['output'];
@@ -993,8 +1001,10 @@ export namespace Models {
     position: CodecTypes['pg/int4@1']['output'];
     routineId: CodecTypes['pg/text@1']['output'];
     title: CodecTypes['pg/text@1']['output'];
+    recommendation: public_Recommendation | null;
     routine: public_Routine;
-    readonly [RelationKeys]?: 'routine';
+    routineLogs: public_RoutineLog[];
+    readonly [RelationKeys]?: 'recommendation' | 'routine' | 'routineLogs';
   };
   export type public_Session = {
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -1080,6 +1090,9 @@ export namespace Models {
     oauthAccounts: public_OAuthAccount[];
     orders: public_Order[];
     preferences: public_Preference | null;
+    products: public_Product[];
+    recommendations: public_Recommendation[];
+    routineLogs: public_RoutineLog[];
     routines: public_Routine[];
     scans: public_SkinScan[];
     sessions: public_Session[];
@@ -1090,6 +1103,9 @@ export namespace Models {
       | 'oauthAccounts'
       | 'orders'
       | 'preferences'
+      | 'products'
+      | 'recommendations'
+      | 'routineLogs'
       | 'routines'
       | 'scans'
       | 'sessions'
@@ -1636,6 +1652,12 @@ type ContractBase = Omit<
                   readonly nullable: true;
                   readonly many: false;
                 };
+                readonly routineStepId: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
                 readonly scanId: {
                   readonly dataType: 'pg/text';
                   readonly codecId: 'pg/text@1';
@@ -1659,6 +1681,7 @@ type ContractBase = Omit<
               uniques: readonly [
                 { readonly columns: readonly ['productId'] },
                 { readonly columns: readonly ['routineId'] },
+                { readonly columns: readonly ['routineStepId'] },
               ];
               indexes: readonly [
                 {
@@ -1702,6 +1725,18 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'Routine';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'Recommendation';
+                    readonly columns: readonly ['routineStepId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'RoutineStep';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -1762,7 +1797,7 @@ type ContractBase = Omit<
             };
             readonly RoutineLog: {
               columns: {
-                readonly createdAt: {
+                readonly completedAt: {
                   readonly dataType: 'pg/timestamptz';
                   readonly codecId: 'pg/timestamptz-temporal@1';
                   readonly nullable: false;
@@ -1775,7 +1810,7 @@ type ContractBase = Omit<
                   readonly nullable: false;
                   readonly many: false;
                 };
-                readonly routineId: {
+                readonly routineStepId: {
                   readonly dataType: 'pg/text';
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
@@ -1790,8 +1825,46 @@ type ContractBase = Omit<
               };
               primaryKey: { readonly columns: readonly ['id'] };
               uniques: readonly [];
-              indexes: readonly [];
-              foreignKeys: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'RoutineLog_routineStepId_idx_b0cdaa22';
+                  readonly prefix: 'RoutineLog_routineStepId_idx';
+                  readonly columns: readonly ['routineStepId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'RoutineLog_userId_idx_a489d58a';
+                  readonly prefix: 'RoutineLog_userId_idx';
+                  readonly columns: readonly ['userId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'RoutineLog';
+                    readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'User';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'RoutineLog';
+                    readonly columns: readonly ['routineStepId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'RoutineStep';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
             };
             readonly RoutineStep: {
               columns: {
@@ -2374,7 +2447,7 @@ type ContractBase = Omit<
             };
             readonly RecommendationType: {
               readonly kind: 'valueSet';
-              readonly values: readonly ['PRODUCT', 'ROUTINE', 'HABIT'];
+              readonly values: readonly ['PRODUCT', 'ROUTINE', 'HABIT', 'ROUTINE_STEP'];
             };
             readonly RoutinePeriod: {
               readonly kind: 'valueSet';
@@ -2893,6 +2966,10 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly routineStepId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly scanId: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -2931,6 +3008,18 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['id'];
                 };
               };
+              readonly routineStep: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'RoutineStep';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['routineStepId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
               readonly user: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
@@ -2951,6 +3040,7 @@ type ContractBase = Omit<
                 readonly id: { readonly column: 'id' };
                 readonly productId: { readonly column: 'productId' };
                 readonly routineId: { readonly column: 'routineId' };
+                readonly routineStepId: { readonly column: 'routineStepId' };
                 readonly scanId: { readonly column: 'scanId' };
                 readonly type: { readonly column: 'type' };
                 readonly userId: { readonly column: 'userId' };
@@ -3026,7 +3116,7 @@ type ContractBase = Omit<
           };
           readonly RoutineLog: {
             readonly fields: {
-              readonly createdAt: {
+              readonly completedAt: {
                 readonly nullable: false;
                 readonly type: {
                   readonly kind: 'scalar';
@@ -3037,7 +3127,7 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
-              readonly routineId: {
+              readonly routineStepId: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
@@ -3046,14 +3136,36 @@ type ContractBase = Omit<
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
             };
-            readonly relations: Record<string, never>;
+            readonly relations: {
+              readonly routineStep: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'RoutineStep';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['routineStepId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly user: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['userId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
             readonly storage: {
               readonly table: 'RoutineLog';
               readonly namespaceId: 'public';
               readonly fields: {
-                readonly createdAt: { readonly column: 'createdAt' };
+                readonly completedAt: { readonly column: 'completedAt' };
                 readonly id: { readonly column: 'id' };
-                readonly routineId: { readonly column: 'routineId' };
+                readonly routineStepId: { readonly column: 'routineStepId' };
                 readonly userId: { readonly column: 'userId' };
               };
             };
@@ -3086,6 +3198,18 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly recommendation: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Recommendation';
+                };
+                readonly cardinality: '1:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['routineStepId'];
+                };
+              };
               readonly routine: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -3096,6 +3220,17 @@ type ContractBase = Omit<
                 readonly on: {
                   readonly localFields: readonly ['routineId'];
                   readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly routineLogs: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'RoutineLog';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['routineStepId'];
                 };
               };
             };
@@ -3596,6 +3731,39 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['userId'];
                 };
               };
+              readonly products: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Product';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['userId'];
+                };
+              };
+              readonly recommendations: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Recommendation';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['userId'];
+                };
+              };
+              readonly routineLogs: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'RoutineLog';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['userId'];
+                };
+              };
               readonly routines: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -3699,6 +3867,7 @@ type ContractBase = Omit<
               { readonly name: 'PRODUCT'; readonly value: 'PRODUCT' },
               { readonly name: 'ROUTINE'; readonly value: 'ROUTINE' },
               { readonly name: 'HABIT'; readonly value: 'HABIT' },
+              { readonly name: 'ROUTINE_STEP'; readonly value: 'ROUTINE_STEP' },
             ];
           };
           readonly RoutinePeriod: {
@@ -3774,6 +3943,7 @@ type ContractBase = Omit<
             { readonly name: 'PRODUCT'; readonly value: 'PRODUCT' },
             { readonly name: 'ROUTINE'; readonly value: 'ROUTINE' },
             { readonly name: 'HABIT'; readonly value: 'HABIT' },
+            { readonly name: 'ROUTINE_STEP'; readonly value: 'ROUTINE_STEP' },
           ];
           readonly RoutinePeriod: readonly [
             { readonly name: 'MORNING'; readonly value: 'MORNING' },

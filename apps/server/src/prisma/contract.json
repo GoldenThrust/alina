@@ -150,6 +150,10 @@
               {
                 "name": "HABIT",
                 "value": "HABIT"
+              },
+              {
+                "name": "ROUTINE_STEP",
+                "value": "ROUTINE_STEP"
               }
             ]
           },
@@ -985,6 +989,13 @@
                   "kind": "scalar"
                 }
               },
+              "routineStepId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "scanId": {
                 "nullable": true,
                 "type": {
@@ -1046,6 +1057,22 @@
                   "namespace": "public"
                 }
               },
+              "routineStep": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "routineStepId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "RoutineStep",
+                  "namespace": "public"
+                }
+              },
               "user": {
                 "cardinality": "N:1",
                 "nullable": false,
@@ -1082,6 +1109,9 @@
                 },
                 "routineId": {
                   "column": "routineId"
+                },
+                "routineStepId": {
+                  "column": "routineStepId"
                 },
                 "scanId": {
                   "column": "scanId"
@@ -1198,7 +1228,7 @@
           },
           "RoutineLog": {
             "fields": {
-              "createdAt": {
+              "completedAt": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/timestamptz-temporal@1",
@@ -1212,7 +1242,7 @@
                   "kind": "scalar"
                 }
               },
-              "routineId": {
+              "routineStepId": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/text@1",
@@ -1227,17 +1257,50 @@
                 }
               }
             },
-            "relations": {},
+            "relations": {
+              "routineStep": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "routineStepId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "RoutineStep",
+                  "namespace": "public"
+                }
+              },
+              "user": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "userId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              }
+            },
             "storage": {
               "fields": {
-                "createdAt": {
-                  "column": "createdAt"
+                "completedAt": {
+                  "column": "completedAt"
                 },
                 "id": {
                   "column": "id"
                 },
-                "routineId": {
-                  "column": "routineId"
+                "routineStepId": {
+                  "column": "routineStepId"
                 },
                 "userId": {
                   "column": "userId"
@@ -1299,6 +1362,22 @@
               }
             },
             "relations": {
+              "recommendation": {
+                "cardinality": "1:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "routineStepId"
+                  ]
+                },
+                "to": {
+                  "model": "Recommendation",
+                  "namespace": "public"
+                }
+              },
               "routine": {
                 "cardinality": "N:1",
                 "nullable": false,
@@ -1312,6 +1391,21 @@
                 },
                 "to": {
                   "model": "Routine",
+                  "namespace": "public"
+                }
+              },
+              "routineLogs": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "routineStepId"
+                  ]
+                },
+                "to": {
+                  "model": "RoutineLog",
                   "namespace": "public"
                 }
               }
@@ -2141,6 +2235,51 @@
                   "namespace": "public"
                 }
               },
+              "products": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
+                },
+                "to": {
+                  "model": "Product",
+                  "namespace": "public"
+                }
+              },
+              "recommendations": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
+                },
+                "to": {
+                  "model": "Recommendation",
+                  "namespace": "public"
+                }
+              },
+              "routineLogs": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
+                },
+                "to": {
+                  "model": "RoutineLog",
+                  "namespace": "public"
+                }
+              },
               "routines": {
                 "cardinality": "1:N",
                 "on": {
@@ -2309,6 +2448,7 @@
               },
               "foreignKeys": [
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "userId"
@@ -2389,6 +2529,7 @@
               },
               "foreignKeys": [
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "userId"
@@ -2536,6 +2677,7 @@
               },
               "foreignKeys": [
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "userId"
@@ -2594,6 +2736,7 @@
               },
               "foreignKeys": [
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "orderId"
@@ -2610,6 +2753,7 @@
                   }
                 },
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "productId"
@@ -2712,6 +2856,7 @@
               },
               "foreignKeys": [
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "userId"
@@ -2851,8 +2996,8 @@
             "Recommendation": {
               "checks": [
                 {
-                  "expression": "\"type\" IN ('PRODUCT', 'ROUTINE', 'HABIT')",
-                  "name": "Recommendation_type_check_224e3598",
+                  "expression": "\"type\" IN ('PRODUCT', 'ROUTINE', 'HABIT', 'ROUTINE_STEP')",
+                  "name": "Recommendation_type_check_a80a0d1c",
                   "prefix": "Recommendation_type_check"
                 }
               ],
@@ -2895,6 +3040,11 @@
                   "dataType": "pg/text",
                   "nullable": true
                 },
+                "routineStepId": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
                 "scanId": {
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
@@ -2919,6 +3069,7 @@
               },
               "foreignKeys": [
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "userId"
@@ -2935,6 +3086,7 @@
                   }
                 },
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "productId"
@@ -2951,6 +3103,7 @@
                   }
                 },
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "routineId"
@@ -2964,6 +3117,23 @@
                     ],
                     "namespaceId": "public",
                     "tableName": "Routine"
+                  }
+                },
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "routineStepId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Recommendation"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "RoutineStep"
                   }
                 }
               ],
@@ -2991,6 +3161,11 @@
                 {
                   "columns": [
                     "routineId"
+                  ]
+                },
+                {
+                  "columns": [
+                    "routineStepId"
                   ]
                 }
               ]
@@ -3024,6 +3199,7 @@
               },
               "foreignKeys": [
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "userId"
@@ -3059,7 +3235,7 @@
             },
             "RoutineLog": {
               "columns": {
-                "createdAt": {
+                "completedAt": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "dataType": "pg/timestamptz",
                   "default": {
@@ -3073,7 +3249,7 @@
                   "dataType": "pg/text",
                   "nullable": false
                 },
-                "routineId": {
+                "routineStepId": {
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
                   "nullable": false
@@ -3084,8 +3260,60 @@
                   "nullable": false
                 }
               },
-              "foreignKeys": [],
-              "indexes": [],
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "userId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "RoutineLog"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "User"
+                  }
+                },
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "routineStepId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "RoutineLog"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "RoutineStep"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "routineStepId"
+                  ],
+                  "name": "RoutineLog_routineStepId_idx_b0cdaa22",
+                  "prefix": "RoutineLog_routineStepId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "userId"
+                  ],
+                  "name": "RoutineLog_userId_idx_a489d58a",
+                  "prefix": "RoutineLog_userId_idx",
+                  "unique": false
+                }
+              ],
               "primaryKey": {
                 "columns": [
                   "id"
@@ -3141,6 +3369,7 @@
               },
               "foreignKeys": [
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "routineId"
@@ -3278,6 +3507,7 @@
               },
               "foreignKeys": [
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "scanId"
@@ -3385,6 +3615,7 @@
               },
               "foreignKeys": [
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "userId"
@@ -3477,6 +3708,7 @@
               },
               "foreignKeys": [
                 {
+                  "onDelete": "cascade",
                   "source": {
                     "columns": [
                       "userId"
@@ -3770,7 +4002,8 @@
               "values": [
                 "PRODUCT",
                 "ROUTINE",
-                "HABIT"
+                "HABIT",
+                "ROUTINE_STEP"
               ]
             },
             "RoutinePeriod": {
@@ -3828,7 +4061,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "83ea8cee23707daaa91ffc893ac550b388b12df771cab476419305893a60c789"
+    "storageHash": "eb33510268cb6c612cbd42c5f29c605f4c1e5794cf2bb068718610aa20afbf4a"
   },
   "execution": {
     "executionHash": "dc1ac6e4db2ee326f04a55c1c0aa0d987b1dc883145cc25cd6bba35f22cc906d",

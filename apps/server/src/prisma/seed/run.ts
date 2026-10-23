@@ -19,7 +19,7 @@ type NumericOption = Exclude<keyof SeedOptions, "reset">;
 const NUMERIC_OPTIONS = [
   "users",
   "seed",
-  "products",
+  "productsPerUser",
   "scansPerUser",
   "routinesPerUser",
   "logsPerUser",

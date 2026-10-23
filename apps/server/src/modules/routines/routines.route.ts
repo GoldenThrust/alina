@@ -6,7 +6,7 @@ import * as C from "./routines.controller";
 import * as Z from "./routines.schema";
 import { IdParams, PaginationQuery } from "../../lib/schemas";
 
-export default async function scanRoutes(fastify: FastifyInstance) {
+export default async function routineRoutes(fastify: FastifyInstance) {
   const auth = [fastify.authenticate];
   const admin = [fastify.authenticate, requireAdmin];
 

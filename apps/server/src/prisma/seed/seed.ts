@@ -28,7 +28,7 @@ import {
  */
 
 export const SEED_DOMAIN = "alina.com";
-export const DEMO_EMAIL = `kate@${SEED_DOMAIN}`;
+export const DEMO_EMAIL = `liza@${SEED_DOMAIN}`;
 export const DEV_PASSWORD = "Password123!";
 
 /* ------------------------------ domain types ------------------------------ */
@@ -74,7 +74,7 @@ export interface SeedOptions {
   /** Delete existing seed users and recreate them. */
   reset?: boolean;
   /** Products in the shared catalogue. Default 2000. */
-  products?: number;
+  // products?: number;
   /** Scans (each with a full analysis) per user. Default 1500. */
   scansPerUser?: number;
   /** Routines per user (morning, evening, treatment, habit mix). Default 1500. */
@@ -101,14 +101,14 @@ const DEFAULTS: ResolvedOptions = {
   users: 1,
   seed: 2026,
   reset: false,
-  products: 2000,
+  // products: 2000,
   scansPerUser: 30000,
   routinesPerUser: 1500,
   logsPerUser: 6000,
   recommendationsPerUser: 2000,
   messagePairsPerUser: 2000,
   ordersPerUser: 150,
-  spanDays: 40,
+  spanDays: 1000,
   concurrency: 16,
   productsPerUser: 100,
 };
@@ -119,7 +119,7 @@ function resolveOptions(options: SeedOptions): ResolvedOptions {
     users: options.users ?? DEFAULTS.users,
     seed: options.seed ?? DEFAULTS.seed,
     reset: options.reset ?? DEFAULTS.reset,
-    products: options.products ?? DEFAULTS.products,
+    // products: options.products ?? DEFAULTS.products,
     scansPerUser: options.scansPerUser ?? DEFAULTS.scansPerUser,
     routinesPerUser: options.routinesPerUser ?? DEFAULTS.routinesPerUser,
     logsPerUser: options.logsPerUser ?? DEFAULTS.logsPerUser,
@@ -365,7 +365,12 @@ async function mapPool<T, R>(
   const queue = items.entries();
   const worker = async (): Promise<void> => {
     for (const [index, item] of queue) {
-      results[index] = await fn(item, index);
+      try {
+        results[index] = await fn(item, index);
+      } catch (err) {
+        console.error(`[seed] Error processing item ${index}:`, err);
+        // throw err;
+      }
     }
   };
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
@@ -423,9 +428,18 @@ function generateProducts(count: number): GeneratedProduct[] {
     if (seen.has(key)) continue;
     seen.add(key);
 
-    const ingredients = faker.helpers.arrayElements([...AVOID_POOL, ...LIKE_POOL], { min: 1, max: 3 });
+        const ingredients = faker.helpers.arrayElements([...AVOID_POOL, ...LIKE_POOL], { min: 1, max: 3 });
     const containsAvoided = ingredients.some((i) => (AVOID_POOL as readonly string[]).includes(i));
     const [min, max] = PRICE_RANGE[category];
+
+    // image and affiliateUrl are nullable columns, so some products get neither.
+    const slug = faker.helpers.slugify(`${brand}-${name}`).toLowerCase();
+    const image = faker.datatype.boolean(0.75)
+      ? `https://picsum.photos/seed/${slug}/600/600`
+      : null;
+    const affiliateUrl = faker.datatype.boolean(0.6)
+      ? `https://shop.${SEED_DOMAIN}/p/${slug}?ref=alina`
+      : null;
 
     products.push({
       ingredients,
@@ -435,6 +449,8 @@ function generateProducts(count: number): GeneratedProduct[] {
         category,
         description: `${name} by ${brand}. Contains ${ingredients.join(", ")}.${containsAvoided ? "" : " Free from common irritants."}`,
         price: faker.number.int({ min, max }),
+        image,
+        affiliateUrl,
       },
     });
   }
@@ -655,6 +671,7 @@ function buildRoutineSpecs(
         return {
           kind,
           accepted,
+          // accepted,
           input: { userId, title: `${label} morning routine`, steps: factories.map((make) => make(name)) },
         };
       }
@@ -665,7 +682,7 @@ function buildRoutineSpecs(
           input: {
             userId,
             title: `${label} evening routine`,
-            accepted,
+            // accepted,
             steps: [
               { period: "EVENING", title: "Cleanse", instruction: `Remove sunscreen and impurities with ${name("CLEANSER")}.` },
               { period: "NIGHT", title: "Treat", instruction: `Apply ${name("SERUM")} to damp skin.` },
@@ -747,6 +764,15 @@ async function seedRoutineLogs(
 }
 
 /* ------------------------------ recommendations ------------------------------ */
+type RecType = RecommendationInput["type"];
+
+const RECOMMENDATION_TYPE_WEIGHTS: readonly { weight: number; value: RecType }[] = [
+  { weight: 5, value: "PRODUCT" },
+  { weight: 2, value: "ROUTINE" },
+  { weight: 2, value: "HABIT" },
+  { weight: 2, value: "ROUTINE_STEP" },
+];
+
 async function seedRecommendations(
   user: User,
   count: number,
@@ -757,63 +783,98 @@ async function seedRecommendations(
   routines: readonly SeededRoutine[],
   concurrency: number,
 ): Promise<void> {
-  // productId and routineId are unique on Recommendation, so every product
-  // and routine can be recommended at most once: draw without replacement.
+  // productId, routineId and routineStepId are each unique on Recommendation,
+  // so every target can be recommended at most once: draw without replacement.
   const productPool = faker.helpers.shuffle(
     RECOMMENDED_CATEGORIES.flatMap((c) => catalogue.safeOf(c, avoid)),
   );
-  const routinePool = {
-    ROUTINE: faker.helpers.shuffle(routines.filter((x) => x.kind === "treatment")),
-    HABIT: faker.helpers.shuffle(routines.filter((x) => x.kind === "habit")),
+  const routinePool = faker.helpers.shuffle(routines.filter((x) => x.kind === "treatment"));
+  const habitPool = faker.helpers.shuffle(routines.filter((x) => x.kind === "habit"));
+  const stepPool = faker.helpers.shuffle(
+    routines.filter((x) => x.kind !== "habit").flatMap((x) => x.routine.steps),
+  );
+
+  const remaining: Record<RecType, number> = {
+    PRODUCT: productPool.length,
+    ROUTINE: routinePool.length,
+    HABIT: habitPool.length,
+    ROUTINE_STEP: stepPool.length,
   };
 
   const specs: RecommendationInput[] = [];
   for (let i = 0; i < count; i++) {
-    const scanId = faker.helpers.arrayElement(scans).id;
-    const createdAt = daysAgo(recentDay(spanDays));
-    const type = faker.helpers.weightedArrayElement<RecommendationInput["type"]>([
-      { weight: 6, value: "PRODUCT" },
-      { weight: 2, value: "ROUTINE" },
-      { weight: 2, value: "HABIT" },
-    ]);
+    const available = RECOMMENDATION_TYPE_WEIGHTS.filter((w) => remaining[w.value] > 0);
+    if (available.length === 0) break; // every pool is exhausted
 
-    if (type === "PRODUCT") {
-      const product = productPool.pop();
-      if (!product) continue; // pool exhausted
-      specs.push({
-        userId: user.id,
-        scanId,
-        type,
-        explanation: `${product.name} fits your latest scan: ${product.description.toLowerCase()}`,
-        accepted: faker.datatype.boolean(0.4),
-        productId: product.id,
-        createdAt,
-      });
-      continue;
-    }
-
-    const source = routinePool[type].pop();
-    if (!source) continue; // pool exhausted
-    specs.push({
+    const type = faker.helpers.weightedArrayElement(available);
+    const base = {
       userId: user.id,
-      scanId,
-      type,
-      explanation:
-        type === "ROUTINE"
-          ? "Gentle weekly exfoliation targets clogged pores without over-drying."
-          : "Small daily habits compound with your routine over a few weeks.",
-      accepted: faker.datatype.boolean(0.3),
-      routineId: source.routine.id,
+      scanId: faker.helpers.arrayElement(scans).id,
       createdAt: daysAgo(recentDay(spanDays)),
-    });
+    };
+
+    switch (type) {
+      case "PRODUCT": {
+        const product = productPool.pop()!;
+        remaining.PRODUCT--;
+        specs.push({
+          ...base,
+          type,
+          explanation: `${product.name} fits your latest scan: ${product.description.toLowerCase()}`,
+          accepted: faker.datatype.boolean(0.4),
+          productId: product.id,
+
+        });
+        break;
+      }
+      case "ROUTINE": {
+        const source = routinePool.pop()!;
+        remaining.ROUTINE--;
+        specs.push({
+          ...base,
+          type,
+          explanation: "Gentle weekly exfoliation targets clogged pores without over-drying.",
+          accepted: faker.datatype.boolean(0.3),
+          routineId: source.routine.id,
+        });
+        break;
+      }
+      case "HABIT": {
+        const source = habitPool.pop()!;
+        remaining.HABIT--;
+        specs.push({
+          ...base,
+          type,
+          explanation: "Small daily habits compound with your routine over a few weeks.",
+          accepted: faker.datatype.boolean(0.3),
+          routineId: source.routine.id,
+        });
+        break;
+      }
+      case "ROUTINE_STEP": {
+        const step = stepPool.pop()!;
+        remaining.ROUTINE_STEP--;
+        specs.push({
+          ...base,
+          type,
+          explanation: `Add "${step.title.toLowerCase()}" to your routine to support your latest scan results.`,
+          accepted: faker.datatype.boolean(0.35),
+          routineStepId: step.id,
+        });
+        break;
+      }
+    }
   }
 
   if (specs.length < count) {
-    console.log(`[seed]   ${user.email}: ${specs.length}/${count} recommendations (limited by unique products/routines)`);
+    console.log(
+      `[seed]   ${user.email}: ${specs.length}/${count} recommendations (limited by unique products/routines/steps)`,
+    );
   }
 
   await mapPool(specs, concurrency, (spec) => r.recommendations.create(spec));
 }
+
 /* ------------------------------ chat, account, orders ------------------------------ */
 
 async function seedChat(

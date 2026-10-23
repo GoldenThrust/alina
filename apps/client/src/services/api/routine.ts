@@ -1,16 +1,24 @@
 import { del, get, post } from "./api";
 
-const toLog = (dto: LogDTO): RoutineLog => ({ ...dto, createdAt: new Date(dto.createdAt) });
 
-
-type RecommendationDTO = Omit<Recommendation, "createdAt"> & { createdAt: string };
+type RecommendationDTO = Omit<Recommendation, "createdAt"> & {
+  createdAt: string;
+};
 type RoutineDTO = Omit<Routine, "createdAt" | "recommendation"> & {
   createdAt: string;
   recommendation: RecommendationDTO | null;
 };
-type LogDTO = Omit<RoutineLog, "createdAt"> & { createdAt: string };
 
-const toRecommendation = (dto: RecommendationDTO, routineId: string): Recommendation => ({
+type LogDTO = Omit<RoutineLog, "completedAt"> & { completedAt: string };
+const toLog = (dto: LogDTO): RoutineLog => ({ ...dto, completedAt: new Date(dto.completedAt) });
+
+const LOG_PAGE_SIZE = 100;
+const LOG_MAX_PAGES = 10;
+
+const toRecommendation = (
+  dto: RecommendationDTO,
+  routineId: string,
+): Recommendation => ({
   ...dto,
   routineId: dto.routineId ?? routineId, // make sure the link back to the routine always exists
   createdAt: new Date(dto.createdAt),
@@ -20,9 +28,10 @@ const toRoutine = (dto: RoutineDTO): Routine => ({
   ...dto,
   createdAt: new Date(dto.createdAt),
   steps: [...(dto.steps ?? [])].sort((a, b) => a.position - b.position),
-  recommendation: dto.recommendation ? toRecommendation(dto.recommendation, dto.id) : null,
+  recommendation: dto.recommendation
+    ? toRecommendation(dto.recommendation, dto.id)
+    : null,
 });
-
 
 export interface NewStepInput {
   period: RoutinePeriod;
@@ -32,19 +41,6 @@ export interface NewStepInput {
   recommendationId?: string;
 }
 
-
-/** Completion logs from `startDate` (YYYY-MM-DD) onward. */
-export async function getRoutineLogs(
-  options: { startDate?: string; signal?: AbortSignal } = {},
-): Promise<RoutineLog[]> {
-  const { startDate, signal } = options;
-  const res = await get<{ items: LogDTO[] }>("/routines/logs", {
-    ...(startDate ? { startDate } : {}),
-    limit: 100,
-    signal,
-  });
-  return res.items.map(toLog);
-}
 
 export async function createRoutine(title: string): Promise<Routine> {
   return toRoutine(await post<RoutineDTO>("/routines", { title }));
@@ -58,11 +54,17 @@ export async function deleteRoutine(routineId: string): Promise<void> {
   await del(`/routines/${routineId}`);
 }
 
-export async function createRoutineStep(routineId: string, input: NewStepInput): Promise<RoutineStep> {
+export async function createRoutineStep(
+  routineId: string,
+  input: NewStepInput,
+): Promise<RoutineStep> {
   return post<RoutineStep>(`/routines/${routineId}/steps`, input);
 }
 
-export async function deleteRoutineStep(routineId: string, stepId: string): Promise<void> {
+export async function deleteRoutineStep(
+  routineId: string,
+  stepId: string,
+): Promise<void> {
   await del(`/routines/${routineId}/steps/${stepId}`);
 }
 
@@ -73,10 +75,6 @@ export async function reorderRoutineSteps(
   await post(`/routines/${routineId}/steps/reorder`, { steps });
 }
 
-/** Records that the routine was completed today. */
-export async function createRoutineLog(routineId: string): Promise<RoutineLog> {
-  return toLog(await post<LogDTO>(`/routines/${routineId}/logs`, {}));
-}
 
 export interface RoutinePage {
   routines: Routine[];
@@ -85,13 +83,60 @@ export interface RoutinePage {
 }
 
 /** All routines for the user, including suggested (not yet accepted) ones. */
-export async function getRoutines(options: { signal?: AbortSignal } = {}): Promise<RoutinePage> {
-  const res = await get<{ items: RoutineDTO[] }>("/routines", { signal: options.signal });
+export async function getRoutines(
+  options: { signal?: AbortSignal } = {},
+): Promise<RoutinePage> {
+  const res = await get<{ items: RoutineDTO[] }>("/routines", {
+    signal: options.signal,
+    limit: 100,
+  });
   const routines = res.items.map(toRoutine);
   return {
     routines,
-    recommendations: routines.flatMap((r) => (r.recommendation ? [r.recommendation] : [])),
+    recommendations: routines.flatMap((r) =>
+      r.recommendation ? [r.recommendation] : [],
+    ),
   };
 }
 
-// createRoutine still returns toRoutine(...). A routine the user creates has recommendation: null.
+
+/** Logs from `startDate` (YYYY-MM-DD) onward. Follows the cursor until the window is loaded. */
+export async function getRoutineLogs(
+  options: { startDate?: string; routineId?: string; signal?: AbortSignal } = {},
+): Promise<RoutineLog[]> {
+  const { startDate, routineId, signal } = options;
+  const logs: RoutineLog[] = [];
+  let cursor: string | undefined;
+
+  for (let page = 0; page < LOG_MAX_PAGES; page++) {
+    const res = await get<{ items: LogDTO[]; nextCursor?: string | null }>("/routines/logs", {
+      limit: LOG_PAGE_SIZE,
+      ...(cursor ? { cursor } : {}),
+      ...(startDate ? { startDate } : {}),
+      ...(routineId ? { routineId } : {}),
+      signal,
+    });
+    logs.push(...res.items.map(toLog));
+    if (!res.nextCursor) break;
+    cursor = res.nextCursor;
+  }
+  return logs;
+}
+
+/** Marks a step as done. */
+export async function createRoutineLog(
+  routineStepId: string,
+  completedAt: Date = new Date(),
+): Promise<RoutineLog> {
+  return toLog(
+    await post<LogDTO>("/routines/logs", {
+      routineStepId,
+      completedAt: completedAt.toISOString(),
+    }),
+  );
+}
+
+/** Un-marks a step. Takes the log's id, not the step's. */
+export async function deleteRoutineLog(logId: string): Promise<void> {
+  await del(`/routines/logs/${logId}`);
+}

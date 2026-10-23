@@ -7,15 +7,15 @@ import {
 import { useRecommendationStore } from "../stores";
 import { isAbort } from "../utils/signal";
 
-const PAGE_SIZE = 11;
+const PAGE_SIZE = 20;
 
 function applyPage(page: RecommendationPage) {
   useRecommendationStore.getState().upsertRecommendations(page.recommendations);
 }
 
 export function useRecommendations({
-  type = "PRODUCT",
-  accepted = false,
+  type,
+  accepted,
 }: { type?: RecommendationType; accepted?: boolean } = {}) {
   const [status, setStatus] = useState<Status>("loading");
   const [hasMore, setHasMore] = useState(false);

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { PaginationQuery } from "../../lib/schemas";
 
-export const RecommendationType = z.enum(["PRODUCT", "ROUTINE", "HABIT"]);
+export const RecommendationType = z.enum(["PRODUCT", "ROUTINE", "HABIT", "ROUTINE_STEP"]);
 
 /* ---------- Recommendation ---------- */
 export const CreateRecommendationBody = z.object({

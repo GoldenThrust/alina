@@ -1,12 +1,7 @@
 import { db } from "../../../../prisma/db";
 
-
 export type RoutinePeriod =
-  | "MORNING"
-  | "AFTERNOON"
-  | "EVENING"
-  | "NIGHT"
-  | "HABIT";
+  "MORNING" | "AFTERNOON" | "EVENING" | "NIGHT" | "HABIT";
 
 export type ProductCategory =
   | "CLEANSER"
@@ -17,8 +12,9 @@ export type ProductCategory =
   | "TREATMENT"
   | "OTHER";
 
-  db.orm.public
-export type RecommendationType = "PRODUCT" | "ROUTINE" | "HABIT";
+// db.orm.public;
+export type RecommendationType =
+  "PRODUCT" | "ROUTINE" | "HABIT" | "ROUTINE_STEP";
 export type Sender = "USER" | "ALINA";
 
 export interface StepInput {
@@ -54,9 +50,7 @@ export class SkincareRepository {
   }
 
   async findScan(userId: string, scanId: string): Promise<any | null> {
-    return (
-      (await orm().SkinScan.where({ id: scanId, userId }).first()) ?? null
-    );
+    return (await orm().SkinScan.where({ id: scanId, userId }).first()) ?? null;
   }
 
   async updateScan(scanId: string, data: Record<string, unknown>) {
@@ -69,11 +63,18 @@ export class SkincareRepository {
     userId: string,
     opts: { acceptedOnly: boolean },
   ): Promise<any[]> {
-    const where = opts.acceptedOnly
-      ? { userId, accepted: true }
-      : { userId };
+    if (opts.acceptedOnly) {
+      return orm()
+        .Routine.where({ userId })
+        .where((r) => r.recommendation.some({ accepted: true }))
+        .include("steps", (steps: any) =>
+          steps.orderBy((s: any) => s.position.asc()),
+        )
+        .orderBy((r: any) => r.createdAt.desc())
+        .all();
+    }
     return orm()
-      .Routine.where(where)
+      .Routine.where({ userId })
       .include("steps", (steps: any) =>
         steps.orderBy((s: any) => s.position.asc()),
       )
@@ -95,7 +96,6 @@ export class SkincareRepository {
   async createRoutine(data: {
     userId: string;
     title: string;
-    accepted: boolean;
     steps: StepInput[];
   }) {
     const routine = await orm().Routine.create({
@@ -112,7 +112,6 @@ export class SkincareRepository {
           title: step.title,
           instruction: step.instruction,
 
-          
           position: index + 1,
         }),
       );
@@ -120,19 +119,50 @@ export class SkincareRepository {
     return { ...routine, steps };
   }
 
+  async createRoutineStep(data: {
+    routineId: string;
+    period: RoutinePeriod;
+    title: string;
+    instruction: string;
+  }) {
+    const routine = await orm()
+      .Routine.where({
+        id: data.routineId,
+      })
+      .first();
+    if (!routine) throw new Error("Routine not found");
+
+    const stepCount = (
+      await orm()
+        .RoutineStep.where({ routineId: data.routineId })
+        .aggregate((s) => ({ total: s.count() }))
+    ).total;
+    const step = await orm().RoutineStep.create({
+      routineId: data.routineId,
+      period: data.period,
+      title: data.title,
+      instruction: data.instruction,
+      position: stepCount + 1,
+    });
+
+    return step;
+  }
+
   async routineLogs(
     userId: string,
     opts: { routineId?: string; since: Date; limit: number },
   ): Promise<any[]> {
-    const where = opts.routineId
-      ? { userId, routineId: opts.routineId }
-      : { userId };
-    const logs: any[] = await orm()
-      .RoutineLog.where(where)
-      .orderBy((l: any) => l.createdAt.desc())
+    let q = orm().RoutineLog.where({ userId });
+
+    if (opts.routineId) {
+      q = q.where((r) => r.routineStep.some({ routineId: opts.routineId }));
+    }
+    const logs: any[] = await q
+      .orderBy((l: any) => l.completedAt.desc())
       .limit(opts.limit)
       .all();
-    return logs.filter((l) => new Date(l.createdAt) >= opts.since);
+
+    return logs.filter((l) => new Date(l.completedAt ?? null) >= opts.since);
   }
 
   /* ------------------------- recommendations & products ------------------------- */
@@ -159,8 +189,7 @@ export class SkincareRepository {
       recs.map(async (rec) => ({
         ...rec,
         product: rec.productId
-          ? ((await orm().Product.where({ id: rec.productId }).first()) ??
-            null)
+          ? ((await orm().Product.where({ id: rec.productId }).first()) ?? null)
           : null,
         routine: rec.routineId ? await this.routineById(rec.routineId) : null,
       })),

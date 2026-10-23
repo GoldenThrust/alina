@@ -2,7 +2,7 @@ type Gender = "MALE" | "FEMALE";
 type UserRole = "USER" | "ADMIN";
 type ScanStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
 type RoutinePeriod = "MORNING" | "AFTERNOON" | "EVENING" | "NIGHT" | "HABIT";
-type RecommendationType = "PRODUCT" | "ROUTINE" | "HABIT";
+type RecommendationType = "PRODUCT" | "ROUTINE" | "HABIT" | "ROUTINE_STEP";
 type Sender = "USER" | "ALINA";
 type DeviceType = "RING" | "MOBILE" | "WEB";
 type SubscriptionPlan = "FREE" | "PLUS" | "PREMIUM";
@@ -141,13 +141,13 @@ interface RoutineStep {
   title: string;
   instruction: string;
   position: number;
+  recommendation: Recommendation | null;
 }
 
 interface Routine {
   id: string;
   userId: string;
   title: string;
-  accepted: boolean;
   createdAt: Date;
   steps: RoutineStep[];
   recommendation: Recommendation | null;
@@ -156,8 +156,9 @@ interface Routine {
 interface RoutineLog {
   id: string;
   userId: string;
-  routineId: string;
-  createdAt: Date;
+  routineStepId: string;
+  routineStep?: RoutineStep;
+  completedAt: Date;
 }
 
 interface Product {
@@ -251,7 +252,8 @@ interface RoutineState {
 
   setLogs: (logs: RoutineLog[]) => void;
   addLog: (log: RoutineLog) => void;
-  removeLog: (logId: string) => void;
+  removeLog: (id: string) => void;
+  replaceLog: (tempId: string, log: RoutineLog) => void;
   clear: () => void;
   setDemoRoutines: () => void;
 }

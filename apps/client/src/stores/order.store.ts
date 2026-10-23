@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { newestFirst } from "../utils/dates";
 import {
-  emptyEntities, removeOne, selectAll, setAll, upsertOne, type Entities,
+  emptyEntities, removeOne, selectAll, setAll, upsertOne
 } from "../utils/entities";
 
 interface OrderState {

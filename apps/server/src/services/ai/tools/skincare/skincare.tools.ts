@@ -188,7 +188,7 @@ export class GetRoutineLogsTool extends SkincareTool<
     });
 
     const activeDays = new Set(
-      logs.map((l) => new Date(l.createdAt).toISOString().slice(0, 10)),
+      logs.map((l) => new Date(l.completedAt ?? null).toISOString().slice(0, 10)),
     ).size;
 
     return {
@@ -298,7 +298,7 @@ export class CreateRoutineTool extends SkincareTool<
     input: z.infer<typeof createRoutineSchema>,
     { userId }: ToolContext,
   ) {
-    return this.repo.createRoutine({ userId, accepted: true, ...input });
+    return this.repo.createRoutine({ userId, ...input });
   }
 }
 
@@ -323,7 +323,6 @@ export class RecommendRoutineTool extends SkincareTool<
   ) {
     const routine = await this.repo.createRoutine({
       userId,
-      accepted: false,
       title: input.title,
       steps: input.steps,
     });
@@ -338,45 +337,40 @@ export class RecommendRoutineTool extends SkincareTool<
   }
 }
 
-const recommendHabitSchema = z.object({
-  scanId: z.string().optional(),
+const recommendRoutineStepSchema = z.object({
+  routineId: z.string(),
+  period: z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT", "HABIT"]),
   title: z.string().min(1),
   instruction: z.string().min(1),
   explanation: z.string().min(1),
 });
 
-export class RecommendHabitTool extends SkincareTool<
-  z.infer<typeof recommendHabitSchema>
+export class RecommendRoutineStepTool extends SkincareTool<
+  z.infer<typeof recommendRoutineStepSchema>
 > {
-  readonly name = "recommend_habit";
+  readonly name = "recommend_routine_step";
   readonly description =
-    "Suggest a lifestyle habit (sleep, water, sun protection behavior, pillowcase changes, etc.).";
-  readonly schema = recommendHabitSchema;
+    "Suggest a routine step that helps the skin (sleep, hydration, sun behavior, pillowcase hygiene, etc.).";
+  readonly schema = recommendRoutineStepSchema;
 
   protected async executeInternal(
-    input: z.infer<typeof recommendHabitSchema>,
+    input: z.infer<typeof recommendRoutineStepSchema>,
     { userId }: ToolContext,
   ) {
-    const routine = await this.repo.createRoutine({
-      userId,
-      accepted: false,
+    const routineStep = await this.repo.createRoutineStep({
+      routineId: input.routineId,
+      period: input.period,
       title: input.title,
-      steps: [
-        {
-          period: "HABIT",
-          title: input.title,
-          instruction: input.instruction,
-        },
-      ],
+      instruction: input.instruction,
     });
+
     const recommendation = await this.repo.createRecommendation({
       userId,
-      scanId: input.scanId,
-      type: "HABIT",
+      type: "ROUTINE_STEP",
       explanation: input.explanation,
-      routineId: routine.id,
+      routineId: routineStep.routineId,
     });
-    return { recommendation, routine };
+    return { recommendation, routineStep };
   }
 }
 
