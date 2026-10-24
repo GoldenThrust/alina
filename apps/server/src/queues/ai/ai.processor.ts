@@ -21,7 +21,7 @@ export async function processAI(job: any) {
 
     try {
       const user = await db.orm.public.User.where({ id: userId }).first();
-      const scan = await db.orm.public.SkinScan.where({ id: scanId })
+      const scan = await db.orm.public.SkinScan.where({ id: scanId, status: "COMPLETED" })
         .orderBy((r: any) => r.createdAt.desc())
         .include("analysis")
         .limit(2)
