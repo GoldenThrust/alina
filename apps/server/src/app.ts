@@ -19,6 +19,8 @@ import { allowUrls } from "./common/utils/constant.ts";
 import { readFileSync } from "node:fs";
 import { httpDuration, logger, register } from "./config/logger.ts";
 
+import "./queues/index.ts";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

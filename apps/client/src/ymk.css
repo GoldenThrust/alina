@@ -1,0 +1,445 @@
+
+/* ---- Scan page (append to your stylesheet) ---- */
+
+.st-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.8fr);
+  gap: 14px;
+  align-items: start;
+}
+
+/* ----- Stage ----- */
+.st-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+.st-stage-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Segmented control */
+.st-modes {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-soft);
+}
+.st-mode {
+  position: relative;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #85899a;
+  font-size: 11px;
+  cursor: pointer;
+}
+.st-mode.selected {
+  color: var(--accent);
+  font-weight: 600;
+}
+.st-mode:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.st-mode-pill {
+  position: absolute;
+  inset: 0;
+  border: 1px solid #e7e2fc;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(36, 40, 67, 0.06);
+}
+.st-mode-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Status chip */
+.st-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 6px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: #707587;
+  font-size: 10px;
+}
+
+/* Frame */
+.st-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 1px solid #e2e1eb;
+  border-radius: 8px;
+  background: #f7f6fa;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.st-frame.ready {
+  border-color: #41aa83;
+  box-shadow: 0 0 0 4px rgba(65, 170, 131, 0.14);
+}
+.st-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.st-layer > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: filter 0.4s ease;
+}
+.st-layer > img.dim {
+  filter: brightness(0.7) saturate(0.8);
+}
+.st-frame video,
+.st-frame .face-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+.st-frame .face-guide {
+  height: 88%;
+}
+
+/* Start camera button floats over the guide */
+.st-cta {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 8px 24px rgba(104, 73, 232, 0.3);
+}
+.st-cta:hover:not(:disabled) {
+  transform: translateX(-50%) translateY(-1px);
+}
+
+/* Drop zone */
+.st-drop {
+  position: absolute;
+  inset: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1.5px dashed #cfc7fb;
+  border-radius: 8px;
+  background: rgba(240, 237, 255, 0.4);
+  color: #5d6274;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+.st-drop:hover,
+.st-drop.dragging {
+  border-color: var(--accent);
+  background: rgba(240, 237, 255, 0.85);
+}
+.st-drop:focus-within {
+  outline: 3px solid rgba(104, 73, 232, 0.25);
+  outline-offset: 2px;
+}
+.st-drop strong {
+  color: #414558;
+  font-size: 13px;
+}
+.st-drop small {
+  color: #9296a5;
+  font-size: 10px;
+}
+.st-drop input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.st-drop-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--accent);
+  box-shadow: 0 4px 14px rgba(104, 73, 232, 0.15);
+}
+
+/* Sending / sent overlays */
+.st-sweep {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  box-shadow: 0 0 18px 4px rgba(104, 73, 232, 0.4);
+  pointer-events: none;
+}
+.st-sent-badge {
+  position: absolute;
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--positive);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(22, 136, 108, 0.35);
+}
+
+.st-error {
+  margin: 0;
+  overflow: hidden;
+  color: #b94150;
+  font-size: 11px;
+}
+
+/* Actions */
+.st-actions {
+  position: relative;
+}
+.st-actions-row {
+  display: flex;
+  gap: 8px;
+}
+.st-actions-row > .button {
+  flex: 1;
+}
+.st-actions-row > .button-primary {
+  flex: 1.6;
+}
+.st-hint {
+  margin: 0;
+  color: #9a9eac;
+  text-align: center;
+  font-size: 11px;
+}
+.st-sent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #c8ebdd;
+  border-radius: 6px;
+  background: var(--positive-soft);
+}
+.st-sent p {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+}
+.st-sent strong {
+  color: var(--positive);
+  font-size: 12px;
+}
+.st-sent small {
+  color: #4e7768;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.st-sent-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.st-sent-actions .button {
+  min-height: 34px;
+  font-size: 11px;
+}
+
+/* ----- Side column ----- */
+.st-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.st-flow,
+.st-tips {
+  padding: 16px;
+}
+.st-flow ol {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.st-flow ol::before {
+  position: absolute;
+  top: 15px;
+  right: 8%;
+  left: 8%;
+  height: 2px;
+  border-radius: 2px;
+  background: #efedf8;
+  content: "";
+}
+.st-flow li {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  color: #9a9eac;
+  font-size: 10px;
+}
+.st-flow-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid #e4e5ed;
+  border-radius: 50%;
+  background: #fff;
+  color: #a5a8b4;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+.st-flow li.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+.st-flow li.active .st-flow-icon {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.st-flow li.done {
+  color: var(--positive);
+}
+.st-flow li.done .st-flow-icon {
+  border-color: var(--positive);
+  background: var(--positive);
+  color: #fff;
+}
+
+.st-tips ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.st-tips li {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 0;
+  border-top: 1px solid #f0f1f5;
+}
+.st-tips li:first-child {
+  border-top: 0;
+}
+.st-tip-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.st-tips li > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.st-tips strong {
+  color: #4a4e60;
+  font-size: 11px;
+}
+.st-tips small {
+  color: #9296a5;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .st-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 520px) {
+  .st-actions-row {
+    flex-direction: column;
+  }
+  .st-frame {
+    aspect-ratio: 1;
+  }
+}
+
+/* ---- Perfect Corp Camera Kit ---- */
+
+/* Skin analysis wants a portrait selfie, so the stage is portrait and centred. */
+.st-frame {
+  width: min(100%, 460px);
+  max-height: 70vh;
+  margin: 0 auto;
+  aspect-ratio: 4 / 5;
+}
+
+/* Mount point for the SDK UI. Always in the DOM; only interactive while the camera is open. */
+.st-kit {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+.st-kit.open {
+  pointer-events: auto;
+}
+.st-kit > * {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.st-loader {
+  color: var(--accent);
+}
+
+@media (max-width: 520px) {
+  .st-frame {
+    aspect-ratio: 3 / 4;
+  }
+}

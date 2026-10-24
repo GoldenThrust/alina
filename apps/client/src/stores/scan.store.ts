@@ -85,8 +85,7 @@ export const selectHasScanInProgress = (s: ScanState) =>
 
 /** Oldest to newest, ready for a chart. */
 export const selectScanHistory = (s: ScanState) =>
-  completed(s)
-    .sort(oldestFirst((x) => x.createdAt));
+  completed(s).sort(oldestFirst((x) => x.createdAt));
 
 /** Latest score minus previous score */
 export function selectScoreDelta(s: ScanState): SkinScan | null {
@@ -158,7 +157,6 @@ export function selectSortedAnalysisDeltaPercent(state: ScanState) {
   return sortAnalysisChange(delta);
 }
 
-
 export function selectAverageScore(
   state: ScanState,
   fromDate: string | null,
@@ -186,32 +184,27 @@ export const selectScanBounds = (s: ScanState): Range | null => {
   };
 };
 
-
-
 /* ------------------------------ hooks ------------------------------ */
 
 export const useScans = () => useScanStore(useShallow(selectScansNewestFirst));
 export const useLatestScan = () => useScanStore(selectLatestCompletedScan);
-export const useAverageScore = (fromDate: string | null, toDate: string | null) => useScanStore(useShallow((s) => selectAverageScore(s, fromDate, toDate)));
-export const useScanHistory = () =>
-  useScanStore(useShallow(selectScanHistory));
-
+export const useAverageScore = (
+  fromDate: string | null,
+  toDate: string | null,
+) => useScanStore(useShallow((s) => selectAverageScore(s, fromDate, toDate)));
+export const useScanHistory = () => useScanStore(useShallow(selectScanHistory));
 
 /** Completed scans inside the date range, oldest -> newest. Re-runs when the dates or scans change. */
 export const useScanHistoryInRange = (
   start: string | null,
   end: string | null,
-) =>
-  useScanStore(useShallow((s) => selectScanHistoryInRange(s, start, end)));
+) => useScanStore(useShallow((s) => selectScanHistoryInRange(s, start, end)));
 
 /** Full span of completed scans, for the date picker's min/max and the "All time" preset. */
 export const useScanBounds = () => useScanStore(useShallow(selectScanBounds));
 
 /** Latest scan in the range plus the scan right before it (even if that one is outside the range). */
-export const useScanComparison = (
-  start: string | null,
-  end: string | null,
-) => {
+export const useScanComparison = (start: string | null, end: string | null) => {
   const history = useScanHistory();
   return useMemo(() => {
     const inRange = filterByRange(history, start, end);
@@ -229,15 +222,35 @@ export const useScoreDelta = () => {
 
 export const useScoreDeltaPercent = () => {
   const scans = useScanStore((s) => s.scans);
-  return useMemo(() => selectScoreDeltaPercent({ scans } as ScanState), [scans]);
+  return useMemo(
+    () => selectScoreDeltaPercent({ scans } as ScanState),
+    [scans],
+  );
 };
 
 export const useSortedAnalysisDelta = () => {
   const scans = useScanStore((s) => s.scans);
-  return useMemo(() => selectSortedAnalysisDelta({ scans } as ScanState), [scans]);
+  return useMemo(
+    () => selectSortedAnalysisDelta({ scans } as ScanState),
+    [scans],
+  );
 };
 
 export const useSortedAnalysisDeltaPercent = () => {
   const scans = useScanStore((s) => s.scans);
-  return useMemo(() => selectSortedAnalysisDeltaPercent({ scans } as ScanState), [scans]);
+  return useMemo(
+    () => selectSortedAnalysisDeltaPercent({ scans } as ScanState),
+    [scans],
+  );
 };
+
+useScanStore.subscribe((state) => {
+  console.log("Auth store changed:", state.scans);
+  state.scans.ids.forEach((scanId) => {
+    const scan = state.scans.byId[scanId];
+    if (scan && scan.image && !scan.image.includes("http")) {
+      scan.image = `${import.meta.env.VITE_SERVER_URL}\\${scan.image}`;
+      useScanStore.getState().upsertScan(scan);
+    }
+  });
+});

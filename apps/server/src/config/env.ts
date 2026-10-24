@@ -51,6 +51,7 @@ export const env = {
   FACEBOOK_CLIENT_ID: getEnv("FACEBOOK_CLIENT_ID"),
   FACEBOOK_CLIENT_SECRET: getEnv("FACEBOOK_CLIENT_SECRET"),
   FACEBOOK_CALLBACK_URL: getEnv("FACEBOOK_CALLBACK_URL"),
+  ROOT_DIR: path.join(__dirname,".."),
   UPLOAD_DIR: path.join(__dirname,"..", getEnv("UPLOAD_DIR")),
   YOUCAM_API_KEY: getEnv("YOUCAM_API_KEY"),
   GOOGLE_API_KEY: getEnv("GOOGLE_API_KEY"),

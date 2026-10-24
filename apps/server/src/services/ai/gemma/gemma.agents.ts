@@ -130,10 +130,7 @@ export class GemmaAgent {
 
       await this.remember(userId, previousId);
       Websocket.sendMessage(userId, lastText);
-      Websocket.sendNotification(userId, {
-        type: "gemma_analysis_complete",
-        scanId,
-      });
+      Websocket.sendNotification(userId, "Image analysis completed successfully.");
 
       await db.orm.public.SkinScan.where({ id: scanId }).update({
         status: "COMPLETED",
@@ -145,6 +142,8 @@ export class GemmaAgent {
       await db.orm.public.SkinScan.where({ id: scanId }).update({
         status: "FAILED",
       });
+
+      Websocket.sendNotification(userId, "Image analysis failed. Please try again.");
 
       throw error;
 

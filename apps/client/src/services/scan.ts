@@ -6,7 +6,7 @@ export async function requestScan(blob: Blob) {
     const formData = new FormData();
     formData.append("image", blob);
 
-    const response = await axios.post(`/scan`, formData, {
+    const response = await axios.post(`/scans`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },

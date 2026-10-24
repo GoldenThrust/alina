@@ -69,13 +69,17 @@ export const scanService = {
       throw new APIError("User not found!", 401);
     }
 
-    YouCamAnalysis({
+    await YouCamAnalysis({
       imagePath: payload.image,
       type: user.skinTone ? "skin" : "all",
       source: payload.image,
       userId: userId,
       options: {},
     });
+
+    return {
+      message: "File received successfully. Your scan is being processed. You will receive a notification once the analysis is complete.",
+    }
   },
   async get(userId: string, id: string) {
     const scan = await assertOwned(ORM.Scan, id, userId, "Scan");

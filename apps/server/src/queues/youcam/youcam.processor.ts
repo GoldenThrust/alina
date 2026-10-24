@@ -2,11 +2,15 @@ import type { JsonValue } from "@prisma/orm-postgres/contract/types";
 import { db } from "../../prisma/db";
 import { YouCamService } from "../../services/yomCam.service";
 import { AIProcessingJob } from "../ai/ai.producer";
+import { logger } from "../../config/logger";
 
 export async function processYoucam(job: any) {
+  console.log("Processing YouCam job:", job.data);
+  logger.info("Processing YouCam job:", job.data);
   const { userId, type, source, imagePath, options } =
     job.data as YouCamAnalysisData;
   let response: AnalyzeImageResult | null = null;
+
   try {
     if (type === "all") {
       response = await YouCamService.analyzeImage(
@@ -45,7 +49,7 @@ export async function processYoucam(job: any) {
       });
 
       const user = await db.orm.public.User.where({ id: userId }).first();
-    
+
       if (!user) {
         throw new Error(`User with ID ${userId} not found`);
       }
@@ -74,7 +78,7 @@ export async function processYoucam(job: any) {
         wrinkle: skinAnalysis.concerns["hd_wrinkle"] as JsonValue,
       });
 
-      AIProcessingJob({
+      await AIProcessingJob({
         userId,
         scanId: skinScan.id,
         input: {
@@ -91,13 +95,14 @@ export async function processYoucam(job: any) {
             // image: skinScan.image,
             analysis: {
               skinAnalysis,
-              skinTone: response.skinTone?.ok ? response.skinTone.data : user.skinTone,
+              skinTone: response.skinTone?.ok
+                ? response.skinTone.data
+                : user.skinTone,
               fitzpatrick: response.fitzpatrick?.ok
                 ? response.fitzpatrick.data
                 : user.skinType,
             },
           },
-
         },
       });
     } else if (response?.skinAnalysis?.ok === false) {
@@ -105,7 +110,11 @@ export async function processYoucam(job: any) {
         response.skinAnalysis.error.message ?? response.skinAnalysis.error,
       );
     }
-  } catch (error) {
+
+    logger.info("YouCam job processed successfully");
+    console.log("YouCam job processed successfully:", response);
+  } catch (error: any) {
+    logger.error(`Error processing YouCam job:`, error);
     console.error("Error processing YouCam job:", error);
   }
 }

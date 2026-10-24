@@ -327,7 +327,7 @@ export default function Scan() {
                     <img
                       src={previewUrl}
                       alt="Selected scan"
-                      className={phase === "sent" ? "dim" : ""}
+                      className={`max-w-full h-auto ${phase === "sent" ? "dim" : ""}`}
                     />
                     {phase === "sending" && (
                       <motion.span

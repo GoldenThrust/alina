@@ -1,8 +1,11 @@
+import path from "node:path";
 import { fileManager } from "../../common/files/file";
+import { env } from "../../config/env";
 import APIError from "../../errors/APIError";
 import { createOwnedHandlers, getUserId, handle } from "../../lib/crud";
 import { historyQuery } from "./scans.schema";
 import * as S from "./scans.service";
+import { readFile } from "node:fs/promises";
 
 /* ---------- SkinScan: create needs an image upload ---------- */
 export const scanController = {
@@ -32,11 +35,15 @@ export const scanController = {
 
       let image: string | undefined;
       try {
-        image = await fileManager.uploadFile(req, "image");
+        image = await fileManager.uploadFile(req, "image", "scans");
+        console.log("Image path:", image);
       } catch {}
       if (!image) throw new APIError("Scan image is required", 400);
 
+
+
       return S.scanService.create(userId, { image });
+      // return "Testing";
     },
     201,
   ),

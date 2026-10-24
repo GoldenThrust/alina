@@ -73,7 +73,7 @@ export default class Websocket {
    */
   static async sendNotification(
     userId: string,
-    notification: any,
+    notification: string,
   ) {
     this.io.to(userId).emit("notification", notification);
   }
