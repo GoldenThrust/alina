@@ -143,6 +143,13 @@ export default async function register(payload: {
     conflictOn: { email: payload.email },
   });
 
+  await db.orm.public.Preference.create({
+    userId: user.id,
+    avoidedIngredients: [],
+    favoriteBrands: [],
+    favoriteIngredients: [],
+  });
+
   await redisService.setAccountVerificationToken(
     tokenHash,
     user.id,
@@ -198,21 +205,6 @@ export async function login(
 
   if (!isMatch) {
     throw new APIError("Invalid email or password", 401);
-  }
-
-  const preferences = await db.orm.public.Preference.where({
-    userId: user.id,
-  }).first();
-
-  console.log(preferences, "preferences");
-
-  if (!preferences) {
-    await db.orm.public.Preference.create({
-      userId: user.id,
-      avoidedIngredients: [],
-      favoriteBrands: [],
-      favoriteIngredients: [],
-    });
   }
 
   const tokens = await generateTokens(req, res, user);

@@ -5,6 +5,7 @@ import { ToolExecutor } from "../tools/tool.executor";
 import { GemmaClient } from "./gemma.service";
 import { ToolRegistry } from "../tools/tool.registry";
 import { db } from "../../../prisma/db";
+import { logger } from "../../../config/logger";
 
 const MAX_TURNS = 10;
 
@@ -145,6 +146,9 @@ export class GemmaAgent {
         content: lastText,
         sender: "ALINA",
       });
+
+      logger.info(`Gemma analysis completed successfully for user: ${userId}`);
+
       return { text: lastText, id: previousId };
     } catch (error: any) {
       await db.orm.public.SkinScan.where({ id: scanId }).update({
@@ -155,6 +159,9 @@ export class GemmaAgent {
         userId,
         "Image analysis failed. Please try again.",
       );
+
+      logger.error(`Gemma analysis failed for user: ${userId}, Error:`, error);
+      console.error("Gemma analysis failed for user:", userId, "Error:", error);
 
       throw error;
 

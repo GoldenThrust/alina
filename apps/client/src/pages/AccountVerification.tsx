@@ -30,11 +30,12 @@ export default function AccountVerification() {
           setSession({
             accessToken: response.accessToken,
             refreshToken: response.refreshToken,
-            expiresAt: new Date(Date.now() + 60 * 60 * 1000)
+            expiresAt: new Date(Date.now() + 60 * 60 * 1000),
           });
+        
           setTimeout(() => {
-            navigate("/dashboard");
-          }, 1000);
+            window.navigation.reload();
+          }, 2000);
         } else {
           setError("Failed to verify account.");
           setTimeout(() => {

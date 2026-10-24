@@ -1,0 +1,125 @@
+<mjml>
+  <mj-head>
+    <mj-title>{{subject}}</mj-title>
+    <mj-preview>{{preheader}}</mj-preview>
+    <mj-font name="Manrope" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&display=swap" />
+    <mj-attributes>
+      <mj-all font-family="Manrope, 'Segoe UI', Helvetica, Arial, sans-serif" />
+      <mj-text font-size="15px" line-height="1.65" color="#4a4e60" padding="0 8px" />
+      <mj-button background-color="#6849e8" color="#ffffff" font-size="15px" font-weight="600" border-radius="8px" inner-padding="14px 30px" />
+    </mj-attributes>
+  </mj-head>
+
+  <mj-body background-color="#f4f5f8" width="600px">
+
+    <!-- Header -->
+    <mj-section padding="28px 0 14px">
+      <mj-column>
+        {{#if logoUrl}}
+        <mj-image src="{{logoUrl}}" alt="Alina" width="110px" padding="0" align="center" />
+        {{else}}
+        <mj-text align="center" font-size="22px" font-weight="700" color="#25283a" letter-spacing="-0.3px">alina</mj-text>
+        {{/if}}
+      </mj-column>
+    </mj-section>
+
+    <!-- Card -->
+    <mj-wrapper background-color="#ffffff" border="1px solid #e8e9f0" border-radius="16px" padding="8px 12px 14px">
+
+      <!-- Greeting -->
+      <mj-section padding="20px 8px 0">
+        <mj-column>
+          <mj-text font-size="11px" font-weight="700" letter-spacing="1.4px" color="#6849e8" padding="0 8px 8px">YOUR SCAN IS READY</mj-text>
+          <mj-text font-size="26px" font-weight="700" line-height="1.25" color="#292c3e" padding="0 8px 10px">Hi {{firstName}}, your results are in.</mj-text>
+          <mj-text padding="0 8px">Your scan from {{scanDate}} has been analyzed. Here’s the short version.</mj-text>
+        </mj-column>
+      </mj-section>
+
+      {{#if scanImage}}
+      <!-- Scan image (optional) -->
+      <mj-section padding="16px 8px 0">
+        <mj-column>
+          <mj-image src="{{scanImage}}" alt="Your scan from {{scanDate}}" border-radius="12px" padding="0 8px" />
+        </mj-column>
+      </mj-section>
+      {{/if}}
+
+      {{#if hasScore}}
+      <!-- Score -->
+      <mj-section padding="22px 8px 0">
+        <mj-column width="38%" vertical-align="middle">
+          <mj-text align="center" padding="0">
+            <div style="width:96px;height:96px;border-radius:50%;border:6px solid {{scoreColor}};margin:0 auto;text-align:center;">
+              <div style="font-size:32px;font-weight:700;line-height:84px;color:#33374a;">{{score}}</div>
+            </div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:1.4px;color:#85899a;margin-top:10px;">SKIN SCORE</div>
+          </mj-text>
+        </mj-column>
+        <mj-column width="62%" vertical-align="middle">
+          {{#if hasDelta}}
+          <mj-text padding="0 8px 8px">
+            <span style="display:inline-block;padding:5px 12px;border-radius:999px;background:{{deltaBg}};color:{{deltaColor}};font-size:13px;font-weight:700;">{{deltaArrow}} {{deltaText}}</span>
+            <span style="font-size:13px;color:#85899a;"> vs. your last scan</span>
+          </mj-text>
+          {{/if}}
+          {{#if skinAge}}
+          <mj-text padding="0 8px" font-size="14px">Estimated skin age: <strong style="color:#33374a;">{{skinAge}}</strong></mj-text>
+          {{/if}}
+        </mj-column>
+      </mj-section>
+      {{/if}}
+
+      <!-- Observation -->
+      <mj-section padding="22px 8px 0">
+        <mj-column>
+          <mj-text font-size="19px" font-weight="700" line-height="1.35" color="#33374a" padding="0 8px 8px">{{observation}}</mj-text>
+          {{#if summary}}
+          <mj-text padding="0 8px" color="#6b7084">{{summary}}</mj-text>
+          {{/if}}
+        </mj-column>
+      </mj-section>
+
+      {{#if hasHighlights}}
+      <!-- What changed -->
+      <mj-section padding="22px 8px 0">
+        <mj-column>
+          <mj-text font-size="11px" font-weight="700" letter-spacing="1.4px" color="#85899a" padding="0 8px 6px">WHAT CHANGED</mj-text>
+          <mj-table padding="0 8px" font-size="14px" color="#4a4e60" cellpadding="0" cellspacing="0">
+            {{#each highlights}}
+            <tr style="border-top:1px solid #eff0f4;">
+              <td style="padding:13px 0;">{{label}}</td>
+              <td style="padding:13px 0;text-align:right;font-weight:700;color:{{color}};white-space:nowrap;">{{arrow}} {{changeText}}</td>
+            </tr>
+            {{/each}}
+          </mj-table>
+        </mj-column>
+      </mj-section>
+      {{/if}}
+
+      <!-- Call to action -->
+      <mj-section padding="22px 8px 6px">
+        <mj-column>
+          <mj-button href="{{resultUrl}}" padding="0 8px 14px">View your full results</mj-button>
+          <mj-text align="center" font-size="14px" padding="0 8px">
+            <a href="{{chatUrl}}" style="color:#6849e8;text-decoration:none;font-weight:600;">Ask Alina about this result →</a>
+          </mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <!-- Footer -->
+    <mj-section padding="22px 16px 32px">
+      <mj-column>
+        <mj-text align="center" font-size="12px" line-height="1.7" color="#9a9eac">
+          Alina shares general skincare information, not medical advice.<br />
+          You’re getting this because scan notifications are on.
+          <a href="{{preferencesUrl}}" style="color:#6849e8;">Manage email preferences</a>
+          &nbsp;·&nbsp;
+          <a href="{{privacyUrl}}" style="color:#6849e8;">Privacy</a>
+        </mj-text>
+        <mj-text align="center" font-size="11px" color="#b0b3c0">© {{year}} Alina</mj-text>
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>

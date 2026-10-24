@@ -83,6 +83,11 @@ export default class FileManager {
     );
   }
 
+  getUploadedFilePath(filePath: string): string {
+    filePath = filePath.replace(/^uploads[\\/]/, "");
+    return path.join(this.filePath, filePath);
+  }
+
   async uploadFiles(req: FastifyRequest, type: string): Promise<string[]> {
     if (!this.types[type]) {
       throw new Error(`Unknown upload type: ${type}`);

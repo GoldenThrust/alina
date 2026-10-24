@@ -5,6 +5,7 @@ import { httpRequest } from "../common/utils/request";
 import { sleep } from "../common/utils/sleep";
 import { env } from "../config/env";
 import path from "node:path";
+import { fileManager } from "../common/files/file";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
@@ -228,7 +229,7 @@ export class YouCamService {
     source: string | Buffer,
     fileName?: string,
   ): Promise<UploadedImage> {
-    const buffer = typeof source === "string" ? await readFile(path.join(env["ROOT_DIR"], source)) : source;
+    const buffer = typeof source === "string" ? await readFile(fileManager.getUploadedFilePath(source)) : source;
     const { contentType, ext } = detectImageType(buffer);
 
     if (buffer.length >= MAX_IMAGE_BYTES) {
