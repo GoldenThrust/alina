@@ -399,13 +399,7 @@ export async function updateProfileHandler(
       imagePath = await fileManager.uploadFile(req, "image");
 
       if (oldImagePath && !oldImagePath.includes("http")) {
-        fs.unlink(oldImagePath, (err) => {
-          if (err) {
-            console.error("Failed to delete old image:", err);
-          } else {
-            console.log("Old image deleted successfully");
-          }
-        });
+        fileManager.deleteUploadedFile(oldImagePath);
       }
     } catch (error) {
       console.error("Image upload failed:", error);
@@ -540,13 +534,7 @@ export async function updateAvatarHandler(
       imagePath = await fileManager.uploadFile(req, "image");
       
       if (oldImagePath && !oldImagePath.includes("http")) {
-        fs.unlink(oldImagePath, (err) => {
-          if (err) {
-            console.error("Failed to delete old image:", err);
-          } else {
-            console.log("Old image deleted successfully");
-          }
-        });
+        fileManager.deleteUploadedFile(oldImagePath);
       }
       
     } catch (error) {
@@ -585,13 +573,7 @@ export async function deleteAvatarHandler(
 
     await deleteAvatar(user.sub);
     if (oldImagePath && !oldImagePath.includes("http")) {
-      fs.unlink(oldImagePath, (err) => {
-        if (err) {
-          console.error("Failed to delete old image:", err);
-        } else {
-          console.log("Old image deleted successfully");
-        }
-      });
+        fileManager.deleteUploadedFile(oldImagePath);
     } else {
       throw new APIError("No avatar to delete", 400);
     }

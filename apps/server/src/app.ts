@@ -11,13 +11,13 @@ import fastifyOauth2 from "@fastify/oauth2";
 import superjson from "superjson";
 import multipart from "@fastify/multipart";
 
-import fs from "fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { env } from "./config/env.ts";
 import { allowUrls } from "./common/utils/constant.ts";
 import { readFileSync } from "node:fs";
 import { httpDuration, logger, register } from "./config/logger.ts";
+import fastifyStatic from "@fastify/static";
 
 import "./queues/index.ts";
 
@@ -139,9 +139,17 @@ export function buildApp() {
   app.register(import("./plugins/prisma.ts"));
   app.register(import("./plugins/redis.ts"));
 
-  app.register(import("@fastify/static"), {
-    root: env["UPLOAD_DIR"],
-    prefix: "/public/",
+  console.log(env.UPLOAD_DIR);
+  app.register(fastifyStatic, {
+    root: env.UPLOAD_DIR,
+    prefix: "/uploads/",
+    decorateReply: false,
+  });
+
+  app.register(fastifyStatic, {
+    root: path.join(__dirname, "../../client/dist"),
+    prefix: "/",
+    wildcard: false,
   });
 
   app.register(multipart, {
@@ -158,9 +166,9 @@ export function buildApp() {
 
   app.get("/health", async () => ({ status: "ok", service: "alina-api" }));
 
-  app.get("/", function (_, reply) {
-    reply.send("Welcome to Alina API! Visit /api for API routes.");
-  });
+  // app.get("/", function (_, reply) {
+  //   reply.send("Welcome to Alina API! Visit /api for API routes.");
+  // });
 
   app.get("/hello", function (_, reply) {
     reply.send("Hello from Alina API! Visit /api for API routes.");
@@ -188,6 +196,14 @@ export function buildApp() {
   // app.addHook("onError", async () => {
   //   await db.close();
   // });
+
+  // app.register(fastifyStatic, {
+  //   root: env["UPLOAD_DIR"],
+  //   prefix: "/public/",
+  // });
+  app.get("/*", async (req, reply) => {
+    return reply.sendFile("index.html");
+  });
 
   return app;
 }

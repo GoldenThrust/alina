@@ -26,9 +26,9 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 import toast from "react-hot-toast";
-import PageHeading from "../components/PageHeading";
-import { requestScan } from "../services/scan";
-import { EASE, container, item } from "../utils/motion";
+import PageHeading from "../src/components/PageHeading";
+import { requestScan } from "../src/services/scan";
+import { EASE, container, item } from "../src/utils/motion";
 
 /* ---------- Perfect Corp JS Camera Kit ---------- */
 

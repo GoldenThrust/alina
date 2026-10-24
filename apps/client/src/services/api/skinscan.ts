@@ -9,8 +9,10 @@ export async function getSkinScan(params?: object) {
 
   const data = stringToDate<SkinScan[]>(response);
 
-  data.push(first);
-  data.push(last);
+  if (first && last) {
+    data.push(first);
+    data.push(last);
+  }
   return data;
 }
 
@@ -21,15 +23,17 @@ export async function getSkinScanHistory(params?: object) {
 }
 
 export async function getFirstAndLastScan(params?: object) {
-  const response = await get<{ first: SkinScan; last: SkinScan }>(
+  const response = await get<{ first: SkinScan | null; last: SkinScan | null }>(
     "/scans/first-and-last",
     params,
   );
   const firstScan = response.first;
   const lastScan = response.last;
 
-  firstScan.createdAt = new Date(firstScan.createdAt);
-  lastScan.createdAt = new Date(lastScan.createdAt);
+  if (firstScan && lastScan) {
+    firstScan.createdAt = new Date(firstScan.createdAt);
+    lastScan.createdAt = new Date(lastScan.createdAt);
+  }
 
   return {
     first: firstScan,
@@ -37,7 +41,10 @@ export async function getFirstAndLastScan(params?: object) {
   };
 }
 
-export async function fetchSkinScanById(id: string, params: {signal: AbortSignal}) {
+export async function fetchSkinScanById(
+  id: string,
+  params: { signal: AbortSignal },
+) {
   const response = await get<SkinScan>(`/scans/${id}`, params);
 
   response.createdAt = new Date(response.createdAt);

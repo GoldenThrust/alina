@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { isFuture, newestFirst } from "../utils/dates";
 import {
-  emptyEntities, selectAll, setAll, upsertOne, type Entities,
+  emptyEntities, selectAll, setAll, upsertOne
 } from "../utils/entities";
 
 interface SubscriptionState {

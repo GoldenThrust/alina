@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addRecommendationToRoutine,
   getRecommendations,
-  type RecommendationPage,
 } from "../services/api/recommendation";
 import { useRecommendationStore } from "../stores";
 import { isAbort } from "../utils/signal";

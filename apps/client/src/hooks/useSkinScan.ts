@@ -42,10 +42,13 @@ export function useSkinScan() {
     setStatus("loading");
     try {
       const loaded = await getSkinScan({ signal });
-      useScanStore.getState().setScans(loaded);
-      coveredFrom.current = null; // the store was replaced, so recompute coverage
+      if (loaded?.length !== 0) {
+        useScanStore.getState().setScans(loaded);
+        coveredFrom.current = null;
+      }
       setStatus("ready");
     } catch (err) {
+      console.log(err);
       if (isAbort(err)) return;
       setStatus("loadError");
     }
@@ -93,6 +96,7 @@ export function useSkinScan() {
       coveredFrom.current = requested;
       setHistoryStatus("idle");
     } catch (err) {
+      console.log(err);
       if (isAbort(err)) return;
       setHistoryStatus("error");
     } finally {
@@ -120,14 +124,15 @@ export function useSkinScan() {
   return { status, historyStatus, loadHistory, retryLoad, retryHistory };
 }
 
-
-export type ScanByIdStatus = "loading" | "ready" | "notFound" | "empty" | "error";
+export type ScanByIdStatus =
+  "loading" | "ready" | "notFound" | "empty" | "error";
 
 const time = (scan: SkinScan) => new Date(scan.createdAt).getTime();
 
 function latestOf(scans: SkinScan[]): SkinScan | undefined {
   let latest: SkinScan | undefined;
-  for (const scan of scans) if (!latest || time(scan) > time(latest)) latest = scan;
+  for (const scan of scans)
+    if (!latest || time(scan) > time(latest)) latest = scan;
   return latest;
 }
 
@@ -149,7 +154,9 @@ export function useSkinScanById(id: string | undefined) {
 
   // Subscribing keeps the page in sync if the store is updated elsewhere.
   const stored = useScanStore((s) =>
-    id ? s.scans.byId[id] : latestOf(s.scans.ids.map((k) => s.scans.byId[k]).filter(Boolean)),
+    id
+      ? s.scans.byId[id]
+      : latestOf(s.scans.ids.map((k) => s.scans.byId[k]).filter(Boolean)),
   );
 
   useEffect(() => {
@@ -190,7 +197,8 @@ export function useSkinScanById(id: string | undefined) {
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   // A stale `fetched` from a previous id must never be shown for the current one.
-  const scan = stored ?? (fetched && (!id || fetched.id === id) ? fetched : null);
+  const scan =
+    stored ?? (fetched && (!id || fetched.id === id) ? fetched : null);
 
   return { scan, status: scan ? ("ready" as const) : status, retry };
 }

@@ -12,7 +12,6 @@ import {
   upsertMany,
   upsertOne,
 } from "../utils/entities";
-import { MOCK_ROUTINE_LOGS, MOCK_ROUTINES } from "../data/routine";
 import { acceptedRecommendation } from "../utils/recommendation";
 
 const byPosition = (a: RoutineStep, b: RoutineStep) => a.position - b.position;
@@ -36,7 +35,7 @@ export const useRoutineStore = create<RoutineState>()((set) => ({
       logs: removeMany(
         s.logs,
         selectAll(s.logs)
-          .filter((l) => l.routineStep.routineId === routineId)
+          .filter((l) => l?.routineStep?.routineId === routineId)
           .map((l) => l.id),
       ),
     })),
@@ -78,10 +77,6 @@ export const useRoutineStore = create<RoutineState>()((set) => ({
   replaceLog: (tempId, log) =>
     set((s) => ({ logs: replaceOne(s.logs, tempId, log) })),
   clear: () => set({ routines: emptyEntities(), logs: emptyEntities() }),
-  setDemoRoutines: () => {
-    useRoutineStore.getState().setRoutines(MOCK_ROUTINES);
-    useRoutineStore.getState().setLogs(MOCK_ROUTINE_LOGS);
-  },
 }));
 
 /* ------------------------------ selectors ------------------------------ */
@@ -106,7 +101,7 @@ export const selectRoutinesByPeriod = (
 const loggedDays = (s: RoutineState, routineId?: string): Set<string> => {
   const days = new Set<string>();
   for (const log of selectAll(s.logs)) {
-    if (routineId && log.routineStep.routineId !== routineId) continue;
+    if (routineId && log?.routineStep?.routineId !== routineId) continue;
     days.add(localDateKey(log.completedAt));
   }
   return days;

@@ -1,7 +1,4 @@
 import { useCallback, useState } from "react";
-import {
-  removeAvatar as removeAvatarRequest,
-} from "../data/user";
 import { useAuthStore } from "../stores";
 import { updateProfile, uploadAvatar } from "../services/api/profile";
 
@@ -51,7 +48,7 @@ export function useProfileActions() {
     setAvatarError(null);
     setAvatarBusy(true);
     try {
-      await removeAvatarRequest();
+      await removeAvatar();
       useAuthStore.getState().patchUser({ avatar: null });
     } catch (err) {
       setAvatarError(messageOf(err, "Couldn't remove your photo."));

@@ -16,7 +16,6 @@ import {
   sortAnalysisChange,
 } from "../utils/analysis";
 import { percentageChange } from "../utils/math";
-import { MOCK_SCANS } from "../data/skinProgress";
 import { dayKey, filterByRange } from "../utils/dateRange";
 import { type Range } from "../utils/dateRange";
 import { useMemo } from "react";
@@ -34,7 +33,6 @@ interface ScanState {
   setStatus: (scanId: string, status: ScanStatus) => void;
   removeScan: (scanId: string) => void;
   selectScan: (scanId: string | null) => void;
-  setDemoScans: () => void;
   clear: () => void;
 }
 
@@ -57,9 +55,6 @@ export const useScanStore = create<ScanState>()((set) => ({
     })),
   selectScan: (selectedScanId) => set({ selectedScanId }),
   clear: () => set({ scans: emptyEntities(), selectedScanId: null }),
-  setDemoScans: () => {
-    useScanStore.getState().setScans(MOCK_SCANS);
-  },
 }));
 
 /* ------------------------------ selectors ------------------------------ */

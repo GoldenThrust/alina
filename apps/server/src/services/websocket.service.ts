@@ -1,18 +1,17 @@
-import type { Server as HttpServer } from "http";
-import { Server, type Socket } from "socket.io";
+import { Server as SocketServer, type Socket } from "socket.io";
 import { createAdapter } from "@socket.io/redis-streams-adapter";
 
 import redis from "../config/redis.ts";
-import type { FastifyInstance } from "fastify";
 import { allowUrls } from "../common/utils/constant.ts";
 import { AIProcessingJob } from "../queues/ai/ai.producer.ts";
+import { db } from "../prisma/db.ts";
 
 // const testWords = ["hello ", "world ", "this ", "is ", "a ", "test to the server ", "and it ", "is ", "working great", "so ", "far ", "and ", "I ", "am ", "happy ", "with ", "the ", "results ", "of ", "this ", "test.", "I ", "hope ", "you ", "are ", "happy ", "too.", "This ", "is ", "a ", "longer ", "test ", "to ", "see ", "if ", "the ", "server ", "can ", "handle ", "a ", "longer ", "message.", "I ", "think ", "it ", "can.", "Let's ", "see.", "What ", "do ", "you ", "think?", "I ", "think ", "it's ", "a ", "great ", "idea.", "Let's ", "do ", "it!", "I ", "am ", "excited ", "to ", "see ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.", "This ", "is ", "a ", "great ", "test.", "I ", "am ", "happy ", "with ", "the ", "results.", "I ", "hope ", "you ", "are ", "too.",];
 export default class Websocket {
-  static io: Server;
+  static io: SocketServer;
 
-  static run(app: FastifyInstance) {
-    Websocket.io = new Server(app.server, {
+  static run(app: any) {
+    Websocket.io = new SocketServer(app.server, {
       adapter: createAdapter(redis),
       cors: {
         origin: allowUrls,
@@ -62,6 +61,12 @@ export default class Websocket {
         //   }
         // }, 50);
         AIProcessingJob({ userId: user.sub, input: message });
+
+        db.orm.public.Message.create({
+          userId: user.sub.toString(),
+          content: message,
+          sender: "USER",
+        })
       });
 
       socket.join(user.sub.toString());

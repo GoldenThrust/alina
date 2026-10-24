@@ -18,7 +18,7 @@ import {
   Loader2,
   RotateCcw,
   Send,
-  ShieldCheck,
+  // ShieldCheck,
   Sun,
   Upload,
   X,
@@ -551,7 +551,7 @@ export default function Scan() {
                 ))}
               </motion.ul>
             </motion.section>
-
+{/* 
             <motion.div className="privacy-note" variants={item}>
               <ShieldCheck size={17} />
               <span>
@@ -561,7 +561,7 @@ export default function Scan() {
                   shared.
                 </small>
               </span>
-            </motion.div>
+            </motion.div> */}
           </div>
         </div>
       </motion.div>

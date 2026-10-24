@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { emptyEntities, selectAll, setAll, upsertMany } from "../utils/entities";
-import { MOCK_PRODUCTS } from "../data/product";
 
 interface ProductFilters {
   category: ProductCategory | null;
@@ -18,7 +17,6 @@ interface ProductState {
   setFilters: (patch: Partial<ProductFilters>) => void;
   resetFilters: () => void;
   clear: () => void;
-  setDemoProducts: () => void;
 }
 
 const NO_FILTERS: ProductFilters = { category: null, brand: null, query: "" };
@@ -31,10 +29,7 @@ export const useProductStore = create<ProductState>()((set) => ({
   upsertProducts: (products) => set((s) => ({ products: upsertMany(s.products, products) })),
   setFilters: (patch) => set((s) => ({ filters: { ...s.filters, ...patch } })),
   resetFilters: () => set({ filters: NO_FILTERS }),
-  clear: () => set({ products: emptyEntities(), filters: NO_FILTERS }),
-  setDemoProducts: () => {
-    useProductStore.getState().setProducts(MOCK_PRODUCTS);
-  },
+  clear: () => set({ products: emptyEntities(), filters: NO_FILTERS })
 }));
 
 export const selectFilteredProducts = (s: ProductState) => {

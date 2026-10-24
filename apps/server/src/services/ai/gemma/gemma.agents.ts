@@ -130,20 +130,31 @@ export class GemmaAgent {
 
       await this.remember(userId, previousId);
       Websocket.sendMessage(userId, lastText);
-      Websocket.sendNotification(userId, "Image analysis completed successfully.");
+      Websocket.sendNotification(
+        userId,
+        "Image analysis completed successfully.",
+      );
 
       await db.orm.public.SkinScan.where({ id: scanId }).update({
         status: "COMPLETED",
       });
 
       Websocket.sendNavigationSignal(userId, `/scan-result/${scanId}`);
+      await db.orm.public.Message.create({
+        userId,
+        content: lastText,
+        sender: "ALINA",
+      });
       return { text: lastText, id: previousId };
     } catch (error: any) {
       await db.orm.public.SkinScan.where({ id: scanId }).update({
         status: "FAILED",
       });
 
-      Websocket.sendNotification(userId, "Image analysis failed. Please try again.");
+      Websocket.sendNotification(
+        userId,
+        "Image analysis failed. Please try again.",
+      );
 
       throw error;
 
@@ -191,6 +202,11 @@ export class GemmaAgent {
     }
 
     await this.remember(userId, previousId);
+    await db.orm.public.Message.create({
+      userId,
+      content: fullText,
+      sender: "ALINA",
+    });
     return { text: fullText, id: previousId };
   }
 

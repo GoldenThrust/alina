@@ -10,7 +10,6 @@ import {
   upsertMany,
   upsertOne,
 } from "../utils/entities";
-import { MOCK_RECOMMENDATIONS } from "../data/recommendation";
 
 interface RecommendationState {
   recommendations: Entities<Recommendation>;
@@ -23,7 +22,6 @@ interface RecommendationState {
   setAccepted: (id: string, accepted: boolean) => void;
   remove: (id: string) => void;
   clear: () => void;
-  setDemoRecommendations: () => void;
 }
 
 export const useRecommendationStore = create<RecommendationState>()((set) => ({
@@ -56,9 +54,6 @@ export const useRecommendationStore = create<RecommendationState>()((set) => ({
   remove: (id) =>
     set((s) => ({ recommendations: removeOne(s.recommendations, id) })),
   clear: () => set({ recommendations: emptyEntities() }),
-  setDemoRecommendations: () => {
-    useRecommendationStore.getState().setRecommendations(MOCK_RECOMMENDATIONS);
-  },
 }));
 
 export const selectRecommendations = (s: RecommendationState) =>

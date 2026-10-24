@@ -256,5 +256,4 @@ interface RoutineState {
   removeLog: (id: string) => void;
   replaceLog: (tempId: string, log: RoutineLog) => void;
   clear: () => void;
-  setDemoRoutines: () => void;
 }

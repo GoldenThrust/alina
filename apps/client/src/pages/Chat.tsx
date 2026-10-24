@@ -1,6 +1,6 @@
 import { useRef, type SubmitEventHandler } from "react";
 import { AnimatePresence, MotionConfig, motion, type Variants } from "motion/react";
-import { ArrowDown, ArrowUp, CircleHelp, Loader2, Sparkles, WifiOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Info, Loader2, Sparkles, WifiOff } from "lucide-react";
 import PageHeading from "../components/PageHeading";
 import { useSocket } from "../context/SocketContext"; // wherever your provider lives
 import { useChatHistory } from "../hooks/useChatHistory";
@@ -12,16 +12,12 @@ import { EASE, container, item as fadeUp } from "../utils/motion";
 
 /* ---------- Motion presets ---------- */
 
-const slideIn: Variants = {
-  hidden: { opacity: 0, x: 18 },
-  show: { opacity: 1, x: 0, transition: { duration: 0.5, ease: EASE } },
-};
 const stagger: Variants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.07, delayChildren: 0.3 } },
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.15 } },
 };
 const pop: Variants = {
-  hidden: { opacity: 0, y: 8 },
+  hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE } },
 };
 
@@ -30,6 +26,8 @@ const SUGGESTIONS = [
   "Why does consistency matter?",
   "What should I keep simple?",
 ];
+
+const ALINA = "alina.svg";
 
 export default function Chat() {
   const user = useAuthStore((state) => state.user);
@@ -57,7 +55,9 @@ export default function Chat() {
   const visibleMessages = last?.streaming && !last.content ? messages.slice(0, -1) : messages;
   const showTyping = awaitingReply && !(last && last.sender !== "USER" && last.content.length > 0);
 
+  const isEmpty = initialized && visibleMessages.length === 0 && !showTyping;
   const canSend = !!draft.trim() && !awaitingReply && connected;
+  const showChips = initialized && !isEmpty && !awaitingReply && !draft.trim();
   const statusText = !connected ? "Connecting…" : awaitingReply ? "Typing…" : "Online";
 
   const sendMessage: SubmitEventHandler<HTMLFormElement> = (event) => {
@@ -77,196 +77,251 @@ export default function Chat() {
           <PageHeading
             eyebrow="A space to ask"
             title="Ask Alina"
-            description="Talk through a sample skin snapshot and the questions it brings up."
+            description="Talk through your check-ins and the questions they bring up."
           />
         </motion.div>
 
-        <div className="chat-layout">
-          <motion.section className="panel conversation-panel" variants={fadeUp}>
-            <div className="conversation-context">
-              {/* Breathes while Alina is thinking or replying */}
+        <motion.section className="panel ch-shell" variants={fadeUp}>
+          {/* ---------- Header ---------- */}
+          <header className="ch-header">
+            <span className="ch-avatar-wrap">
+              {awaitingReply ? (
+                <motion.span
+                  className="ch-avatar-ring"
+                  aria-hidden="true"
+                  initial={{ opacity: 0.6, scale: 1 }}
+                  animate={{ opacity: 0, scale: 1.5 }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: "easeOut" }}
+                />
+              ) : null}
               <motion.span
-                className="alina-avatar"
-                animate={awaitingReply ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+                className="ch-avatar"
+                animate={awaitingReply ? { scale: [1, 1.07, 1] } : { scale: 1 }}
                 transition={
                   awaitingReply ? { duration: 1.2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }
                 }
               >
-                <img src="alina.svg" alt="Alina" className="w-5!" />
+                <img src={ALINA} alt="Alina" />
               </motion.span>
-              <span>
-                <strong>Alina</strong>
-                <small className={`conn-status ${connected ? "online" : "offline"}`}>
-                  <i />
-                  <AnimatePresence mode="wait" initial={false}>
-                    <motion.span
-                      key={statusText}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      {statusText}
-                    </motion.span>
-                  </AnimatePresence>
-                </small>
-              </span>
-              <CircleHelp size={17} />
-            </div>
+            </span>
 
-            <div className="message-list-wrap">
-              <AnimatePresence>
-                {loadingOlder ? (
-                  <motion.div
-                    key="loading-older"
-                    className="message-list-status"
-                    role="status"
-                    initial={{ opacity: 0, y: -8 }}
+            <span className="ch-title">
+              <strong>Alina</strong>
+              <small className={`ch-status ${connected ? "online" : "offline"}`}>
+                <i />
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={statusText}
+                    initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    {statusText}
+                  </motion.span>
+                </AnimatePresence>
+              </small>
+            </span>
+
+            <span className="ch-badge">
+              <Info size={12} /> General info only
+            </span>
+          </header>
+
+          {/* ---------- Messages ---------- */}
+          <div className="ch-list-wrap">
+            <AnimatePresence>
+              {loadingOlder ? (
+                <motion.div
+                  key="loading-older"
+                  className="ch-older"
+                  role="status"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Loader2 size={13} className="spin" /> Loading earlier messages…
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            {/* Announcing every streamed chunk would be noisy, so live updates pause while streaming */}
+            <div
+              className="ch-list"
+              ref={listRef}
+              onScroll={onScroll}
+              aria-live={isStreaming ? "off" : "polite"}
+            >
+              {!initialized && !error ? (
+                <div className="ch-placeholder">
+                  <Loader2 size={20} className="spin" />
+                </div>
+              ) : null}
+
+              {!initialized && error ? (
+                <div className="ch-placeholder">
+                  <p>{error}</p>
+                  <button className="button button-secondary" type="button" onClick={retry}>
+                    Try again
+                  </button>
+                </div>
+              ) : null}
+
+              {isEmpty ? (
+                <motion.div className="ch-empty" variants={stagger} initial="hidden" animate="show">
+                  <motion.span className="ch-empty-icon" variants={pop}>
+                    <Sparkles size={20} />
+                  </motion.span>
+                  <motion.strong variants={pop}>Start the conversation</motion.strong>
+                  <motion.small variants={pop}>
+                    Ask Alina about your latest check-in, or begin with one of these.
+                  </motion.small>
+                  <div className="ch-starters">
+                    {SUGGESTIONS.map((question) => (
+                      <motion.button
+                        key={question}
+                        type="button"
+                        className="ch-starter"
+                        variants={pop}
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => pickSuggestion(question)}
+                      >
+                        {question}
+                        <ArrowUp size={14} />
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : null}
+
+              {initialized && !hasMore && visibleMessages.length > 0 ? (
+                <p className="ch-start">Beginning of your conversation</p>
+              ) : null}
+
+              {visibleMessages.map((message, index) => {
+                const fromUser = message.sender === "USER";
+                const live = !!message.streaming;
+                // Only messages created in this session animate in; loaded history appears instantly
+                const isNew = message.pending || live;
+                // Consecutive messages from the same sender are grouped
+                const grouped = visibleMessages[index - 1]?.sender === message.sender;
+
+                return (
+                  <motion.div
+                    className={`ch-msg ${fromUser ? "you" : "alina"}${grouped ? " grouped" : ""}${message.pending ? " pending" : ""}${live ? " streaming" : ""}`}
+                    key={message.id}
+                    style={{ transformOrigin: fromUser ? "100% 100%" : "0% 100%" }}
+                    initial={isNew ? { opacity: 0, y: 10, x: fromUser ? 14 : -14, scale: 0.97 } : false}
+                    animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  >
+                    {!fromUser ? (
+                      <span className={`ch-msg-avatar${grouped ? " hidden" : ""}`}>
+                        {grouped ? null : <img src={ALINA} alt="Alina" />}
+                      </span>
+                    ) : null}
+                    <p>{message.content}</p>
+                  </motion.div>
+                );
+              })}
+
+              <AnimatePresence>
+                {showTyping ? (
+                  <motion.div
+                    key="typing"
+                    className="ch-msg alina"
+                    aria-label="Alina is typing"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <Loader2 size={13} className="spin" /> Loading earlier messages…
+                    <span className="ch-msg-avatar">
+                      <img src={ALINA} alt="" />
+                    </span>
+                    <p className="ch-typing">
+                      {[0, 1, 2].map((i) => (
+                        <motion.span
+                          key={i}
+                          animate={{ y: [0, -4, 0], opacity: [0.45, 1, 0.45] }}
+                          transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+                        />
+                      ))}
+                    </p>
                   </motion.div>
                 ) : null}
               </AnimatePresence>
-
-              {/* Announcing every streamed chunk would be noisy, so live updates pause while streaming */}
-              <div
-                className="message-list"
-                ref={listRef}
-                onScroll={onScroll}
-                aria-live={isStreaming ? "off" : "polite"}
-              >
-                {!initialized && !error ? (
-                  <div className="message-list-placeholder">
-                    <Loader2 size={18} className="spin" />
-                  </div>
-                ) : null}
-
-                {!initialized && error ? (
-                  <div className="message-list-placeholder">
-                    <p>{error}</p>
-                    <button className="button button-secondary" type="button" onClick={retry}>
-                      Try again
-                    </button>
-                  </div>
-                ) : null}
-
-                {initialized && visibleMessages.length === 0 && !showTyping ? (
-                  <motion.div
-                    className="chat-empty"
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.4, ease: EASE }}
-                  >
-                    <span className="chat-empty-icon">
-                      <Sparkles size={18} />
-                    </span>
-                    <strong>Start the conversation</strong>
-                    <small>Ask Alina about your latest check-in, or pick a question from the side.</small>
-                  </motion.div>
-                ) : null}
-
-                {initialized && !hasMore && visibleMessages.length > 0 ? (
-                  <p className="message-list-start">Beginning of your conversation</p>
-                ) : null}
-
-                {visibleMessages.map((message) => {
-                  const fromUser = message.sender === "USER";
-                  const live = !!message.streaming;
-                  // Only messages created in this session animate in; loaded history appears instantly
-                  const isNew = message.pending || live;
-
-                  return (
-                    <motion.div
-                      className={`chat-message ${fromUser ? "you" : "alina"}${message.pending ? " pending" : ""}${live ? " streaming" : ""}`}
-                      key={message.id}
-                      style={{ transformOrigin: fromUser ? "100% 100%" : "0% 100%" }}
-                      initial={isNew ? { opacity: 0, y: 10, x: fromUser ? 14 : -14, scale: 0.97 } : false}
-                      animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    >
-                      {!fromUser ? (
-                        <span className="message-avatar">
-                          <img src="alina.svg" alt="Alina" className="w-3!" />
-                        </span>
-                      ) : null}
-                      <p>{message.content}</p>
-                    </motion.div>
-                  );
-                })}
-
-                <AnimatePresence>
-                  {showTyping ? (
-                    <motion.div
-                      key="typing"
-                      className="chat-message alina"
-                      aria-label="Alina is typing"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <span className="message-avatar">
-                        <img src="alina.svg" alt="" className="w-3!" />
-                      </span>
-                      <p className="typing">
-                        {[0, 1, 2].map((i) => (
-                          <motion.span
-                            key={i}
-                            className="typing-dot"
-                            animate={{ y: [0, -4, 0], opacity: [0.45, 1, 0.45] }}
-                            transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
-                          />
-                        ))}
-                      </p>
-                    </motion.div>
-                  ) : null}
-                </AnimatePresence>
-              </div>
-
-              {/* Appears when the user has scrolled up */}
-              <div className="jump-wrap">
-                <AnimatePresence>
-                  {!atBottom && visibleMessages.length > 0 ? (
-                    <motion.button
-                      key="jump"
-                      className="jump-button"
-                      type="button"
-                      onClick={scrollToBottom}
-                      initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                      whileHover={{ y: -2 }}
-                      whileTap={{ scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <ArrowDown size={14} /> {isStreaming ? "Alina is replying" : "Jump to latest"}
-                    </motion.button>
-                  ) : null}
-                </AnimatePresence>
-              </div>
             </div>
 
+            {/* Appears when the user has scrolled up */}
+            <div className="ch-jump-wrap">
+              <AnimatePresence>
+                {!atBottom && visibleMessages.length > 0 ? (
+                  <motion.button
+                    key="jump"
+                    className="ch-jump"
+                    type="button"
+                    onClick={scrollToBottom}
+                    initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ArrowDown size={14} /> {isStreaming ? "Alina is replying" : "Jump to latest"}
+                  </motion.button>
+                ) : null}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          <AnimatePresence initial={false}>
+            {initialized && error ? (
+              <motion.div
+                key="error"
+                className="ch-notice"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25, ease: EASE }}
+              >
+                <p className="form-message form-error" role="alert">
+                  {error}
+                </p>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* ---------- Composer ---------- */}
+          <div className="ch-dock">
             <AnimatePresence initial={false}>
-              {initialized && error ? (
+              {showChips ? (
                 <motion.div
-                  key="error"
-                  className="chat-notice"
+                  key="chips"
+                  className="ch-chips"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.25, ease: EASE }}
                 >
-                  <p className="form-message form-error" role="alert">
-                    {error}
-                  </p>
+                  {SUGGESTIONS.map((question) => (
+                    <button
+                      key={question}
+                      type="button"
+                      className="ch-chip"
+                      onClick={() => pickSuggestion(question)}
+                    >
+                      {question}
+                    </button>
+                  ))}
                 </motion.div>
               ) : null}
             </AnimatePresence>
 
-            <form className="chat-composer" onSubmit={sendMessage}>
+            <form className="ch-composer" onSubmit={sendMessage}>
               <label className="sr-only" htmlFor="chat-message">
                 Your message
               </label>
@@ -275,10 +330,11 @@ export default function Chat() {
                 ref={inputRef}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                placeholder="Ask about your sample results…"
+                placeholder="Ask Alina anything about your skin…"
+                autoComplete="off"
               />
               <motion.button
-                className="send-button"
+                className="ch-send"
                 type="submit"
                 aria-label="Send message"
                 disabled={!canSend}
@@ -289,7 +345,7 @@ export default function Chat() {
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.span
                     key={awaitingReply ? "wait" : "send"}
-                    className="send-icon"
+                    className="ch-send-icon"
                     initial={{ opacity: 0, scale: 0.5, rotate: -45 }}
                     animate={{ opacity: 1, scale: 1, rotate: 0 }}
                     exit={{ opacity: 0, scale: 0.5, rotate: 45 }}
@@ -305,7 +361,7 @@ export default function Chat() {
               {!connected ? (
                 <motion.p
                   key="offline"
-                  className="composer-hint"
+                  className="ch-offline"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
@@ -315,32 +371,12 @@ export default function Chat() {
                 </motion.p>
               ) : null}
             </AnimatePresence>
-            <p className="chat-disclaimer">
+
+            <p className="ch-disclaimer">
               Alina shares general skincare information, not medical advice.
             </p>
-          </motion.section>
-
-          <motion.aside className="panel chat-suggestions" variants={slideIn}>
-            <p className="page-eyebrow">SAMPLE QUESTIONS</p>
-            <h2>Where would you like to start?</h2>
-            <motion.div variants={stagger}>
-              {SUGGESTIONS.map((question) => (
-                <motion.button
-                  className="suggestion-button"
-                  type="button"
-                  key={question}
-                  variants={pop}
-                  whileHover={{ x: 3 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => pickSuggestion(question)}
-                >
-                  {question}
-                  <span>↗</span>
-                </motion.button>
-              ))}
-            </motion.div>
-          </motion.aside>
-        </div>
+          </div>
+        </motion.section>
       </motion.div>
     </MotionConfig>
   );

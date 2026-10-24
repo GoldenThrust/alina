@@ -5,7 +5,8 @@ type cursorData = {
   createdAt: Date;
   id: string;
 }
-export function encodeCursor(data: cursorData) {
+export function encodeCursor(data?: cursorData) {
+  if (!data) return null;
   const { createdAt, id } = data;
   return Buffer.from(JSON.stringify({ createdAt, id })).toString("base64");
 }

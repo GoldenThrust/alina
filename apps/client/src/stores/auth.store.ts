@@ -38,7 +38,7 @@ export function isSessionExpired(
 
 useAuthStore.subscribe((state) => {
   console.log("Auth store changed:", state.user?.avatar);
-  if (!(state.user?.avatar?.includes("http"))) {
+  if (state.user && state.user?.avatar && !state.user?.avatar.includes("http")) {
     useAuthStore.getState().patchUser({
       avatar: `${import.meta.env.VITE_SERVER_URL}\\${state.user?.avatar}`,
     })

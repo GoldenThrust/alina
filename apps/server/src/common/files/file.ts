@@ -48,9 +48,12 @@ export default class FileManager {
     return `${crypto.randomUUID()}.${ext}`;
   }
 
-  async uploadFile(req: FastifyRequest, type: string, directory = ""): Promise<string> {
+  async uploadFile(
+    req: FastifyRequest,
+    type: string,
+    directory = "",
+  ): Promise<string> {
     const data = await req.file();
-
 
     if (!data) {
       throw new Error("No file uploaded");
@@ -66,12 +69,18 @@ export default class FileManager {
     const folderPath = path.join(this.filePath, type, directory);
     const filePath = path.join(folderPath, filename);
 
-    
     await mkdir(folderPath, { recursive: true });
 
     await pipeline(stream, fs.createWriteStream(filePath));
 
-    return path.join("public", type, directory, filename);
+    return path.join("uploads", type, directory, filename);
+  }
+
+  deleteUploadedFile(filePath: string): void {
+    filePath = filePath.replace(/^uploads[\\/]/, "");
+    fs.unlinkSync(
+      path.join(this.filePath, filePath),
+    );
   }
 
   async uploadFiles(req: FastifyRequest, type: string): Promise<string[]> {
