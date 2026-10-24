@@ -402,8 +402,8 @@ export async function updateProfileHandler(
         fileManager.deleteUploadedFile(oldImagePath);
       }
     } catch (error) {
-      console.error("Image upload failed:", error);
-      throw new APIError("Image upload failed", 500);
+      // console.error("Image upload failed:", error);
+      // throw new APIError("Image upload failed", 500);
     }
 
     const payload = {

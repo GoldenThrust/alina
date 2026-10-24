@@ -200,6 +200,21 @@ export async function login(
     throw new APIError("Invalid email or password", 401);
   }
 
+  const preferences = await db.orm.public.Preference.where({
+    userId: user.id,
+  }).first();
+
+  console.log(preferences, "preferences");
+
+  if (!preferences) {
+    await db.orm.public.Preference.create({
+      userId: user.id,
+      avoidedIngredients: [],
+      favoriteBrands: [],
+      favoriteIngredients: [],
+    });
+  }
+
   const tokens = await generateTokens(req, res, user);
 
   return { message: "Login successful", user: toPublicUser(user), ...tokens };
@@ -575,8 +590,6 @@ export async function getUser(id: string) {
     user: toPublicUser(user),
   };
 }
-
-
 
 export async function deleteAvatar(id: string) {
   await db.orm.public.User.where({ id }).update({

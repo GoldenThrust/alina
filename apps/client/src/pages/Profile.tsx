@@ -11,7 +11,7 @@ import {
   CircleUserRound,
   Loader2,
   Pencil,
-  ShieldCheck,
+  // ShieldCheck,
   Trash2,
   X,
 } from "lucide-react";
@@ -484,7 +484,7 @@ export default function Profile() {
           </div>
 
           <aside className="profile-side-column">
-            <motion.section className="panel privacy-card" variants={item}>
+            {/* <motion.section className="panel privacy-card" variants={item}>
               <motion.span
                 className="privacy-icon"
                 initial={{ scale: 0.6, opacity: 0 }}
@@ -502,7 +502,7 @@ export default function Profile() {
               <a href="#privacy">
                 Privacy details <span>↗</span>
               </a>
-            </motion.section>
+            </motion.section> */}
 
             <motion.section className="panel connected-card" variants={item}>
               <div className="section-heading">
