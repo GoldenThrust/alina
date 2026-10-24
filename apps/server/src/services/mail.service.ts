@@ -6,6 +6,7 @@ import fs from "fs";
 import { config } from "../config/index.ts";
 import { redisService } from "./redis.service.ts";
 import { logger } from "../config/logger.ts";
+import path from "path";
 
 /**
  * Mail service for sending transactional emails using Nodemailer
@@ -53,7 +54,10 @@ class MailService {
    * @private
    */
   private registerPartialTemplate() {
-    const header = fs.readFileSync("./src/template/email/header.mjml", "utf-8");
+    const header = fs.readFileSync(
+      path.join(config.env.EMAIL_TEMPLATE_PATH, "header.mjml"),
+      "utf-8",
+    );
     handlebars.registerPartial("header", header);
   }
 
