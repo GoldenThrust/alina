@@ -484,7 +484,7 @@ export default function Dashboard() {
                       <span
                         className={`timeline-score ${scan.score != null ? `tone-${scoreTone(scan.score)}` : ""}`}
                       >
-                        {scan.score ?? "–"}
+                        {scan.score ? Math.round(scan.score) : "–"}
                       </span>
                     </motion.div>
                   ))}

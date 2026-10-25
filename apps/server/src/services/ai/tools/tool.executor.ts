@@ -19,7 +19,11 @@ export class ToolExecutor {
 
         const tool = this.registry.get(call.name);
 
-        return tool.execute(
+        console.log(`[ToolExecutor] executing tool ${call.name} with args:`, call.args);
+        console.log(`[ToolExecutor] context:`, context);
+        console.log(`[ToolExecutor] tool:`, tool.name, tool.description);
+
+        return await tool.execute(
             call.args,
             context
         );

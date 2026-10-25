@@ -24,7 +24,8 @@
     "skills:sync": "prisma skills sync || exit 0",
     "start": "node dist/server.mjs",
     "postinstall": "prisma skills sync || exit 0",
-    "db:seed": "tsx src/prisma/seed/run.ts"
+    "db:seed": "tsx src/prisma/seed/run.ts",
+    "test:ai": "tsx test/runAI.ts"
   },
   "dependencies": {
     "@faker-js/faker": "^10.6.0",
@@ -89,7 +90,7 @@
     "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "dotenv-cli": "^11.0.0",
-    "prisma": "^8.0.0-rc.22",
+    "prisma": "^8.0.0-rc.27",
     "tsdown": "^0.23.0",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",

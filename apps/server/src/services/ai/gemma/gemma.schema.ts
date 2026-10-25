@@ -20,7 +20,7 @@ export const SearchConversationSchema = z.object({
  * Retrieve scan history
  */
 export const ScanHistorySchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.uuid(),
   limit: z.number().default(10),
 });
 

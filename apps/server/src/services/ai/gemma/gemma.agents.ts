@@ -6,8 +6,9 @@ import { GemmaClient } from "./gemma.service";
 import { ToolRegistry } from "../tools/tool.registry";
 import { db } from "../../../prisma/db";
 import { logger } from "../../../config/logger";
+import { registerSkincareTools } from "../tools/skincare/skincare.index";
 
-const MAX_TURNS = 10;
+const MAX_TURNS = 20;
 
 interface FunctionCall {
   id: string;
@@ -40,6 +41,25 @@ export interface AgentResult {
   text?: string;
   id: string | undefined;
 }
+
+const EMPTY_NOTE =
+  "No data yet. This is expected. Do not call this tool again.";
+
+/**
+ * function_result.result is a list of content blocks, so the tool output is
+ * JSON-stringified into a single text block:
+ *   [{ type: "text", text: JSON.stringify(result) }]
+ * Empty results are made explicit so the model does not retry the tool.
+ */
+const toResultBlocks = (data: unknown): { type: "text"; text: string }[] => {
+  const isEmpty =
+    data === null ||
+    data === undefined ||
+    (Array.isArray(data) && data.length === 0);
+
+  const payload = isEmpty ? { items: [], note: EMPTY_NOTE } : data;
+  return [{ type: "text", text: JSON.stringify(payload) }];
+};
 
 export class GemmaAgent {
   constructor(
@@ -76,21 +96,25 @@ export class GemmaAgent {
             { userId, callId: call.id, interactionId },
           );
 
+          console.log(`[GemmaAgent] executed call ${call.name}:`, outcome);
+
           return {
             type: "function_result",
             name: call.name,
             call_id: call.id,
-            result: outcome.success ? outcome.data : { error: outcome.error },
+            result: toResultBlocks(
+              outcome.success ? outcome.data : { error: outcome.error },
+            ),
           };
         } catch (error) {
           return {
             type: "function_result",
             name: call.name,
             call_id: call.id,
-            result: {
+            result: toResultBlocks({
               error:
                 error instanceof Error ? error.message : "Unknown tool error",
-            },
+            }),
           };
         }
       }),
@@ -108,6 +132,11 @@ export class GemmaAgent {
       let lastText = "";
 
       for (let turn = 0; turn < MAX_TURNS; turn++) {
+        console.log(`[GemmaAgent] start analyze turn ${turn + 1}:`, {
+          previousId,
+          input: JSON.stringify(inputData),
+          text: lastText,
+        });
         const interaction = await this.gemma.generate({
           input: inputData,
           previous_interaction_id: previousId,
@@ -115,6 +144,17 @@ export class GemmaAgent {
 
         lastText = interaction.output_text ?? "";
         previousId = interaction.id;
+
+        console.log(`[GemmaAgent] analyze turn ${turn + 1}:`, {
+          interactionId: interaction.id,
+          status: interaction.status,
+          input: interaction.input,
+          calls: JSON.stringify(
+            interaction.steps?.filter(
+              (step: any) => step.type === "function_call",
+            ),
+          ),
+        });
 
         const calls: FunctionCall[] = (interaction.steps ?? [])
           .filter((step: any) => step.type === "function_call")
@@ -135,12 +175,12 @@ export class GemmaAgent {
         userId,
         "Image analysis completed successfully.",
       );
+      Websocket.sendNavigationSignal(userId, `/scan-result/${scanId}`);
 
       await db.orm.public.SkinScan.where({ id: scanId }).update({
         status: "COMPLETED",
       });
 
-      Websocket.sendNavigationSignal(userId, `/scan-result/${scanId}`);
       await db.orm.public.Message.create({
         userId,
         content: lastText,
@@ -164,11 +204,6 @@ export class GemmaAgent {
       console.error("Gemma analysis failed for user:", userId, "Error:", error);
 
       throw error;
-
-      // return {
-      //   error: `Failed to Analyse Data: ${error?.message}`,
-      //   id: undefined,
-      // };
     }
   }
 
@@ -295,8 +330,13 @@ export class GemmaAgent {
   }
 }
 
+const toolRegistry = new ToolRegistry();
+const skincareRepo = new SkincareRepository();
+
+registerSkincareTools(toolRegistry, skincareRepo);
+
 export const gemmaAgent = new GemmaAgent(
   new GemmaClient(process.env.GOOGLE_API_KEY ?? ""),
-  new ToolExecutor(new ToolRegistry()),
-  new SkincareRepository(),
+  new ToolExecutor(toolRegistry),
+  skincareRepo,
 );

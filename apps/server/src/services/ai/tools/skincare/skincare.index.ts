@@ -43,3 +43,4 @@ export function registerSkincareTools(
   for (const tool of tools) registry.register(tool);
   return registry;
 }
+

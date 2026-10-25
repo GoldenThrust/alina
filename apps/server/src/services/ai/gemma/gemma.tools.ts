@@ -1,5 +1,5 @@
 /**
- * Tool declarations + system instructions sent to Gemma.
+ * Tool declarations sent to Gemma.
  * Tool names MUST match the names registered in ToolRegistry
  * (see skincare.tools.ts).
  */
@@ -54,7 +54,7 @@ const routineSteps = {
 
 const getScanHistory = fn(
   "get_scan_history",
-  "Fetch the user's completed skin scans with score, skin age and detailed metrics (redness, moisture, oiliness, acne, pores, wrinkles, etc.), newest first. Use to describe or compare skin over time.",
+  "Fetch the user's completed skin scans with score, skin age and detailed metrics (redness, moisture, oiliness, acne, pores, wrinkles, etc.), newest first. For all scores, higher is better. Use to describe or compare skin over time.",
   { limit: limitParam(20, 5) },
 );
 
@@ -138,7 +138,7 @@ const createSummary = fn(
 
 const createObservation = fn(
   "create_observation",
-  "Save the short or long observation on a scan: factual findings. Short is the single key finding. Long covers each area (hydration, texture, pigmentation, redness, pores, eyes).",
+  "Save the short or long observation on a scan: factual findings. Short is the single key finding. Long covers each area (hydration, texture, pigmentation, redness, pores, eyes). Call once with length short and once with length long.",
   {
     scanId: { type: "string", description: "The scan being analysed." },
     length: lengthParam,
@@ -159,7 +159,7 @@ const createRoutine = fn(
 
 const recommendRoutine = fn(
   "recommend_routine",
-  "Suggest a routine without accepting it. The user can accept it later.",
+  "Suggest a routine without accepting it. The user can accept it later. Returns the routine id, which can be used as routineId for recommend_product.",
   {
     scanId: { type: "string", description: "Scan this is based on, if any." },
     title: { type: "string" },
@@ -194,10 +194,13 @@ const recommendRoutineStep = fn(
 
 const recommendProduct = fn(
   "recommend_product",
-  "Recommend one skincare product. First, call get_preferences. If the product contains any ingredient the user avoids, the recommendation will fail. Before recommending the product, call get_routines or recommend_routine and add the product to the appropriate routine.",
+  "Recommend one skincare product. Call get_preferences first; the recommendation fails if it contains an ingredient the user avoids. A routineId is required: use one from get_routines, or create one with recommend_routine first and use its id.",
   {
     scanId: { type: "string", description: "Scan this is based on, if any." },
-    routineId: { type: "string", description: "Limit to one routine." },
+    routineId: {
+      type: "string",
+      description: "The routine this product belongs to.",
+    },
     name: { type: "string" },
     brand: { type: "string" },
     category: {
@@ -245,8 +248,6 @@ const recommendProduct = fn(
 
 const readTools = [
   getScanHistory,
-  getPreviousSummaries,
-  getPreviousObservations,
   getRecommendations,
   getRoutines,
   getRoutineLogs,

@@ -4,8 +4,10 @@ import { brightness, blurScore } from "../services/imageQuality";
 
 const IDLE_STATUS = "Waiting for camera...";
 const ANALYSIS_WIDTH = 320;
+const OVERLAY_WIDTH = 640; // fixed backing size for the overlay, CSS scales it
+const FACE_INTERVAL_MS = 80; // ~12 face detections per second
 const QUALITY_INTERVAL_MS = 300;
-const BLUR_MIN = 20; // tune for your camera/lighting
+const BLUR_MIN = 20; // re-tune: log `blur` on good/bad frames (now measured on the face crop)
 const DARK_MAX = 60;
 const BRIGHT_MIN = 220;
 const MIN_FACE_RATIO = 0.5;
@@ -23,7 +25,9 @@ export function useFaceQuality(
 
     let cancelled = false;
     let frame = 0;
+    let lastFaceAt = 0;
     let lastQualityAt = 0;
+    let lastFaces: ReturnType<typeof detectFace> = [];
     let qualityStatus = "";
     let lastStatus = "";
 
@@ -60,15 +64,24 @@ export function useFaceQuality(
         const vw = video.videoWidth;
         const vh = video.videoHeight;
 
-        if (overlay.width !== vw || overlay.height !== vh) {
-          overlay.width = vw;
-          overlay.height = vh;
+        // Overlay uses a small fixed backing size; coordinates are scaled by `s`.
+        const ow = OVERLAY_WIDTH;
+        const oh = Math.max(1, Math.round((OVERLAY_WIDTH * vh) / vw));
+        if (overlay.width !== ow || overlay.height !== oh) {
+          overlay.width = ow;
+          overlay.height = oh;
         }
+        const s = ow / vw;
 
         const overlayCtx = overlay.getContext("2d");
-        overlayCtx?.clearRect(0, 0, vw, vh);
+        overlayCtx?.clearRect(0, 0, ow, oh);
 
-        const faces = detectFace(video);
+        // Throttled face detection; the box is redrawn every frame from the last result.
+        if (now - lastFaceAt >= FACE_INTERVAL_MS) {
+          lastFaceAt = now;
+          lastFaces = detectFace(video);
+        }
+        const faces = lastFaces;
 
         if (faces.length === 0) {
           update("No face detected");
@@ -96,8 +109,13 @@ export function useFaceQuality(
         if (overlayCtx) {
           overlayCtx.strokeStyle =
             centered && closeEnough ? "#00ff99" : "#ffb020";
-          overlayCtx.lineWidth = 4;
-          overlayCtx.strokeRect(box.originX, box.originY, box.width, box.height);
+          overlayCtx.lineWidth = 3;
+          overlayCtx.strokeRect(
+            box.originX * s,
+            box.originY * s,
+            box.width * s,
+            box.height * s,
+          );
         }
 
         if (!closeEnough) {
@@ -110,12 +128,18 @@ export function useFaceQuality(
           return;
         }
 
-        // Throttled quality checks on a downscaled copy.
+        // Throttled quality checks on a downscaled crop of the face region.
         if (now - lastQualityAt >= QUALITY_INTERVAL_MS || !qualityStatus) {
           lastQualityAt = now;
 
+          // Clamp the face box to the frame so drawImage never reads outside it.
+          const sx = Math.max(0, Math.min(vw - 1, box.originX));
+          const sy = Math.max(0, Math.min(vh - 1, box.originY));
+          const sw = Math.max(1, Math.min(vw - sx, box.width));
+          const sh = Math.max(1, Math.min(vh - sy, box.height));
+
           const aw = ANALYSIS_WIDTH;
-          const ah = Math.max(1, Math.round((ANALYSIS_WIDTH * vh) / vw));
+          const ah = Math.max(1, Math.round((ANALYSIS_WIDTH * sh) / sw));
           if (analysis.width !== aw || analysis.height !== ah) {
             analysis.width = aw;
             analysis.height = ah;
@@ -123,7 +147,7 @@ export function useFaceQuality(
 
           const ctx = analysis.getContext("2d", { willReadFrequently: true });
           if (!ctx) return;
-          ctx.drawImage(video, 0, 0, aw, ah);
+          ctx.drawImage(video, sx, sy, sw, sh, 0, 0, aw, ah);
 
           const light = brightness(analysis);
           const blur = blurScore(analysis);

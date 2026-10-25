@@ -15,15 +15,16 @@ export class GemmaClient {
     }
 
     async generate(data: GenerateOptions) {
-        return this.ai.interactions.create({
+        return await this.ai.interactions.create({
             ...analyserOptions,
             ...data,
+            input: data.input,
             stream: false,
         })
     }
 
     async stream(data: GenerateOptions) {
-        return this.ai.interactions.create({
+        return await this.ai.interactions.create({
             ...streamOptions,
             ...data,
             stream: true,

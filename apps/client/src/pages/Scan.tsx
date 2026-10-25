@@ -40,9 +40,21 @@ const MODES: { id: Mode; label: string; icon: LucideIcon }[] = [
 ];
 
 const TIPS: { icon: LucideIcon; title: string; text: string }[] = [
-  { icon: Sun, title: "Face the light", text: "Soft, even light, no harsh shadows." },
-  { icon: Glasses, title: "Keep it natural", text: "No glasses, hair away from your face." },
-  { icon: Focus, title: "Stay centered", text: "Look at the camera, face inside the frame." },
+  {
+    icon: Sun,
+    title: "Face the light",
+    text: "Soft, even light, no harsh shadows.",
+  },
+  {
+    icon: Glasses,
+    title: "Keep it natural",
+    text: "No glasses, hair away from your face.",
+  },
+  {
+    icon: Focus,
+    title: "Stay centered",
+    text: "Look at the camera, face inside the frame.",
+  },
 ];
 
 const FLOW: { icon: LucideIcon; title: string }[] = [
@@ -150,7 +162,12 @@ export default function Scan() {
       }
       stopCamera();
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" },
+        video: {
+          facingMode: "user",
+          width: { ideal: 3840 },
+          height: { ideal: 2160 },
+          frameRate: { ideal: 30 },
+        },
         audio: false,
       });
       setPhase("idle");
@@ -195,7 +212,7 @@ export default function Scan() {
         stopCamera();
       },
       "image/jpeg",
-      0.9,
+      0.95,
     );
   }, [stopCamera]);
 
@@ -232,7 +249,9 @@ export default function Scan() {
         const blob = await fetch(previewUrl).then((r) => r.blob());
         await requestScan(blob);
         setPhase("sent");
-        toast.success("Image sent. We’ll notify you when your results are ready.");
+        toast.success(
+          "Image sent. We’ll notify you when your results are ready.",
+        );
       } catch (error) {
         console.error("Scan failed:", error);
         setPhase("idle");
@@ -275,9 +294,17 @@ export default function Scan() {
 
         <div className="st-layout">
           {/* ---------- Capture stage (primary) ---------- */}
-          <motion.form className="panel st-stage" onSubmit={submit} variants={item}>
+          <motion.form
+            className="panel st-stage"
+            onSubmit={submit}
+            variants={item}
+          >
             <div className="st-stage-top">
-              <div className="st-modes" role="tablist" aria-label="Image source">
+              <div
+                className="st-modes"
+                role="tablist"
+                aria-label="Image source"
+              >
                 {MODES.map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
@@ -292,7 +319,11 @@ export default function Scan() {
                       <motion.span
                         layoutId="scan-mode-pill"
                         className="st-mode-pill"
-                        transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 420,
+                          damping: 34,
+                        }}
                       />
                     )}
                     <span className="st-mode-label">
@@ -347,7 +378,11 @@ export default function Scan() {
                         className="st-sent-badge"
                         initial={{ opacity: 0, scale: 0.6 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 18,
+                        }}
                       >
                         <Check size={26} />
                       </motion.div>
@@ -374,7 +409,11 @@ export default function Scan() {
                       </span>
                       <strong>Drop a photo here</strong>
                       <small>or click to choose one from your device</small>
-                      <input type="file" accept="image/*" onChange={handleFile} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFile}
+                      />
                     </label>
                   </motion.div>
                 ) : (
@@ -382,7 +421,11 @@ export default function Scan() {
                     <motion.div
                       className="face-guide"
                       animate={{ scale: [1, 1.02, 1] }}
-                      transition={{ duration: 3.5, ease: "easeInOut", repeat: Infinity }}
+                      transition={{
+                        duration: 3.5,
+                        ease: "easeInOut",
+                        repeat: Infinity,
+                      }}
                     >
                       <span className="guide-corner top-left" />
                       <span className="guide-corner top-right" />
@@ -444,7 +487,11 @@ export default function Scan() {
                     </button>
                   </motion.div>
                 ) : previewUrl && phase !== "sent" ? (
-                  <motion.div key="review" className="st-actions-row" {...layer}>
+                  <motion.div
+                    key="review"
+                    className="st-actions-row"
+                    {...layer}
+                  >
                     <button
                       className="button button-secondary"
                       type="button"
@@ -519,7 +566,11 @@ export default function Scan() {
                       <motion.span
                         className="st-flow-icon"
                         animate={{ scale: active ? 1.08 : 1 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 20,
+                        }}
                       >
                         {done ? <Check size={15} /> : <Icon size={15} />}
                       </motion.span>
@@ -551,7 +602,7 @@ export default function Scan() {
                 ))}
               </motion.ul>
             </motion.section>
-{/* 
+            {/* 
             <motion.div className="privacy-note" variants={item}>
               <ShieldCheck size={17} />
               <span>

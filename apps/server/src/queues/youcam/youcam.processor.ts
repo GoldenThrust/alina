@@ -3,6 +3,7 @@ import { db } from "../../prisma/db";
 import { YouCamService } from "../../services/yomCam.service";
 import { AIProcessingJob } from "../ai/ai.producer";
 import { logger } from "../../config/logger";
+import Websocket from "../../services/websocket.service";
 
 export async function processYoucam(job: any) {
   console.log("Processing YouCam job:", job.data);
@@ -54,7 +55,7 @@ export async function processYoucam(job: any) {
         throw new Error(`User with ID ${userId} not found`);
       }
 
-      await db.orm.public.SkinAnalysis.create({
+      const skinAnalysisRecord = await db.orm.public.SkinAnalysis.create({
         scanId: skinScan.id,
         eyeBag: skinAnalysis.concerns["hd_eye_bag"]["whole"] as number,
         droopyLowerEyelid: skinAnalysis.concerns["hd_droopy_lower_eyelid"][
@@ -94,7 +95,7 @@ export async function processYoucam(job: any) {
             skinAge: skinScan.skinAge,
             // image: skinScan.image,
             analysis: {
-              skinAnalysis,
+              skinAnalysisRecord,
               skinTone: response.skinTone?.ok
                 ? response.skinTone.data
                 : user.skinTone,
@@ -114,6 +115,10 @@ export async function processYoucam(job: any) {
     logger.info("YouCam job processed successfully");
     console.log("YouCam job processed successfully:", response);
   } catch (error: any) {
+    Websocket.sendNotification(
+      userId,
+      "Image analysis failed. Please try again: " + (error?.message || "Unknown error"),
+    );
     logger.error(`Error processing YouCam job:`, error);
     console.error("Error processing YouCam job:", error);
   }

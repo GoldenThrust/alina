@@ -52,13 +52,7 @@ export class GetScanHistoryTool extends SkincareTool<
       limit: input.limit ?? 5,
       withAnalysis: true,
     });
-    return scans.map((s) => ({
-      scanId: s.id,
-      createdAt: s.createdAt,
-      score: s.score,
-      skinAge: s.skinAge,
-      analysis: s.analysis ?? null,
-    }));
+    return scans
   }
 }
 
@@ -133,7 +127,7 @@ export class GetRecommendationsTool extends SkincareTool<
     input: z.infer<typeof getRecommendationsSchema>,
     { userId }: ToolContext,
   ) {
-    return this.repo.recommendations(userId, {
+    return await this.repo.recommendations(userId, {
       type: input.type,
       accepted: input.accepted,
       limit: input.limit ?? 10,
@@ -155,7 +149,7 @@ export class GetRoutinesTool extends SkincareTool<
     input: z.infer<typeof getRoutinesSchema>,
     { userId }: ToolContext,
   ) {
-    return this.repo.routines(userId, {
+    return await this.repo.routines(userId, {
       acceptedOnly: input.acceptedOnly ?? true,
     });
   }
@@ -215,7 +209,7 @@ export class GetConversationTool extends SkincareTool<
     input: z.infer<typeof getConversationSchema>,
     { userId }: ToolContext,
   ) {
-    return this.repo.messages(userId, input.limit ?? 20);
+    return await this.repo.messages(userId, input.limit ?? 20);
   }
 }
 
@@ -233,7 +227,7 @@ export class GetPreferencesTool extends SkincareTool<
     _input: z.infer<typeof getPreferencesSchema>,
     { userId }: ToolContext,
   ) {
-    return this.repo.preferences(userId);
+    return await this.repo.preferences(userId);
   }
 }
 
@@ -298,7 +292,7 @@ export class CreateRoutineTool extends SkincareTool<
     input: z.infer<typeof createRoutineSchema>,
     { userId }: ToolContext,
   ) {
-    return this.repo.createRoutine({ userId, ...input });
+    return await this.repo.createRoutine({ userId, ...input });
   }
 }
 

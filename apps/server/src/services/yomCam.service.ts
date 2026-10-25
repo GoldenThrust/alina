@@ -132,7 +132,7 @@ export class YouCamService {
       "Content-Type": "application/json",
     };
 
-    console.log(`YouCamService.request: ${method} ${url}`, headers);
+    // console.log(`YouCamService.request: ${method} ${url}`, headers);
 
     for (let attempt = 0; ; attempt++) {
       const res = await httpRequest(method, url, {

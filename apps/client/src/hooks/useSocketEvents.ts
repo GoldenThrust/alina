@@ -17,7 +17,10 @@ export function useSocketEvents() {
     }
 
     function onNavigation({ route }: { route: string }) {
+      toast(`Navigating to ${route} in 2 seconds...`, { duration: 2000 });
+      setTimeout(() => {
         navigate(route);
+      }, 2000);
     }
 
     // function onMessage({ message }: { message: string }) {
@@ -46,10 +49,10 @@ export function useSocketEvents() {
     return () => {
       socket.off("notification", onNotification);
       socket.off("navigation", onNavigation);
-    //   socket.off("message", onMessage);
-    //   socket.off("stream:start", onStreamStart);
-    //   socket.off("stream:data", onStreamData);
-    //   socket.off("stream:end", onStreamEnd);
+      //   socket.off("message", onMessage);
+      //   socket.off("stream:start", onStreamStart);
+      //   socket.off("stream:data", onStreamData);
+      //   socket.off("stream:end", onStreamEnd);
     };
   }, []);
 }
