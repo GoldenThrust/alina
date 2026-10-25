@@ -382,7 +382,7 @@ enum RecommendationType {
 
 enum Sender {
   USER
-  ALINA
+  em
 }
 
 enum DeviceType {

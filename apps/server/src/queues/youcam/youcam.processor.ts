@@ -81,7 +81,7 @@ export async function processYoucam(job: any) {
       await AIProcessingJob({
         userId,
         scanId: skinScan.id,
-        input: {
+        input: JSON.stringify({
           event: "skin_scan_completed",
 
           userId,
@@ -103,7 +103,7 @@ export async function processYoucam(job: any) {
                 : user.skinType,
             },
           },
-        },
+        }),
       });
     } else if (response?.skinAnalysis?.ok === false) {
       throw new Error(

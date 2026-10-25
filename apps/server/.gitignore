@@ -9,3 +9,5 @@ node_modules/
 migrations/
 log/
 public
+uploads/
+upload/

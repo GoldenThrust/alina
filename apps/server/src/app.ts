@@ -227,5 +227,6 @@ export function buildApp() {
   // console.log("index.html:", existsSync(path.join(clientRoot, "index.html")));
   // console.log("uploadRoot:", uploadRoot, existsSync(uploadRoot));
 
+  console.log("Alina API is ready to serve requests.", env.YOUCAM_API_KEY);
   return app;
 }
