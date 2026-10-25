@@ -18,6 +18,7 @@ import { allowUrls } from "./common/utils/constant.ts";
 import { readFileSync } from "node:fs";
 import { httpDuration, logger, register } from "./config/logger.ts";
 import fastifyStatic from "@fastify/static";
+// import { existsSync } from "node:fs";
 
 import "./queues/index.ts";
 
@@ -139,18 +140,11 @@ export function buildApp() {
   app.register(import("./plugins/prisma.ts"));
   app.register(import("./plugins/redis.ts"));
 
-  console.log(env.UPLOAD_DIR);
-  app.register(fastifyStatic, {
-    root: env.UPLOAD_DIR,
-    prefix: "/uploads/",
-    decorateReply: false,
-  });
-
-  app.register(fastifyStatic, {
-    root: path.join(__dirname, "../../client/dist"),
-    prefix: "/",
-    wildcard: false,
-  });
+  // app.register(fastifyStatic, {
+  //   root: path.join(__dirname, "../../client/dist"),
+  //   prefix: "/",
+  //   wildcard: false,
+  // });
 
   app.register(multipart, {
     limits: {
@@ -197,13 +191,41 @@ export function buildApp() {
   //   await db.close();
   // });
 
-  // app.register(fastifyStatic, {
-  //   root: env["UPLOAD_DIR"],
-  //   prefix: "/public/",
-  // });
+  console.log(app.printRoutes());
+  const clientRoot = path.join(__dirname, "../client/dist");
+
+  app.register(fastifyStatic, {
+    root: env.UPLOAD_DIR,
+    prefix: "/uploads/",
+    decorateReply: false,
+  });
+
+  app.register(fastifyStatic, {
+    root: clientRoot,
+    prefix: "/",
+    wildcard: false,
+  });
+
+  // SPA fallback: anything not matched by routes/static serves index.html
+  app.setNotFoundHandler((req, reply) => {
+    if (
+      req.raw.url?.startsWith("/api") ||
+      req.raw.url?.startsWith("/uploads")
+    ) {
+      return reply.status(404).send({ message: "Route not found" });
+    }
+    return reply.sendFile("index.html");
+  });
   app.get("/*", async (req, reply) => {
     return reply.sendFile("index.html");
   });
+
+  // const uploadRoot = path.resolve(env.UPLOAD_DIR);
+
+  // console.log("cwd:", process.cwd());
+  // console.log("clientRoot:", clientRoot, existsSync(clientRoot));
+  // console.log("index.html:", existsSync(path.join(clientRoot, "index.html")));
+  // console.log("uploadRoot:", uploadRoot, existsSync(uploadRoot));
 
   return app;
 }
