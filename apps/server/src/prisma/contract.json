@@ -2040,6 +2040,20 @@
                   "kind": "scalar"
                 }
               },
+              "city": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "country": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -2095,6 +2109,13 @@
                   "kind": "scalar"
                 }
               },
+              "ipAddress": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "lastInteractionId": {
                 "nullable": true,
                 "type": {
@@ -2109,6 +2130,13 @@
                   "kind": "scalar"
                 }
               },
+              "location": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "password": {
                 "nullable": true,
                 "type": {
@@ -2117,6 +2145,20 @@
                 }
               },
               "phoneNumber": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "postalCode": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "region": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
@@ -2346,6 +2388,12 @@
                 "avatar": {
                   "column": "avatar"
                 },
+                "city": {
+                  "column": "city"
+                },
+                "country": {
+                  "column": "country"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -2367,17 +2415,29 @@
                 "id": {
                   "column": "id"
                 },
+                "ipAddress": {
+                  "column": "ipAddress"
+                },
                 "lastInteractionId": {
                   "column": "lastInteractionId"
                 },
                 "lastScanImage": {
                   "column": "lastScanImage"
                 },
+                "location": {
+                  "column": "location"
+                },
                 "password": {
                   "column": "password"
                 },
                 "phoneNumber": {
                   "column": "phoneNumber"
+                },
+                "postalCode": {
+                  "column": "postalCode"
+                },
+                "region": {
+                  "column": "region"
                 },
                 "role": {
                   "column": "role"
@@ -2448,6 +2508,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "ConnectedDevice_userId_idx_a489d58a"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -2529,6 +2592,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "Message_userId_idx_a489d58a"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -2602,6 +2668,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "OAuthAccount_userId_idx_a489d58a"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -2677,6 +2746,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "Order_userId_idx_a489d58a"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -2736,6 +2808,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "OrderItem_orderId_idx_d284871b"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -2753,6 +2828,9 @@
                   }
                 },
                 {
+                  "index": {
+                    "name": "OrderItem_productId_idx_5858600a"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -2856,6 +2934,11 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "unique": [
+                      "userId"
+                    ]
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -2959,6 +3042,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "Product_userId_idx_a489d58a"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -3069,6 +3155,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "Recommendation_userId_idx_a489d58a"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -3086,6 +3175,11 @@
                   }
                 },
                 {
+                  "index": {
+                    "unique": [
+                      "productId"
+                    ]
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -3103,6 +3197,11 @@
                   }
                 },
                 {
+                  "index": {
+                    "unique": [
+                      "routineId"
+                    ]
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -3120,6 +3219,11 @@
                   }
                 },
                 {
+                  "index": {
+                    "unique": [
+                      "routineStepId"
+                    ]
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -3199,6 +3303,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "Routine_userId_idx_a489d58a"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -3262,6 +3369,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "RoutineLog_userId_idx_a489d58a"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -3279,6 +3389,9 @@
                   }
                 },
                 {
+                  "index": {
+                    "name": "RoutineLog_routineStepId_idx_b0cdaa22"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -3369,6 +3482,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "RoutineStep_routineId_idx_fa038a10"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -3507,6 +3623,11 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "unique": [
+                      "scanId"
+                    ]
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -3615,6 +3736,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "SkinScan_userId_idx_a489d58a"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -3708,6 +3832,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "Subscription_userId_idx_a489d58a"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -3761,6 +3888,16 @@
                   "dataType": "pg/text",
                   "nullable": true
                 },
+                "city": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "country": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "dataType": "pg/timestamptz",
@@ -3806,6 +3943,11 @@
                   "dataType": "pg/text",
                   "nullable": false
                 },
+                "ipAddress": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
                 "lastInteractionId": {
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
@@ -3816,12 +3958,27 @@
                   "dataType": "pg/text",
                   "nullable": true
                 },
+                "location": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
                 "password": {
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
                   "nullable": true
                 },
                 "phoneNumber": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "postalCode": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "region": {
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
                   "nullable": true
@@ -3926,6 +4083,9 @@
               },
               "foreignKeys": [
                 {
+                  "index": {
+                    "name": "sessions_userId_idx_a489d58a"
+                  },
                   "onDelete": "cascade",
                   "source": {
                     "columns": [
@@ -4061,10 +4221,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "eb33510268cb6c612cbd42c5f29c605f4c1e5794cf2bb068718610aa20afbf4a"
+    "storageHash": "544cf59d4152d88ffa807286bf2fc1d31015efe779afb3132fc7ef5a8817e344"
   },
   "execution": {
-    "executionHash": "dc1ac6e4db2ee326f04a55c1c0aa0d987b1dc883145cc25cd6bba35f22cc906d",
+    "executionHash": "8ef08435230935997a505c5da7a8c25ca32c51966783fc5acc35bdde3b36675c",
     "mutations": {
       "defaults": [
         {
@@ -4102,11 +4262,11 @@
         },
         {
           "onCreate": {
-            "id": "timestampNow",
+            "id": "timestamptzStringNow",
             "kind": "generator"
           },
           "onUpdate": {
-            "id": "timestampNow",
+            "id": "timestamptzStringNow",
             "kind": "generator"
           },
           "ref": {
@@ -4249,11 +4409,11 @@
         },
         {
           "onCreate": {
-            "id": "timestampNow",
+            "id": "timestamptzStringNow",
             "kind": "generator"
           },
           "onUpdate": {
-            "id": "timestampNow",
+            "id": "timestamptzStringNow",
             "kind": "generator"
           },
           "ref": {
@@ -4275,11 +4435,11 @@
         },
         {
           "onCreate": {
-            "id": "timestampNow",
+            "id": "timestamptzStringNow",
             "kind": "generator"
           },
           "onUpdate": {
-            "id": "timestampNow",
+            "id": "timestamptzStringNow",
             "kind": "generator"
           },
           "ref": {

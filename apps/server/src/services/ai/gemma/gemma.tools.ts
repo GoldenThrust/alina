@@ -244,6 +244,86 @@ const recommendProduct = fn(
   ],
 );
 
+const getTasteInsights = fn(
+  "get_taste_insights",
+  "Fetch brands and taste tags this user is likely to love, based on their favorite brands. Read-only, saves nothing. Call before recommending products, brands or routines, whether chatting or about to save a recommendation.",
+  {
+    extraInterests: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "Optional brands or styles the user just mentioned in this chat that are not saved yet (max 5).",
+    },
+  },
+);
+
+const entityTypeParam = {
+  type: "string",
+  enum: ["brand", "product", "place", "person", "podcast"],
+  description:
+    "What to recommend or compare. 'person' means influencers and public figures.",
+};
+const interestsParam = {
+  type: "array",
+  items: { type: "string" },
+  description:
+    "Optional extra brands, people, places or podcasts the user just mentioned or that earlier tool results suggest (max 5). Saved favorites are added automatically.",
+};
+const cityParam = {
+  type: "string",
+  description:
+    "Optional. Overrides the user's saved city. Needed for places if none is saved.",
+};
+
+const qlooRecommend = fn(
+  "qloo_recommend",
+  "Read-only, saves nothing. Recommend brands, products, places, people/influencers or podcasts this user is likely to love, based on their saved favorite brands, age range, gender and city. Call before recommending or discussing any of these, in plain chat too.",
+  {
+    entityType: entityTypeParam,
+    interests: interestsParam,
+    city: cityParam,
+    limit: limitParam(10, 8),
+  },
+  ["entityType"],
+);
+
+const qlooCompare = fn(
+  "qloo_compare",
+  "Read-only, saves nothing. Compare 2-4 brands, places, people/influencers or podcasts: shared and distinct traits, popularity trend, and closeness to this user's taste (userAffinity, higher is closer). For products pass brand names.",
+  {
+    entityType: entityTypeParam,
+    items: {
+      type: "array",
+      items: { type: "string" },
+      description: "2 to 4 names of the same kind.",
+    },
+    interests: interestsParam,
+    city: cityParam,
+  },
+  ["entityType", "items"],
+);
+
+const qlooTrending = fn(
+  "qloo_trending",
+  "Read-only, saves nothing. Without items: what is trending now for this user's age range, gender and city. With items: whether those specific brands, places, people or podcasts are rising, steady or falling. For products pass brand names.",
+  {
+    entityType: entityTypeParam,
+    items: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "Optional 1-4 names to check momentum for. Omit to list what is trending.",
+    },
+    city: cityParam,
+    personalize: {
+      type: "boolean",
+      description: "true to weight the trending list by the user's taste.",
+    },
+    limit: limitParam(10, 8),
+  },
+  ["entityType"],
+);
+
 /* ---------------------------- TOOL SETS ---------------------------- */
 
 const readTools = [
@@ -253,6 +333,9 @@ const readTools = [
   getRoutineLogs,
   getConversation,
   getPreferences,
+  qlooRecommend,
+  qlooCompare,
+  qlooTrending,
 ];
 
 const baseTools = [{ type: "google_search" as const }];

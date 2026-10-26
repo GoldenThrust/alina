@@ -7,7 +7,26 @@ class RedisService {
     this.redis = redis;
   }
 
-  async setRefreshToken(key: string, value: string, ex: number = 604800): Promise<string> {
+  async getJson<T>(key: string): Promise<T | null> {
+    const raw = await this.redis.get(key);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      await this.redis.del(key); // corrupt entry, drop it
+      return null;
+    }
+  }
+
+  async setJson(key: string, value: unknown, ex: number): Promise<void> {
+    await this.redis.setex(key, ex, JSON.stringify(value));
+  }
+
+  async setRefreshToken(
+    key: string,
+    value: string,
+    ex: number = 604800,
+  ): Promise<string> {
     return await this.redis.setex(`refresh_token:${key}`, ex, value);
   }
 
@@ -15,41 +34,65 @@ class RedisService {
     return await this.redis.get(`refresh_token:${key}`);
   }
 
-  async setAccountVerificationToken(key: string, value: string, ex: number = 604800): Promise<string> {
-    return await this.redis.setex(`account_verification_token:${key}`, ex, value);
+  async setAccountVerificationToken(
+    key: string,
+    value: string,
+    ex: number = 604800,
+  ): Promise<string> {
+    return await this.redis.setex(
+      `account_verification_token:${key}`,
+      ex,
+      value,
+    );
   }
 
   async getAccountVerificationToken(key: string): Promise<string | null> {
     const userId = await this.redis.get(`account_verification_token:${key}`);
-    
+
     await this.redis.del(`account_verification_token:${key}`);
 
     return userId;
   }
 
-  async setAccountPasswordResetToken(key: string, value: string, ex: number = 604800): Promise<string> {
-    return await this.redis.setex(`account_password_reset_token:${key}`, ex, value);
+  async setAccountPasswordResetToken(
+    key: string,
+    value: string,
+    ex: number = 604800,
+  ): Promise<string> {
+    return await this.redis.setex(
+      `account_password_reset_token:${key}`,
+      ex,
+      value,
+    );
   }
 
   async getAccountPasswordResetToken(key: string): Promise<string | null> {
-    const token = await this.redis.get(`account_password_reset_token:${key}`)
+    const token = await this.redis.get(`account_password_reset_token:${key}`);
 
     await this.redis.del(`account_password_reset_token:${key}`);
     return token;
   }
 
-  async setAccountResetToken(key: string, value: string, ex: number = 604800): Promise<string> {
+  async setAccountResetToken(
+    key: string,
+    value: string,
+    ex: number = 604800,
+  ): Promise<string> {
     return await this.redis.setex(`account_reset_token:${key}`, ex, value);
   }
 
   async getAccountResetToken(key: string): Promise<string | null> {
-    const token = await this.redis.get(`account_reset_token:${key}`)
+    const token = await this.redis.get(`account_reset_token:${key}`);
 
     await this.redis.del(`account_reset_token:${key}`);
     return token;
   }
 
-  async setAccountEmailPassword(key: string, value: string, ex: number = 604800): Promise<string> {
+  async setAccountEmailPassword(
+    key: string,
+    value: string,
+    ex: number = 604800,
+  ): Promise<string> {
     return await this.redis.setex(`account-email-password:${key}`, ex, value);
   }
 
@@ -59,7 +102,11 @@ class RedisService {
     return token;
   }
 
-  async setAccountEmail(key: string, value: string, ex: number = 604800): Promise<string> {
+  async setAccountEmail(
+    key: string,
+    value: string,
+    ex: number = 604800,
+  ): Promise<string> {
     return await this.redis.setex(`account-email:${key}`, ex, value);
   }
 
@@ -70,15 +117,23 @@ class RedisService {
     return token;
   }
 
-  async setEmailTemplate(templateLocation: string, template: string, ex: number = 604800): Promise<string> {
-    return await this.redis.setex(`email_template:${templateLocation}`, ex, template);
+  async setEmailTemplate(
+    templateLocation: string,
+    template: string,
+    ex: number = 604800,
+  ): Promise<string> {
+    return await this.redis.setex(
+      `email_template:${templateLocation}`,
+      ex,
+      template,
+    );
   }
 
   async getEmailTemplate(templateLocation: string): Promise<string | null> {
     return await this.redis.get(`email_template:${templateLocation}`);
   }
 
-  async cacheEmailHeader(template: string,): Promise<string> {
+  async cacheEmailHeader(template: string): Promise<string> {
     return await this.redis.set("email_header-template", template);
   }
 

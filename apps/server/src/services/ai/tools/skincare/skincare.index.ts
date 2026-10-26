@@ -1,3 +1,4 @@
+import { QlooCompareTool, QlooRecommendTool, QlooTrendingTool } from "../qloo/qloo.tool";
 import type { ToolRegistry } from "../tool.registry";
 import { SkincareRepository } from "./skincare.repository";
 import {
@@ -31,6 +32,11 @@ export function registerSkincareTools(
     new GetRoutineLogsTool(repo),
     new GetConversationTool(repo),
     new GetPreferencesTool(repo),
+
+    new QlooRecommendTool(repo),
+    new QlooCompareTool(repo),
+    new QlooTrendingTool(repo),
+
     // write
     new CreateSummaryTool(repo),
     new CreateObservationTool(repo),
@@ -43,4 +49,3 @@ export function registerSkincareTools(
   for (const tool of tools) registry.register(tool);
   return registry;
 }
-

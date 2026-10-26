@@ -25,7 +25,8 @@
     "start": "node dist/server.mjs",
     "postinstall": "prisma skills sync || exit 0",
     "db:seed": "tsx src/prisma/seed/run.ts",
-    "test:ai": "tsx test/runAI.ts"
+    "test:ai": "tsx test/runAI.ts",
+    "test:qloo": "tsx test/runQloo.ts"
   },
   "dependencies": {
     "@faker-js/faker": "^10.6.0",
@@ -40,6 +41,7 @@
     "@fastify/static": "^10.1.4",
     "@google/genai": "^2.28.0",
     "@js-temporal/polyfill": "^0.5.1",
+    "@prisma/client": "^7.10.1",
     "@prisma/composer": "0.28.0",
     "@prisma/composer-prisma-cloud": "0.28.0",
     "@prisma/orm-postgres": "8.0.0-rc.16",

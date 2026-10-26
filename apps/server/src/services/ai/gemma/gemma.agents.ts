@@ -7,6 +7,7 @@ import { ToolRegistry } from "../tools/tool.registry";
 import { db } from "../../../prisma/db";
 import { logger } from "../../../config/logger";
 import { registerSkincareTools } from "../tools/skincare/skincare.index";
+import { env } from "../../../config/env";
 
 const MAX_TURNS = 20;
 
@@ -336,7 +337,7 @@ const skincareRepo = new SkincareRepository();
 registerSkincareTools(toolRegistry, skincareRepo);
 
 export const gemmaAgent = new GemmaAgent(
-  new GemmaClient(process.env.GOOGLE_API_KEY ?? ""),
+  new GemmaClient(env.GOOGLE_API_KEY),
   new ToolExecutor(toolRegistry),
   skincareRepo,
 );

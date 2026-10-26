@@ -90,7 +90,7 @@ async function settle<T>(fn: () => Promise<T>): Promise<Settled<T>> {
 export class YouCamService {
   /** Override with YOUCAM_BASE_URL if your account uses another host. */
   static get baseUrl(): string {
-    return process.env.YOUCAM_BASE_URL ?? "https://yce-api-01.makeupar.com";
+    return env.YOUCAM_BASE_URL;
   }
 
   static get imageUploadUrl() {

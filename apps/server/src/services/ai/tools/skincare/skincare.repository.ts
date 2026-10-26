@@ -33,6 +33,19 @@ export interface PreferenceView {
   budget: number | null;
 }
 
+export interface TasteProfileView {
+  favoriteBrands: string[];
+  ageBand?:
+    | "24_and_younger"
+    | "25_to_29"
+    | "30_to_34"
+    | "35_to_44"
+    | "45_to_54"
+    | "55_and_older";
+  gender?: "male" | "female";
+  city?: string;
+}
+
 const orm = () => db.orm.public;
 
 /* ------------------------- date serialization ------------------------- */
@@ -130,7 +143,7 @@ export class SkincareRepository {
     if (opts.acceptedOnly) {
       const rows = await orm()
         .Routine.where({ userId })
-        .where((r) => r.recommendation.some({ accepted: true }))
+        .where((r: any) => r.recommendation.some({ accepted: true }))
         .include("steps", (steps: any) =>
           steps.orderBy((s: any) => s.position.asc()),
         )
@@ -199,7 +212,7 @@ export class SkincareRepository {
     const stepCount = (
       await orm()
         .RoutineStep.where({ routineId: data.routineId })
-        .aggregate((s) => ({ total: s.count() }))
+        .aggregate((s: any) => ({ total: s.count() }))
     ).total;
     const step = await orm().RoutineStep.create({
       routineId: data.routineId,
@@ -219,7 +232,9 @@ export class SkincareRepository {
     let q = orm().RoutineLog.where({ userId });
 
     if (opts.routineId) {
-      q = q.where((r) => r.routineStep.some({ routineId: opts.routineId }));
+      q = q.where((r: any) =>
+        r.routineStep.some({ routineId: opts.routineId }),
+      );
     }
     const logs: any[] = await q
       .orderBy((l: any) => l.completedAt.desc())
@@ -231,7 +246,8 @@ export class SkincareRepository {
     const recent = logs.filter((l) => {
       const completedAt = toInstant(l.completedAt);
       return (
-        completedAt !== null && Temporal.Instant.compare(completedAt, since) >= 0
+        completedAt !== null &&
+        Temporal.Instant.compare(completedAt, since) >= 0
       );
     });
     return isoDates(recent);
@@ -337,5 +353,59 @@ export class SkincareRepository {
       avoidedIngredients: (pref?.avoidedIngredients as string[]) ?? [],
       budget: pref?.budget ?? null,
     };
+  }
+
+  
+  async tasteProfile(userId: string): Promise<TasteProfileView> {
+    const [pref, user] = await Promise.all([
+      orm().Preference.where({ userId }).first(),
+      orm().User.where({ id: userId }).first(),
+    ]);
+
+    const dob = user?.dateOfBirth ? toInstant(user.dateOfBirth) : null;
+    let ageBand: TasteProfileView["ageBand"];
+    if (dob) {
+      const age = Math.floor(
+        (Date.now() - dob.epochMilliseconds) / (365.25 * 24 * 3600 * 1000),
+      );
+      if (age >= 13 && age <= 120) {
+        ageBand =
+          age <= 24
+            ? "24_and_younger"
+            : age <= 29
+              ? "25_to_29"
+              : age <= 34
+                ? "30_to_34"
+                : age <= 44
+                  ? "35_to_44"
+                  : age <= 54
+                    ? "45_to_54"
+                    : "55_and_older";
+      }
+    }
+
+    const g = String(user?.gender ?? "").toLowerCase();
+    return {
+      favoriteBrands: (pref?.favoriteBrands as string[]) ?? [],
+      ageBand,
+      gender: g === "male" || g === "female" ? g : undefined,
+      city: user?.city?.trim() || undefined,
+    };
+  }
+
+  async productsByBrands(brands: string[], perBrand = 2): Promise<any[]> {
+    const out: any[] = [];
+    for (const brand of brands.slice(0, 6)) {
+      const rows = await orm().Product.where({ brand }).limit(perBrand).all();
+      out.push(...rows);
+    }
+    return isoDates(out).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      category: p.category,
+      description: p.description,
+      price: p.price,
+    }));
   }
 }

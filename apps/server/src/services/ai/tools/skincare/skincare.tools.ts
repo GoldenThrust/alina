@@ -2,6 +2,7 @@ import { z } from "zod";
 import { BaseTool } from "../base.tool";
 import type { ToolContext } from "../tool";
 import type { SkincareRepository } from "./skincare.repository";
+// import { fetchTasteInsights } from "../../qloo/qloo.client";
 
 const length = z.enum(["short", "long"]);
 const period = z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT", "HABIT"]);
@@ -431,3 +432,40 @@ export class RecommendProductTool extends SkincareTool<
     return { recommendation, product };
   }
 }
+
+
+// const tasteSchema = z.object({
+//   extraInterests: z.array(z.string().min(1)).max(5).optional(),
+// });
+
+// export class GetTasteInsightsTool extends SkincareTool<
+//   z.infer<typeof tasteSchema>
+// > {
+//   readonly name = "get_taste_insights";
+//   readonly description =
+//     "Fetch brands and taste tags this user is likely to love, based on their favorite brands. Read-only; saves nothing. Use to tailor recommendations to the user's taste.";
+//   readonly schema = tasteSchema;
+
+//   protected async executeInternal(
+//     input: z.infer<typeof tasteSchema>,
+//     { userId }: ToolContext,
+//   ) {
+//     const prefs = await this.repo.preferences(userId);
+
+//     const seen = new Set<string>();
+//     const seeds = [...prefs.favoriteBrands, ...(input.extraInterests ?? [])]
+//       .map((s) => s.trim())
+//       .filter((s) => s && !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()))
+//       .slice(0, 8);
+
+//     if (!seeds.length) return { status: "no_taste_data", brands: [], tags: [] };
+
+//     try {
+//       const { brands, tags } = await fetchTasteInsights(seeds, );
+//       return { status: brands.length ? "ok" : "no_match", brands, tags };
+//     } catch {
+//       // A Qloo outage must never break the chat or a scan analysis
+//       return { status: "unavailable", brands: [], tags: [] };
+//     }
+//   }
+// }

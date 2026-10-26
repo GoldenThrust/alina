@@ -1,7 +1,7 @@
 // use prisma-8
 
 model User {
-  id        String   @id @default(uuid())
+  id        String   @id @onCreate(uuid())
   email     String   @unique
   fullName      String
   password  String?
@@ -20,6 +20,14 @@ model User {
   lastScanImage String?
 
   lastInteractionId String?
+
+  country       String?
+  city          String?
+  region        String?
+  postalCode    String?
+  ipAddress     String?
+
+  location      String?
 
   role          UserRole @default(USER)
 
@@ -42,7 +50,7 @@ model User {
 
 
 model Session {
-  id            String    @id @default(uuid())
+  id            String    @id @onCreate(uuid())
   userId        String
   refreshSecret String
   ipAddress     String?
@@ -60,7 +68,7 @@ model Session {
 
 
 model OAuthAccount {
-  id         String   @id @default(uuid())
+  id         String   @id @onCreate(uuid())
   userId     String
   provider   String
   providerId String
@@ -74,7 +82,7 @@ model OAuthAccount {
 
 
 model SkinScan {
-  id              String   @id @default(uuid())
+  id              String   @id @onCreate(uuid())
 
   userId          String
   user            User @relation(fields:[userId], references:[id], onDelete: Cascade)
@@ -102,7 +110,7 @@ model SkinScan {
 
 model SkinAnalysis {
 
-  id                 String @id @default(uuid())
+  id                 String @id @onCreate(uuid())
 
   scanId             String @unique
 
@@ -145,7 +153,7 @@ model SkinAnalysis {
 
 model Routine {
 
-  id            String @id @default(uuid())
+  id            String @id @onCreate(uuid())
 
   userId        String
 
@@ -162,7 +170,7 @@ model Routine {
 
 model RoutineStep {
 
-  id            String @id @default(uuid())
+  id            String @id @onCreate(uuid())
 
   routineId     String
 
@@ -182,7 +190,7 @@ model RoutineStep {
 }
 
 model RoutineLog {
-  id            String @id @default(uuid())
+  id            String @id @onCreate(uuid())
 
   userId        String
   user          User @relation(fields:[userId], references:[id], onDelete: Cascade)
@@ -195,7 +203,7 @@ model RoutineLog {
 
 model Product {
 
-  id              String @id @default(uuid())
+  id              String @id @onCreate(uuid())
 
   userId          String
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -221,7 +229,7 @@ model Product {
 
 model Recommendation {
 
-  id              String @id @default(uuid())
+  id              String @id @onCreate(uuid())
 
   userId          String
 
@@ -254,7 +262,7 @@ model Recommendation {
 
 model Message {
 
-  id            String @id @default(uuid())
+  id            String @id @onCreate(uuid())
 
   userId        String
 
@@ -270,7 +278,7 @@ model Message {
 
 model Preference {
 
-  id                String @id @default(uuid())
+  id                String @id @onCreate(uuid())
 
   userId            String @unique
 
@@ -288,7 +296,7 @@ model Preference {
 
 model Order {
 
-  id              String @id @default(uuid())
+  id              String @id @onCreate(uuid())
 
   userId          String
 
@@ -305,7 +313,7 @@ model Order {
 
 model OrderItem {
 
-  id            String @id @default(uuid())
+  id            String @id @onCreate(uuid())
 
   orderId       String
 
@@ -321,7 +329,7 @@ model OrderItem {
 
 model ConnectedDevice {
 
-  id            String @id @default(uuid())
+  id            String @id @onCreate(uuid())
 
   userId        String
 
@@ -337,7 +345,7 @@ model ConnectedDevice {
 
 model Subscription {
 
-  id              String @id @default(uuid())
+  id              String @id @onCreate(uuid())
 
   userId          String
 
@@ -382,7 +390,7 @@ enum RecommendationType {
 
 enum Sender {
   USER
-  em
+  ALINA
 }
 
 enum DeviceType {

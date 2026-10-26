@@ -10,7 +10,7 @@ import path from "path";
 import { generateTokens, verifyRefreshToken } from "./auth.token.ts";
 import { Temporal } from "@js-temporal/polyfill";
 import { encodeToken } from "../../common/utils/crypto.ts";
-import type { Models } from "../../prisma/contract";
+import { IPinfoWrapper } from "node-ipinfo";
 
 // Templates live next to this file. (Use __dirname instead if the project is CommonJS.)
 const EMAIL_TEMPLATE_PATH = path.join(import.meta.dirname, "emails");
@@ -186,6 +186,7 @@ export async function login(
   const user = await db.orm.public.User.where({
     email: payload.email,
   }).first();
+  const ip = req.ip;
 
   if (!user || !user.emailVerifiedAt) {
     throw new APIError("Invalid email or password", 401);
@@ -208,6 +209,30 @@ export async function login(
   }
 
   const tokens = await generateTokens(req, res, user);
+
+  try {
+    if (
+      ip === "127.0.0.1" ||
+      ip === "::1" ||
+      ip.startsWith("192.168.") ||
+      ip.startsWith("10.")
+    ) {
+      throw new APIError("A public IP address is required", 400);
+    }
+
+    const ipinfoWrapper = new IPinfoWrapper(config.env.IPINFO_API_KEY);
+    const ipinfo = await ipinfoWrapper.lookupIp("8.8.8.8");
+    await db.orm.public.User.where({ id: user.id }).update({
+      country: ipinfo.country,
+      location: ipinfo.loc,
+      city: ipinfo.city,
+      region: ipinfo.region,
+      postalCode: ipinfo.postal,
+      ipAddress: ipinfo.ip,
+    });
+  } catch (error) {
+    console.error("Error occurred while fetching IP info:", error);
+  }
 
   return { message: "Login successful", user: toPublicUser(user), ...tokens };
 }
