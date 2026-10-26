@@ -42,7 +42,6 @@ The proof should be convincing in a short demo: one real skin-analysis response,
 ### In
 
 - Camera-agnostic capture interface with a simulated/test camera source for the MVP
-- OpenCV face detection, alignment, quality validation, and best-frame selection
 - Real YouCam Skin Analysis API integration
 - Persistent skin-history records and trend comparisons
 - An AI agent that calls the camera, analysis, history, and recommendation tools
@@ -54,7 +53,6 @@ The proof should be convincing in a short demo: one real skin-analysis response,
 - Required Qloo product lookup with a controlled local catalog fallback
 - Alexa-style voice entry through a button or accessible invocation path
 - Add-to-routine workflow
-- PayPal checkout request with explicit user approval
 - Authentication, basic error handling, and audit-friendly tool calls
 - A short demo flow that can be run locally and demonstrated without production hardware
 
@@ -73,7 +71,8 @@ The proof should be convincing in a short demo: one real skin-analysis response,
 ## Explicitly Cut
 
 - Full production-grade camera hardware and a real Ring integration
-- Live PayPal checkout completion rather than a confirmed checkout request
+- OpenCV frame validation — decided not to use in this POC; may revisit in a future build
+- PayPal checkout — deferred to a future build; checkout intent is not implemented in this POC
 - Subscription billing, plan enforcement, and subscription payment processing
 - Voice-first automation through Alexa+ rather than a dashboard fallback
 - Advanced product catalog, commerce, inventory, and fulfillment systems
