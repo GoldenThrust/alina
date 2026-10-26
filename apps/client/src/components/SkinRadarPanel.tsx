@@ -36,6 +36,7 @@ export default function SkinRadarPanel({ startDate, endDate }: Props) {
     startDate,
     endDate,
   );
+
   const user = useAuthStore((s) => s.user);
 
   const current = currentScan?.analysis;
@@ -51,7 +52,7 @@ export default function SkinRadarPanel({ startDate, endDate }: Props) {
     if (!current) return [];
     return AXES[view].flatMap((axis) => {
       const cur = axis.pick(current);
-      if (!isNum(cur)) return []; // skip metrics the scan didn't return
+      if (!isNum(cur)) return [];
       const prev = previous ? axis.pick(previous) : undefined;
       return [
         {
@@ -71,7 +72,7 @@ export default function SkinRadarPanel({ startDate, endDate }: Props) {
   const hasEnough = rows.length >= 3;
 
   return (
-    <section className="panel radar-panel  flex justify-between flex-col">
+    <section className="panel radar-panel  flex justify-around flex-col">
       <div className="section-heading">
         <div>
           <p className="page-eyebrow">SKIN PROFILE</p>

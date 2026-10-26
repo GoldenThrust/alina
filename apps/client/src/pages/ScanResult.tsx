@@ -160,8 +160,10 @@ export default function ScanResult() {
       .filter(Boolean)
       .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
     const index = sorted.findIndex((s) => s.id === scan.id);
-    return index > 0 ? sorted[index - 1] : null;
+    return index > 0 ? sorted[index - 2] : null;
   }, [scan, ids, byId]);
+
+  console.log("previous", previous);
 
   /** Radar range: the scan before this one -> this scan, by createdAt. */
   const range = useMemo(() => {
@@ -171,6 +173,8 @@ export default function ScanResult() {
       end: new Date(scan.createdAt).toISOString(),
     };
   }, [scan, previous]);
+  console.log(range);
+
 
   const metrics = useMemo(
     () => buildMetrics(scan?.analysis as SkinAnalysis, previous?.analysis).sort(

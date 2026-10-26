@@ -532,8 +532,9 @@ export default function Dashboard() {
                     const direction = ANALYSIS_DIRECTION[itemLabel];
                     const isPositive = entry.value > 0;
                     const isNegative = entry.value < 0;
-                    const isImprovement =
-                      (direction === "higher" && isPositive) || (direction === "lower" && isNegative);
+                    // const isImprovement =
+                      // (direction === "higher" && isPositive) || (direction === "lower" && isNegative);
+                    const isImprovement = isPositive;
                     const Icon = meta.icon;
 
                     return (

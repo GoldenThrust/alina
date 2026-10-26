@@ -44,6 +44,6 @@ export function filterByRange<T extends { createdAt: Date | string }>(
 ): T[] {
   return items.filter((item) => {
     const key = dayKey(item.createdAt);
-    return (!start || key >= start) && (!end || key <= end);
+    return (!start || key >= start.slice(0, 10)) && (!end || key <= end.slice(0, 10));
   });
 }
