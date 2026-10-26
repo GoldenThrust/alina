@@ -1,11 +1,14 @@
 import "dotenv/config";
 import postgres from "@prisma/orm-postgres/runtime";
+import { contractFromJson } from "@prisma/orm-postgres/static";
 
 import "temporal-polyfill/global";
 
 import service from "../../service.ts";
 import type { Contract } from "./contract.d.ts";
 import contractJson from "./contract.json" with { type: "json" };
+
+export const contract = contractFromJson<Contract>(contractJson);
 
 function loadComposerDatabase() {
   try {
@@ -18,12 +21,12 @@ function loadComposerDatabase() {
 export const db =
   loadComposerDatabase() ??
   (process.env.DATABASE_URL
-    ? postgres<Contract>({ contractJson, url: process.env.DATABASE_URL })
-    : postgres<Contract>({ contractJson }));
+    ? postgres({ contract, url: process.env.DATABASE_URL })
+    : postgres({ contract }));
 
 let connection: Promise<void> | undefined;
 
-export function connectDatabase(): Promise<void> {
+export function connectDatabase(): Promise<void> | undefined {
   connection ??= db.connect().then(() => undefined).catch((error: unknown) => {
     connection = undefined;
     throw error;
