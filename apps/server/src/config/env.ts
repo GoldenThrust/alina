@@ -16,8 +16,6 @@ function getEnv(key: string, defaultValue?: string): string {
   return value;
 }
 
-// console.log("Current working directory:", process.cwd(), __dirname, __filename);
-
 export const env = {
   NODE_ENV: getEnv("NODE_ENV", "development"),
   HOST: getEnv("HOST", "0.0.0.0"),

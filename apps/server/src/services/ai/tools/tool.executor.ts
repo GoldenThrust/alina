@@ -18,10 +18,10 @@ export class ToolExecutor {
     ): Promise<ToolResult> {
 
         const tool = this.registry.get(call.name);
-
-        console.log(`[ToolExecutor] executing tool ${call.name} with args:`, call.args);
+        
+        console.log(`[ToolExecutor] tool:`, tool);
+        console.log(`[ToolExecutor] executing tool: ${tool.name} ${call.name} with args:`, call.args);
         console.log(`[ToolExecutor] context:`, context);
-        console.log(`[ToolExecutor] tool:`, tool.name, tool.description);
 
         return await tool.execute(
             call.args,

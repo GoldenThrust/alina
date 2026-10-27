@@ -30,23 +30,29 @@ export const useRoutineStore = create<RoutineState>()((set) => ({
       }),
     })),
   removeRoutine: (routineId) =>
-    set((s) => ({
-      routines: removeOne(s.routines, routineId),
-      logs: removeMany(
-        s.logs,
-        selectAll(s.logs)
-          .filter((l) => l?.routineStep?.routineId === routineId)
-          .map((l) => l.id),
-      ),
-    })),
+    set((s) => {
+      const stepIds = new Set(
+        (s.routines.byId[routineId]?.steps ?? []).map((x) => x.id),
+      );
+      return {
+        routines: removeOne(s.routines, routineId),
+        logs: removeMany(
+          s.logs,
+          selectAll(s.logs)
+            .filter((l) => stepIds.has(l.routineStepId))
+            .map((l) => l.id),
+        ),
+      };
+    }),
   setAccepted: (routineId, accepted) =>
     set((s) => {
-      const recommendation = s.routines.byId[routineId].recommendation;
-
-      if (!recommendation) return s;
+      const routine = s.routines.byId[routineId];
+      if (!routine) return s;
       return {
         routines: patchOne(s.routines, routineId, {
-          recommendation: { ...recommendation, accepted },
+          recommendations: routine.recommendations.map((r) =>
+            r.type === "ROUTINE" ? { ...r, accepted } : r,
+          ),
         }),
       };
     }),

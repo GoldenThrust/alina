@@ -36,7 +36,6 @@ export const scanController = {
       let image: string | undefined;
       try {
         image = await fileManager.uploadFile(req, "image", "scans");
-        console.log("Image path:", image);
       } catch {}
       if (!image) throw new APIError("Scan image is required", 400);
 

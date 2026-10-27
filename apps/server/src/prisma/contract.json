@@ -1159,9 +1159,8 @@
               }
             },
             "relations": {
-              "recommendation": {
-                "cardinality": "1:1",
-                "nullable": true,
+              "recommendations": {
+                "cardinality": "1:N",
                 "on": {
                   "localFields": [
                     "id"
@@ -3198,9 +3197,7 @@
                 },
                 {
                   "index": {
-                    "unique": [
-                      "routineId"
-                    ]
+                    "name": "Recommendation_routineId_idx_fa038a10"
                   },
                   "onDelete": "cascade",
                   "source": {
@@ -3244,6 +3241,14 @@
               "indexes": [
                 {
                   "columns": [
+                    "routineId"
+                  ],
+                  "name": "Recommendation_routineId_idx_fa038a10",
+                  "prefix": "Recommendation_routineId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
                     "userId"
                   ],
                   "name": "Recommendation_userId_idx_a489d58a",
@@ -3260,11 +3265,6 @@
                 {
                   "columns": [
                     "productId"
-                  ]
-                },
-                {
-                  "columns": [
-                    "routineId"
                   ]
                 },
                 {
@@ -4221,7 +4221,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "544cf59d4152d88ffa807286bf2fc1d31015efe779afb3132fc7ef5a8817e344"
+    "storageHash": "af9bb8efe6ad27de7b384f21823414abf265f87ad88e823144084b96e8450817"
   },
   "execution": {
     "executionHash": "8ef08435230935997a505c5da7a8c25ca32c51966783fc5acc35bdde3b36675c",

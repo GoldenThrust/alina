@@ -24,7 +24,7 @@ import {
 import { useProduct } from "./useProduct";
 import { useRecommendations } from "./useRecommendations";
 import { useProductStore } from "../stores/product.store";
-import { acceptedRecommendation } from "../utils/recommendation";
+import { acceptedRecommendation, routineRecommendation } from "../utils/recommendation";
 import { addRecommendationToRoutine } from "../services/api/recommendation";
 import { useAuthStore } from "../stores";
 
@@ -290,7 +290,7 @@ export function useActiveRoutine() {
 
   const routine =
     routines.find((r) => r.id === selectedId) ??
-    routines.find((r) => r.recommendation) ??
+    routines.find((r) => acceptedRecommendation(r)) ??
     routines[0];
 
   /** Optimistic: flips immediately, rolls back if the server refuses. */
@@ -298,11 +298,8 @@ export function useActiveRoutine() {
     if (!routine || busy) return;
     const routineId = routine.id;
     const recStore = useRecommendationStore.getState();
-    const rec = routine.recommendation
-      ? recStore.recommendations.byId[routine.recommendation.id]
-      : undefined;
+    const rec = routine ? routineRecommendation(routine) : undefined;
     const flipRec = !!rec && !rec.accepted;
-
     if (!rec?.id) return;
 
     setBusy(true);

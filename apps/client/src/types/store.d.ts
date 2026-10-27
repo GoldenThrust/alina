@@ -151,7 +151,7 @@ interface Routine {
   title: string;
   createdAt: Date;
   steps: RoutineStep[];
-  recommendation: Recommendation | null;
+  recommendations: Recommendation[];
 }
 
 interface RoutineLog {

@@ -4,10 +4,6 @@ import { del, get, post } from "./api";
 type RecommendationDTO = Omit<Recommendation, "createdAt"> & {
   createdAt: string;
 };
-type RoutineDTO = Omit<Routine, "createdAt" | "recommendation"> & {
-  createdAt: string;
-  recommendation: RecommendationDTO | null;
-};
 
 type LogDTO = Omit<RoutineLog, "completedAt"> & { completedAt: string };
 const toLog = (dto: LogDTO): RoutineLog => ({ ...dto, completedAt: new Date(dto.completedAt) });
@@ -24,15 +20,6 @@ const toRecommendation = (
   createdAt: new Date(dto.createdAt),
 });
 
-const toRoutine = (dto: RoutineDTO): Routine => ({
-  ...dto,
-  createdAt: new Date(dto.createdAt),
-  steps: [...(dto.steps ?? [])].sort((a, b) => a.position - b.position),
-  recommendation: dto.recommendation
-    ? toRecommendation(dto.recommendation, dto.id)
-    : null,
-});
-
 export interface NewStepInput {
   period: RoutinePeriod;
   title: string;
@@ -41,6 +28,19 @@ export interface NewStepInput {
   recommendationId?: string;
 }
 
+type RoutineDTO = Omit<Routine, "createdAt" | "recommendations"> & {
+  createdAt: string;
+  recommendations: RecommendationDTO[];
+};
+
+const toRoutine = (dto: RoutineDTO): Routine => ({
+  ...dto,
+  createdAt: new Date(dto.createdAt),
+  steps: [...(dto.steps ?? [])].sort((a, b) => a.position - b.position),
+  recommendations: (dto.recommendations ?? []).map((r) =>
+    toRecommendation(r, dto.id),
+  ),
+});
 
 export async function createRoutine(title: string): Promise<Routine> {
   return toRoutine(await post<RoutineDTO>("/routines", { title }));
@@ -94,7 +94,7 @@ export async function getRoutines(
   return {
     routines,
     recommendations: routines.flatMap((r) =>
-      r.recommendation ? [r.recommendation] : [],
+      r.recommendations.length > 0 ? r.recommendations : [],
     ),
   };
 }

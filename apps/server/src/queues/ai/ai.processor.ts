@@ -14,7 +14,6 @@ const FLAT = { color: "#7b8092", bg: "#f3f3f7" };
 export async function processAI(job: any) {
   try {
     const { userId, scanId, input } = job.data as AIData;
-    console.log("Processing AI job:", job.data);
     logger.info("Processing AI job:", job.data);
 
     if (scanId) {
@@ -164,7 +163,6 @@ export async function processAI(job: any) {
     }
 
     logger.info("AI job processed successfully");
-    console.log("AI job processed successfully");
   } catch (error: any) {
     console.error("Error processing AI job:", error);
     logger.error("Error processing AI job:", error);

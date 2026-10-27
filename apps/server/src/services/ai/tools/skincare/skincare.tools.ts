@@ -321,6 +321,7 @@ export class RecommendRoutineTool extends SkincareTool<
       title: input.title,
       steps: input.steps,
     });
+  
     const recommendation = await this.repo.createRecommendation({
       userId,
       scanId: input.scanId,

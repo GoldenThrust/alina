@@ -107,7 +107,15 @@ export class GemmaAgent {
               outcome.success ? outcome.data : { error: outcome.error },
             ),
           };
-        } catch (error) {
+        } catch (error: any) {
+          console.error(
+            `[GemmaAgent] failed to execute call ${call.name}:`,
+            error,
+          );
+          logger.error(
+            `GemmaAgent failed to execute call ${call.name}:`,
+            error,
+          );
           return {
             type: "function_result",
             name: call.name,
@@ -178,15 +186,17 @@ export class GemmaAgent {
       );
       Websocket.sendNavigationSignal(userId, `/scan-result/${scanId}`);
 
-      await db.orm.public.SkinScan.where({ id: scanId }).update({
-        status: "COMPLETED",
-      });
+      if (lastText.trim()) {
+        await db.orm.public.SkinScan.where({ id: scanId }).update({
+          status: "COMPLETED",
+        });
 
-      await db.orm.public.Message.create({
-        userId,
-        content: lastText,
-        sender: "ALINA",
-      });
+        await db.orm.public.Message.create({
+          userId,
+          content: lastText,
+          sender: "ALINA",
+        });
+      }
 
       logger.info(`Gemma analysis completed successfully for user: ${userId}`);
 
@@ -216,14 +226,31 @@ export class GemmaAgent {
 
     Websocket.startStream(userId, sessionId);
 
+    console.log(`[GemmaAgent] start chat session ${sessionId}:`, {
+      previousId,
+      input: JSON.stringify(inputData),
+    });
+
     try {
       for (let turn = 0; turn < MAX_TURNS; turn++) {
+        // console.log(`[GemmaAgent] chat turn ${turn + 1}:`, {
+        //   previousId,
+        //   input: JSON.stringify(inputData),
+        // });
         const { interactionId, status, text, calls } = await this.streamData(
           userId,
           sessionId,
           inputData,
           previousId,
         );
+
+        console.log(`[GemmaAgent] chat turn ${turn + 1} result:`, {
+          interactionId,
+          status,
+          text,
+          fullText,
+          calls: JSON.stringify(calls),
+        });
 
         fullText += text;
         if (interactionId) previousId = interactionId;
@@ -239,17 +266,27 @@ export class GemmaAgent {
         inputData = await this.runCalls(calls, userId, interactionId);
       }
     } catch (error: any) {
+      console.error("Gemma chat failed for user:", userId, "Error:", error);
+      logger.error(`Gemma chat failed for user: ${userId}, Error:`, error);
       throw error;
     } finally {
+      console.log(
+        "Chat session ended for user:",
+        userId,
+        "Session ID:",
+        sessionId,
+      );
       Websocket.endStream(userId, sessionId);
     }
 
-    await this.remember(userId, previousId);
-    await db.orm.public.Message.create({
-      userId,
-      content: fullText,
-      sender: "ALINA",
-    });
+    if (fullText.trim()) {
+      await this.remember(userId, previousId);
+      await db.orm.public.Message.create({
+        userId,
+        content: fullText,
+        sender: "ALINA",
+      });
+    }
     return { text: fullText, id: previousId };
   }
 
@@ -259,6 +296,13 @@ export class GemmaAgent {
     input: unknown,
     previousId?: string,
   ): Promise<StreamOutcome> {
+    console.log(
+      `[GemmaAgent] streaming data for user ${userId}, session ${sessionId}:`,
+      {
+        previousId,
+        input: JSON.stringify(input),
+      },
+    );
     const stream: AsyncIterable<any> = (await this.gemma.stream({
       input,
       previous_interaction_id: previousId,
@@ -268,8 +312,10 @@ export class GemmaAgent {
     let status: string | null = null;
     let text = "";
     const pending = new Map<number, PendingCall>();
+    let completed = false;
 
     for await (const event of stream) {
+      console.log(`[GemmaAgent] stream event:`, event);
       switch (event.event_type) {
         case "interaction.created":
           interactionId = event.interaction.id;
@@ -299,6 +345,7 @@ export class GemmaAgent {
 
         case "interaction.completed":
           status = event.interaction.status;
+          completed = true;
           break;
 
         case "error":
@@ -307,6 +354,10 @@ export class GemmaAgent {
         default:
           break; // unknown event types: ignore (new ones may be added)
       }
+    }
+
+    if (!completed) {
+      throw new Error("STREAM_ENDED_EARLY");
     }
 
     const calls: FunctionCall[] = [...pending.values()].map((call) => ({

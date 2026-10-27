@@ -23,36 +23,12 @@ export function useSocketEvents() {
       }, 2000);
     }
 
-    // function onMessage({ message }: { message: string }) {
-    //   console.log("Message:", message);
-    // }
-
-    // function onStreamStart({ sessionId }: StreamPayload) {
-    //   console.log("Stream started:", sessionId);
-    // }
-
-    // function onStreamData(payload: StreamPayload) {
-    //   console.log("Stream data:", payload.data);
-    // }
-
-    // function onStreamEnd({ sessionId }: StreamPayload) {
-    //   console.log("Stream ended:", sessionId);
-    // }
-
     socket.on("notification", onNotification);
     socket.on("navigation", onNavigation);
-    // socket.on("message", onMessage);
-    // socket.on("stream:start", onStreamStart);
-    // socket.on("stream:data", onStreamData);
-    // socket.on("stream:end", onStreamEnd);
 
     return () => {
       socket.off("notification", onNotification);
       socket.off("navigation", onNavigation);
-      //   socket.off("message", onMessage);
-      //   socket.off("stream:start", onStreamStart);
-      //   socket.off("stream:data", onStreamData);
-      //   socket.off("stream:end", onStreamEnd);
     };
   }, []);
 }

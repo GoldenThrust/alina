@@ -240,7 +240,6 @@ export const useSortedAnalysisDeltaPercent = () => {
 };
 
 useScanStore.subscribe((state) => {
-  console.log("Auth store changed:", state.scans);
   state.scans.ids.forEach((scanId) => {
     const scan = state.scans.byId[scanId];
     if (scan && scan.image && !scan.image.includes("http")) {

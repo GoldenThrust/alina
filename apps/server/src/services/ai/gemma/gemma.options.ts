@@ -7,7 +7,7 @@ import { analyserTools, streamTools } from "./gemma.tools";
 const baseOptions = {
   model: "gemma-4-31b-it",
   generation_config: {
-    thinking_level: "high",
+    // thinking_level: "high",
     tool_choice: "auto",
   },
 } as const;

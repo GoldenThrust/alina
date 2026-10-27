@@ -48,7 +48,6 @@ export function useSkinScan() {
       }
       setStatus("ready");
     } catch (err) {
-      console.log(err);
       if (isAbort(err)) return;
       setStatus("loadError");
     }
@@ -96,7 +95,6 @@ export function useSkinScan() {
       coveredFrom.current = requested;
       setHistoryStatus("idle");
     } catch (err) {
-      console.log(err);
       if (isAbort(err)) return;
       setHistoryStatus("error");
     } finally {

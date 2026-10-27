@@ -163,8 +163,6 @@ export default function ScanResult() {
     return index > 0 ? sorted[index - 2] : null;
   }, [scan, ids, byId]);
 
-  console.log("previous", previous);
-
   /** Radar range: the scan before this one -> this scan, by createdAt. */
   const range = useMemo(() => {
     if (!scan) return null;
@@ -173,7 +171,6 @@ export default function ScanResult() {
       end: new Date(scan.createdAt).toISOString(),
     };
   }, [scan, previous]);
-  console.log(range);
 
 
   const metrics = useMemo(

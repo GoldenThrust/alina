@@ -23,7 +23,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'544cf59d4152d88ffa807286bf2fc1d31015efe779afb3132fc7ef5a8817e344'>;
+  StorageHashBase<'af9bb8efe6ad27de7b384f21823414abf265f87ad88e823144084b96e8450817'>;
 export type ExecutionHash =
   ExecutionHashBase<'8ef08435230935997a505c5da7a8c25ca32c51966783fc5acc35bdde3b36675c'>;
 export type ProfileHash =
@@ -470,10 +470,10 @@ export namespace Models {
     id: FieldOutputTypes['public']['Routine']['id'];
     title: FieldOutputTypes['public']['Routine']['title'];
     userId: FieldOutputTypes['public']['Routine']['userId'];
-    recommendation: public_Recommendation | null;
+    recommendations: public_Recommendation[];
     steps: public_RoutineStep[];
     user: public_User;
-    readonly [RelationKeys]?: 'recommendation' | 'steps' | 'user';
+    readonly [RelationKeys]?: 'recommendations' | 'steps' | 'user';
   };
   export type public_RoutineLog = {
     completedAt: FieldOutputTypes['public']['RoutineLog']['completedAt'];
@@ -1176,10 +1176,15 @@ type ContractBase = Omit<
               primaryKey: { readonly columns: readonly ['id'] };
               uniques: readonly [
                 { readonly columns: readonly ['productId'] },
-                { readonly columns: readonly ['routineId'] },
                 { readonly columns: readonly ['routineStepId'] },
               ];
               indexes: readonly [
+                {
+                  readonly name: 'Recommendation_routineId_idx_fa038a10';
+                  readonly prefix: 'Recommendation_routineId_idx';
+                  readonly columns: readonly ['routineId'];
+                  readonly unique: false;
+                },
                 {
                   readonly name: 'Recommendation_userId_idx_a489d58a';
                   readonly prefix: 'Recommendation_userId_idx';
@@ -2602,13 +2607,12 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
-              readonly recommendation: {
+              readonly recommendations: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'Recommendation';
                 };
-                readonly cardinality: '1:1';
-                readonly nullable: true;
+                readonly cardinality: '1:N';
                 readonly on: {
                   readonly localFields: readonly ['id'];
                   readonly targetFields: readonly ['routineId'];

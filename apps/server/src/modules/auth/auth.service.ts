@@ -408,8 +408,6 @@ export async function updateProfile(jwt: JwtPayload, payload: any) {
     ),
   );
 
-  console.log("updateProfile data", data, payload);
-
   const user = await db.orm.public.User.where({ id: jwt.sub }).update(data);
 
   if (!user) {

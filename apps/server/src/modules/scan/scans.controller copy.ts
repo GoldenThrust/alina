@@ -12,7 +12,6 @@ export async function scanAnalysisHandler(
 
   try {
     const imagePath = await fileManager.uploadFile(req, "image", "scans");
-    // console.log("File uploaded successfully:", imagePath);
 
     const user = await db.orm.public.User.where({
       id: payload.sub,

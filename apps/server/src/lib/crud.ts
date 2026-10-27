@@ -25,7 +25,6 @@ export function handleError(
   error: unknown,
   fallback: string,
 ) {
-  // console.log("handleError", error);
   if (error instanceof APIError) {
     return res.status(error.statusCode).send({ message: error.message });
   }

@@ -1,5 +1,5 @@
-export function acceptedRecommendation(r: Routine | Product | undefined): boolean {
-    console.log("Checking accepted recommendation for:", r?.recommendation);
-    if (!r) return true;
-    return r.recommendation?.accepted ?? true;
-}
+export const routineRecommendation = (routine?: Routine) =>
+  routine?.recommendations.find((r) => r.type === "ROUTINE");
+
+export const acceptedRecommendation = (routine?: Routine): boolean =>
+  !!routineRecommendation(routine)?.accepted;

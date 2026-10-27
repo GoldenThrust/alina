@@ -143,7 +143,7 @@ export class SkincareRepository {
     if (opts.acceptedOnly) {
       const rows = await orm()
         .Routine.where({ userId })
-        .where((r: any) => r.recommendation.some({ accepted: true }))
+        .where((r: any) => r.recommendations.some({ accepted: true }))
         .include("steps", (steps: any) =>
           steps.orderBy((s: any) => s.position.asc()),
         )
@@ -231,12 +231,15 @@ export class SkincareRepository {
   ): Promise<any[]> {
     let q = orm().RoutineLog.where({ userId });
 
+    let stepIds: Set<string> | null = null;
     if (opts.routineId) {
-      q = q.where((r: any) =>
-        r.routineStep.some({ routineId: opts.routineId }),
-      );
+      const steps = await orm()
+        .RoutineStep.where({ routineId: opts.routineId })
+        .all();
+      stepIds = new Set(steps.map((s: any) => s.id));
     }
-    const logs: any[] = await q
+    const logs: any[] = await orm()
+      .RoutineLog.where({ userId })
       .orderBy((l: any) => l.completedAt.desc())
       .limit(opts.limit)
       .all();
@@ -303,7 +306,20 @@ export class SkincareRepository {
     explanation: string;
     productId?: string;
     routineId?: string;
+    routineStepId?: string;
   }) {
+    if (data.productId) {
+      const existing = await orm()
+        .Recommendation.where({ productId: data.productId })
+        .first();
+      if (existing) return isoDates(existing);
+    }
+    if (data.routineStepId) {
+      const existing = await orm()
+        .Recommendation.where({ routineStepId: data.routineStepId })
+        .first();
+      if (existing) return isoDates(existing);
+    }
     return isoDates(
       await orm().Recommendation.create({ ...data, accepted: false }),
     );
@@ -355,7 +371,6 @@ export class SkincareRepository {
     };
   }
 
-  
   async tasteProfile(userId: string): Promise<TasteProfileView> {
     const [pref, user] = await Promise.all([
       orm().Preference.where({ userId }).first(),

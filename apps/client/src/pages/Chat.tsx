@@ -1,6 +1,18 @@
 import { useRef, type SubmitEventHandler } from "react";
-import { AnimatePresence, MotionConfig, motion, type Variants } from "motion/react";
-import { ArrowDown, ArrowUp, Info, Loader2, Sparkles, WifiOff } from "lucide-react";
+import {
+  AnimatePresence,
+  MotionConfig,
+  motion,
+  type Variants,
+} from "motion/react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Info,
+  Loader2,
+  Sparkles,
+  WifiOff,
+} from "lucide-react";
 import PageHeading from "../components/PageHeading";
 import { useSocket } from "../context/SocketContext"; // wherever your provider lives
 import { useChatHistory } from "../hooks/useChatHistory";
@@ -9,6 +21,7 @@ import { useSendMessage } from "../hooks/useSendMessage";
 import { useAuthStore } from "../stores";
 import { useChatStore, useConversation } from "../stores/chat.store";
 import { EASE, container, item as fadeUp } from "../utils/motion";
+import Markdown from "../components/Markdown";
 
 /* ---------- Motion presets ---------- */
 
@@ -38,7 +51,8 @@ export default function Chat() {
   const awaitingReply = useChatStore((s) => s.awaitingReply);
   const error = useChatStore((s) => s.error);
 
-  const { initialized, hasMore, loadingOlder, loadOlder, retry } = useChatHistory();
+  const { initialized, hasMore, loadingOlder, loadOlder, retry } =
+    useChatHistory();
   const send = useSendMessage(user?.id ?? "You");
   const { listRef, onScroll, atBottom, scrollToBottom } = useChatScroll({
     messages,
@@ -52,13 +66,20 @@ export default function Chat() {
   // While a reply streams, the empty bubble is hidden and the typing dots stand in for it
   const last = messages.at(-1);
   const isStreaming = !!last?.streaming;
-  const visibleMessages = last?.streaming && !last.content ? messages.slice(0, -1) : messages;
-  const showTyping = awaitingReply && !(last && last.sender !== "USER" && last.content.length > 0);
+  const visibleMessages =
+    last?.streaming && !last.content ? messages.slice(0, -1) : messages;
+  const showTyping =
+    awaitingReply &&
+    !(last && last.sender !== "USER" && last.content.length > 0);
 
   const isEmpty = initialized && visibleMessages.length === 0 && !showTyping;
   const canSend = !!draft.trim() && !awaitingReply && connected;
   const showChips = initialized && !isEmpty && !awaitingReply && !draft.trim();
-  const statusText = !connected ? "Connecting…" : awaitingReply ? "Typing…" : "Online";
+  const statusText = !connected
+    ? "Connecting…"
+    : awaitingReply
+      ? "Typing…"
+      : "Online";
 
   const sendMessage: SubmitEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
@@ -72,7 +93,12 @@ export default function Chat() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <motion.div className="page-content chat-page" variants={container} initial="hidden" animate="show">
+      <motion.div
+        className="page-content chat-page"
+        variants={container}
+        initial="hidden"
+        animate="show"
+      >
         <motion.div variants={fadeUp}>
           <PageHeading
             eyebrow="A space to ask"
@@ -91,14 +117,20 @@ export default function Chat() {
                   aria-hidden="true"
                   initial={{ opacity: 0.6, scale: 1 }}
                   animate={{ opacity: 0, scale: 1.5 }}
-                  transition={{ duration: 1.4, repeat: Infinity, ease: "easeOut" }}
+                  transition={{
+                    duration: 1.4,
+                    repeat: Infinity,
+                    ease: "easeOut",
+                  }}
                 />
               ) : null}
               <motion.span
                 className="ch-avatar"
                 animate={awaitingReply ? { scale: [1, 1.07, 1] } : { scale: 1 }}
                 transition={
-                  awaitingReply ? { duration: 1.2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }
+                  awaitingReply
+                    ? { duration: 1.2, repeat: Infinity, ease: "easeInOut" }
+                    : { duration: 0.2 }
                 }
               >
                 <img src={ALINA} alt="Alina" />
@@ -107,7 +139,9 @@ export default function Chat() {
 
             <span className="ch-title">
               <strong>Alina</strong>
-              <small className={`ch-status ${connected ? "online" : "offline"}`}>
+              <small
+                className={`ch-status ${connected ? "online" : "offline"}`}
+              >
                 <i />
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.span
@@ -141,7 +175,8 @@ export default function Chat() {
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <Loader2 size={13} className="spin" /> Loading earlier messages…
+                  <Loader2 size={13} className="spin" /> Loading earlier
+                  messages…
                 </motion.div>
               ) : null}
             </AnimatePresence>
@@ -162,20 +197,32 @@ export default function Chat() {
               {!initialized && error ? (
                 <div className="ch-placeholder">
                   <p>{error}</p>
-                  <button className="button button-secondary" type="button" onClick={retry}>
+                  <button
+                    className="button button-secondary"
+                    type="button"
+                    onClick={retry}
+                  >
                     Try again
                   </button>
                 </div>
               ) : null}
 
               {isEmpty ? (
-                <motion.div className="ch-empty" variants={stagger} initial="hidden" animate="show">
+                <motion.div
+                  className="ch-empty"
+                  variants={stagger}
+                  initial="hidden"
+                  animate="show"
+                >
                   <motion.span className="ch-empty-icon" variants={pop}>
                     <Sparkles size={20} />
                   </motion.span>
-                  <motion.strong variants={pop}>Start the conversation</motion.strong>
+                  <motion.strong variants={pop}>
+                    Start the conversation
+                  </motion.strong>
                   <motion.small variants={pop}>
-                    Ask Alina about your latest check-in, or begin with one of these.
+                    Ask Alina about your latest check-in, or begin with one of
+                    these.
                   </motion.small>
                   <div className="ch-starters">
                     {SUGGESTIONS.map((question) => (
@@ -206,23 +253,36 @@ export default function Chat() {
                 // Only messages created in this session animate in; loaded history appears instantly
                 const isNew = message.pending || live;
                 // Consecutive messages from the same sender are grouped
-                const grouped = visibleMessages[index - 1]?.sender === message.sender;
+                const grouped =
+                  visibleMessages[index - 1]?.sender === message.sender;
 
                 return (
                   <motion.div
                     className={`ch-msg ${fromUser ? "you" : "alina"}${grouped ? " grouped" : ""}${message.pending ? " pending" : ""}${live ? " streaming" : ""}`}
                     key={message.id}
-                    style={{ transformOrigin: fromUser ? "100% 100%" : "0% 100%" }}
-                    initial={isNew ? { opacity: 0, y: 10, x: fromUser ? 14 : -14, scale: 0.97 } : false}
+                    style={{
+                      transformOrigin: fromUser ? "100% 100%" : "0% 100%",
+                    }}
+                    initial={
+                      isNew
+                        ? {
+                            opacity: 0,
+                            y: 10,
+                            x: fromUser ? 14 : -14,
+                            scale: 0.97,
+                          }
+                        : false
+                    }
                     animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   >
-                    {!fromUser ? (
-                      <span className={`ch-msg-avatar${grouped ? " hidden" : ""}`}>
-                        {grouped ? null : <img src={ALINA} alt="Alina" />}
-                      </span>
-                    ) : null}
-                    <p>{message.content}</p>
+                    {fromUser ? (
+                      <p>{message.content}</p>
+                    ) : (
+                      <div className="ch-md">
+                        <Markdown>{message.content}</Markdown>
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}
@@ -246,7 +306,12 @@ export default function Chat() {
                         <motion.span
                           key={i}
                           animate={{ y: [0, -4, 0], opacity: [0.45, 1, 0.45] }}
-                          transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+                          transition={{
+                            duration: 0.9,
+                            repeat: Infinity,
+                            delay: i * 0.15,
+                            ease: "easeInOut",
+                          }}
                         />
                       ))}
                     </p>
@@ -271,7 +336,8 @@ export default function Chat() {
                     whileTap={{ scale: 0.95 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <ArrowDown size={14} /> {isStreaming ? "Alina is replying" : "Jump to latest"}
+                    <ArrowDown size={14} />{" "}
+                    {isStreaming ? "Alina is replying" : "Jump to latest"}
                   </motion.button>
                 ) : null}
               </AnimatePresence>
@@ -351,7 +417,11 @@ export default function Chat() {
                     exit={{ opacity: 0, scale: 0.5, rotate: 45 }}
                     transition={{ duration: 0.15 }}
                   >
-                    {awaitingReply ? <Loader2 size={16} className="spin" /> : <ArrowUp size={17} />}
+                    {awaitingReply ? (
+                      <Loader2 size={16} className="spin" />
+                    ) : (
+                      <ArrowUp size={17} />
+                    )}
                   </motion.span>
                 </AnimatePresence>
               </motion.button>
@@ -367,7 +437,8 @@ export default function Chat() {
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.25, ease: EASE }}
                 >
-                  <WifiOff size={12} /> Reconnecting… you can send once you’re back online.
+                  <WifiOff size={12} /> Reconnecting… you can send once you’re
+                  back online.
                 </motion.p>
               ) : null}
             </AnimatePresence>

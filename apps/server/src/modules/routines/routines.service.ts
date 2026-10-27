@@ -27,11 +27,11 @@ export const routineService = {
   async list(userId: string, query: ListQuery) {
     const { page = 1, limit = 100, cursor } = query;
 
-    // console.log("list", { userId, query });
-
     const rows = await ORM.Routine()
-      .include("recommendation")
-      .include("steps", (steps) => steps.include("recommendation"))
+      .include("recommendations", (r: any) =>
+        r.where((rec: any) => rec.type.eq("ROUTINE")),
+      )
+      .include("steps", (steps: any) => steps.include("recommendation"))
       .where({
         ...pick(query, ["period", "title", "accepted"]),
         userId,
@@ -96,7 +96,7 @@ export const stepService = {
     if (position === undefined) {
       const steps = await ORM.Step().where({ routineId }).all();
       position = steps.length
-        ? Math.max(...steps.map((s) => s.position)) + 1
+        ? Math.max(...steps.map((s: any) => s.position)) + 1
         : 0;
     }
 
@@ -154,12 +154,12 @@ export const routineLogService = {
     let q = ORM.RoutineLog().include("routineStep").where({ userId });
 
     if (routineId) {
-      q = q.where((r) => r.routineStep.some({ routineId }));
+      q = q.where((r: any) => r.routineStep.some({ routineId }));
     }
 
     const items = await q
-      .where((r) => r.completedAt.isNotNull())
-      .where((r) =>
+      .where((r: any) => r.completedAt.isNotNull())
+      .where((r: any) =>
         r.completedAt.gte(
           Temporal.Instant.from(new Date(startDate).toISOString()),
         ),
@@ -176,7 +176,7 @@ export const routineLogService = {
     const { routineStepId, completedAt } = payload;
     const row = await ORM.Step()
       .where({ id: routineStepId })
-      .where((s) => s.routine.some({ userId }))
+      .where((s: any) => s.routine.some({ userId }))
       .first();
     if (!row) throw new APIError(`Routine step not found`, 404);
 

@@ -411,8 +411,6 @@ export async function updateProfileHandler(
       avatar: imagePath,
     };
 
-    console.log("updateProfileHandler payload", payload);
-
     const response = await updateProfile(user, payload);
 
     return res.send(response);

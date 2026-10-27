@@ -136,7 +136,6 @@ export async function logout() {
 // Shared request interceptor: attaches the access token if signed in.
 const attachAccessToken = (config: InternalAxiosRequestConfig) => {
   const { session } = useAuthStore.getState();
-  // console.log(session);
 
   if (
     session?.accessToken &&
@@ -225,7 +224,6 @@ export type AuthResponse = {
 
 async function submitAuth(path: 'login' | 'register', payload: AuthPayload): Promise<AuthResponse> {
   try {
-    // console.log(`Submitting auth request to /auth/${path} with payload:`, payload);
     const response = await axios.post(`/auth/${path}`, payload);
 
     const data = response.data as AuthResponse | undefined;

@@ -165,7 +165,7 @@ model Routine {
 
   steps         RoutineStep[]
 
-  recommendation Recommendation?
+  recommendations Recommendation[]
 }
 
 model RoutineStep {
@@ -247,7 +247,7 @@ model Recommendation {
 
   product         Product? @relation(fields:[productId], references:[id], onDelete: Cascade)
 
-  routineId       String?  @unique
+  routineId       String?
 
   routine         Routine? @relation(fields:[routineId], references:[id], onDelete: Cascade)
 

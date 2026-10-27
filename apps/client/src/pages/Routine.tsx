@@ -40,7 +40,7 @@ import {
   useSuggestionSources,
 } from "../hooks/useRoutine";
 import { EASE, container, item as fadeUp } from "../utils/motion";
-import { acceptedRecommendation } from "../utils/recommendation";
+import { acceptedRecommendation, routineRecommendation } from "../utils/recommendation";
 
 const PERIOD_META: Record<
   RoutinePeriod,
@@ -968,8 +968,8 @@ export default function Routine() {
                 <Sparkles size={16} />
                 <p>
                   <strong>This routine is a suggestion.</strong>{" "}
-                  {routine.recommendation?.explanation
-                    ? `${routine.recommendation.explanation} `
+                  {routineRecommendation(routine)?.explanation
+                    ? `${routineRecommendation(routine)?.explanation} `
                     : null}
                   Take a look at the steps below. Accept it to start ticking
                   them off, editing steps and tracking your progress.

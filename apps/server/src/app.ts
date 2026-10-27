@@ -192,7 +192,6 @@ export function buildApp() {
   //   await db.close();
   // });
 
-  console.log(app.printRoutes());
   const clientRoot = path.join(__dirname, "../client/dist");
 
   app.register(fastifyStatic, {
@@ -276,13 +275,6 @@ export function buildApp() {
   app.get("/*", async (req, reply) => {
     return reply.sendFile("index.html");
   });
-
-  // const uploadRoot = path.resolve(env.UPLOAD_DIR);
-
-  // console.log("cwd:", process.cwd());
-  // console.log("clientRoot:", clientRoot, existsSync(clientRoot));
-  // console.log("index.html:", existsSync(path.join(clientRoot, "index.html")));
-  // console.log("uploadRoot:", uploadRoot, existsSync(uploadRoot));
 
   return app;
 }
