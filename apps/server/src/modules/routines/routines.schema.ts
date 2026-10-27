@@ -44,3 +44,5 @@ export const StepParams = z.object({
   routineId: z.uuid(),
   id: z.uuid(),
 });
+
+export const ReorderStepsBody = z.array(z.object({ id: z.uuid(), position: z.number().int().min(0) }));

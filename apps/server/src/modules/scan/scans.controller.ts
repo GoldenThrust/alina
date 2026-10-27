@@ -9,7 +9,9 @@ import { readFile } from "node:fs/promises";
 
 /* ---------- SkinScan: create needs an image upload ---------- */
 export const scanController = {
-  ...createOwnedHandlers(S.scanService as any, "scan", ["analysis"], { status: "COMPLETED" }),
+  ...createOwnedHandlers(S.scanService as any, "scan", ["analysis"], {
+    status: "COMPLETED",
+  }),
   firstAndLast: handle(
     "Failed to fetch first and last scan",
     async (req: any) => {
@@ -38,8 +40,6 @@ export const scanController = {
         image = await fileManager.uploadFile(req, "image", "scans");
       } catch {}
       if (!image) throw new APIError("Scan image is required", 400);
-
-
 
       return S.scanService.create(userId, { image });
       // return "Testing";

@@ -1,4 +1,4 @@
-import { del, get, post } from "./api";
+import { del, get, post, put } from "./api";
 
 
 type RecommendationDTO = Omit<Recommendation, "createdAt"> & {
@@ -72,7 +72,7 @@ export async function reorderRoutineSteps(
   routineId: string,
   steps: { id: string; position: number }[],
 ): Promise<void> {
-  await post(`/routines/${routineId}/steps/reorder`, { steps });
+  await put(`/routines/${routineId}/steps/reorder`, steps);
 }
 
 

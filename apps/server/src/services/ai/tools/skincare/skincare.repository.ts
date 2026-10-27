@@ -1,5 +1,6 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { db } from "../../../../prisma/db";
+import { type DateRange, toInstant } from "../../../../common/utils/date";
 
 export type RoutinePeriod =
   "MORNING" | "AFTERNOON" | "EVENING" | "NIGHT" | "HABIT";
@@ -13,7 +14,6 @@ export type ProductCategory =
   | "TREATMENT"
   | "OTHER";
 
-// db.orm.public;
 export type RecommendationType =
   "PRODUCT" | "ROUTINE" | "HABIT" | "ROUTINE_STEP";
 export type Sender = "USER" | "ALINA";
@@ -48,6 +48,21 @@ export interface TasteProfileView {
 
 const orm = () => db.orm.public;
 
+/* ------------------------- date range filter ------------------------- */
+
+/**
+ * The only place that touches the ORM's comparison syntax.
+ * ASSUMPTION: a column on the callback form exposes gte / lte and accepts a
+ * Temporal.Instant. If your ORM wants its own Temporal type or a string, convert
+ * here (for example range.from.toString()).
+ */
+const withRange = (query: any, field: string, range: DateRange = {}) => {
+  let out = query;
+  if (range.from) out = out.where((m: any) => m[field].gte(range.from));
+  if (range.to) out = out.where((m: any) => m[field].lte(range.to));
+  return out;
+};
+
 /* ------------------------- date serialization ------------------------- */
 
 const DATE_KEYS = new Set(["createdAt", "completedAt"]);
@@ -59,41 +74,20 @@ const isTemporal = (value: unknown): boolean =>
   /^\[object Temporal\./.test(Object.prototype.toString.call(value));
 
 /**
- * Converts a Temporal value, Date, epoch number or ISO string to a Temporal.Instant.
- * Going through the ISO string keeps this safe when the ORM's Temporal and the
- * polyfill are different implementations. Returns null if the value is unusable.
- */
-const toInstant = (value: unknown): Temporal.Instant | null => {
-  if (value === null || value === undefined) return null;
-  try {
-    if (value instanceof Date) {
-      return Temporal.Instant.fromEpochMilliseconds(value.getTime());
-    }
-    if (typeof value === "number") {
-      return Temporal.Instant.fromEpochMilliseconds(value);
-    }
-    return Temporal.Instant.from(String(value));
-  } catch {
-    return null;
-  }
-};
-
-/**
- * The database returns Temporal.Instant. Convert it to a JS Date and then to an
- * ISO string: new Date(instant.epochMilliseconds).toISOString().
+ * The database returns Temporal.Instant. Output is the instant's ISO string.
  * null/undefined and unusable values pass through.
  */
 const toIso = (value: unknown): unknown => {
   if (value === null || value === undefined) return value;
   const instant = toInstant(value);
-  return instant ? new Date(instant.epochMilliseconds).toISOString() : value;
+  return instant ? instant.toString() : value;
 };
 
 /**
  * Walks rows (including nested includes such as steps, product, routine,
- * routineStep, analysis) and converts every createdAt / completedAt to an
- * ISO string. Any other Temporal value is converted too, because it cannot
- * be copied with Object.entries. Call it on results only.
+ * routineStep, recommendations, analysis) and converts every createdAt /
+ * completedAt to an ISO string. Any other Temporal value is converted too,
+ * because it cannot be copied with Object.entries. Call it on results only.
  */
 function isoDates<T>(value: T): T {
   if (Array.isArray(value)) return value.map(isoDates) as unknown as T;
@@ -114,9 +108,10 @@ export class SkincareRepository {
 
   async scans(
     userId: string,
-    opts: { limit: number; withAnalysis?: boolean },
+    opts: { limit: number; withAnalysis?: boolean; range?: DateRange },
   ): Promise<any[]> {
-    let query = orm().SkinScan.where({ userId, status: "COMPLETED" });
+    let query: any = orm().SkinScan.where({ userId, status: "COMPLETED" });
+    query = withRange(query, "createdAt", opts.range);
     if (opts.withAnalysis) query = query.include("analysis");
     const rows = await query
       .orderBy((s: any) => s.createdAt.desc())
@@ -138,24 +133,23 @@ export class SkincareRepository {
 
   async routines(
     userId: string,
-    opts: { acceptedOnly: boolean },
+    opts: { acceptedOnly: boolean; range?: DateRange },
   ): Promise<any[]> {
+    let query: any = orm().Routine.where({ userId });
     if (opts.acceptedOnly) {
-      const rows = await orm()
-        .Routine.where({ userId })
-        .where((r: any) => r.recommendations.some({ accepted: true }))
-        .include("steps", (steps: any) =>
-          steps.orderBy((s: any) => s.position.asc()),
-        )
-        .orderBy((r: any) => r.createdAt.desc())
-        .all();
-      return isoDates(rows);
+      // Only the ROUTINE recommendation counts. PRODUCT / HABIT / ROUTINE_STEP
+      // recommendations share the routineId and must not mark it accepted.
+      query = query.where((r: any) =>
+        r.recommendations.some({ type: "ROUTINE", accepted: true }),
+      );
     }
-    const rows = await orm()
-      .Routine.where({ userId })
+    query = withRange(query, "createdAt", opts.range);
+
+    const rows = await query
       .include("steps", (steps: any) =>
         steps.orderBy((s: any) => s.position.asc()),
       )
+      .include("recommendations")
       .orderBy((r: any) => r.createdAt.desc())
       .all();
     return isoDates(rows);
@@ -167,7 +161,14 @@ export class SkincareRepository {
       .include("steps", (steps: any) =>
         steps.orderBy((s: any) => s.position.asc()),
       )
+      .include("recommendations")
       .first();
+    return routine ? isoDates(routine) : null;
+  }
+
+  /** Ownership check: the routine only if it belongs to this user. */
+  async findRoutine(userId: string, routineId: string): Promise<any | null> {
+    const routine = await orm().Routine.where({ id: routineId, userId }).first();
     return routine ? isoDates(routine) : null;
   }
 
@@ -201,59 +202,64 @@ export class SkincareRepository {
     period: RoutinePeriod;
     title: string;
     instruction: string;
+    position?: number;
   }) {
     const routine = await orm()
-      .Routine.where({
-        id: data.routineId,
-      })
+      .Routine.where({ id: data.routineId })
       .first();
     if (!routine) throw new Error("Routine not found");
 
-    const stepCount = (
-      await orm()
+    // max + 1 rather than count + 1, so positions stay unique after deletions.
+    let position = data.position;
+    if (position === undefined) {
+      const existing: any[] = await orm()
         .RoutineStep.where({ routineId: data.routineId })
-        .aggregate((s: any) => ({ total: s.count() }))
-    ).total;
+        .all();
+      position =
+        existing.reduce((max, s) => Math.max(max, Number(s.position) || 0), 0) +
+        1;
+    }
+
     const step = await orm().RoutineStep.create({
       routineId: data.routineId,
       period: data.period,
       title: data.title,
       instruction: data.instruction,
-      position: stepCount + 1,
+      position,
     });
 
     return isoDates(step);
   }
 
+  /* ------------------------- routine logs ------------------------- */
+
   async routineLogs(
     userId: string,
-    opts: { routineId?: string; since: Date; limit: number },
+    opts: { routineId?: string; range?: DateRange; limit: number },
   ): Promise<any[]> {
-    let q = orm().RoutineLog.where({ userId });
-
     let stepIds: Set<string> | null = null;
     if (opts.routineId) {
-      const steps = await orm()
+      const steps: any[] = await orm()
         .RoutineStep.where({ routineId: opts.routineId })
         .all();
-      stepIds = new Set(steps.map((s: any) => s.id));
+      stepIds = new Set(steps.map((s) => s.id));
+      if (!stepIds.size) return [];
     }
-    const logs: any[] = await orm()
-      .RoutineLog.where({ userId })
+
+    let query: any = orm().RoutineLog.where({ userId });
+    query = withRange(query, "completedAt", opts.range);
+
+    let logs: any[] = await query
       .orderBy((l: any) => l.completedAt.desc())
       .limit(opts.limit)
       .all();
 
-    // Filter on the raw dates first, then serialize.
-    const since = Temporal.Instant.fromEpochMilliseconds(opts.since.getTime());
-    const recent = logs.filter((l) => {
-      const completedAt = toInstant(l.completedAt);
-      return (
-        completedAt !== null &&
-        Temporal.Instant.compare(completedAt, since) >= 0
-      );
-    });
-    return isoDates(recent);
+    // RoutineLog.routineStep is a to-one relation, so filter by step id here.
+    // This runs after `limit`; on a busy account a routine filter can return
+    // fewer rows than exist. Move it into the query if your ORM has an `in` filter.
+    if (stepIds) logs = logs.filter((l) => stepIds!.has(l.routineStepId));
+
+    return isoDates(logs);
   }
 
   /* ------------------------- recommendations & products ------------------------- */
@@ -264,14 +270,17 @@ export class SkincareRepository {
       type?: RecommendationType;
       accepted?: boolean;
       limit: number;
+      range?: DateRange;
     },
   ): Promise<any[]> {
     const where: Record<string, unknown> = { userId };
     if (opts.type) where.type = opts.type;
     if (opts.accepted !== undefined) where.accepted = opts.accepted;
 
-    const recs = await orm()
-      .Recommendation.where(where)
+    let query: any = orm().Recommendation.where(where);
+    query = withRange(query, "createdAt", opts.range);
+
+    const recs = await query
       .include("product")
       .include("routine")
       .include("routineStep")
@@ -292,8 +301,14 @@ export class SkincareRepository {
     price?: number;
     affiliateUrl?: string;
   }) {
+    // Scoped to the user: Product.productId on Recommendation is @unique, so a
+    // product row must never be shared between users.
     const existing = await orm()
-      .Product.where({ name: data.name, brand: data.brand })
+      .Product.where({
+        userId: data.userId,
+        name: data.name,
+        brand: data.brand,
+      })
       .first();
     if (existing) return isoDates(existing);
     return isoDates(await orm().Product.create(data));
@@ -307,7 +322,9 @@ export class SkincareRepository {
     productId?: string;
     routineId?: string;
     routineStepId?: string;
+    accepted?: boolean;
   }) {
+    // productId and routineStepId are @unique: reuse the existing row.
     if (data.productId) {
       const existing = await orm()
         .Recommendation.where({ productId: data.productId })
@@ -320,17 +337,21 @@ export class SkincareRepository {
         .first();
       if (existing) return isoDates(existing);
     }
-    return isoDates(
-      await orm().Recommendation.create({ ...data, accepted: false }),
-    );
+    const { accepted = false, ...rest } = data;
+    return isoDates(await orm().Recommendation.create({ ...rest, accepted }));
   }
 
   /* ------------------------- messages & interaction ------------------------- */
 
   /** Latest messages for the user, oldest first. Requires `userId` on Message. */
-  async messages(userId: string, limit: number): Promise<any[]> {
-    const rows: any[] = await orm()
-      .Message.where({ userId })
+  async messages(
+    userId: string,
+    limit: number,
+    range: DateRange = {},
+  ): Promise<any[]> {
+    let query: any = orm().Message.where({ userId });
+    query = withRange(query, "createdAt", range);
+    const rows: any[] = await query
       .orderBy((m: any) => m.createdAt.desc())
       .limit(limit)
       .all();
@@ -381,7 +402,8 @@ export class SkincareRepository {
     let ageBand: TasteProfileView["ageBand"];
     if (dob) {
       const age = Math.floor(
-        (Date.now() - dob.epochMilliseconds) / (365.25 * 24 * 3600 * 1000),
+        (Temporal.Now.instant().epochMilliseconds - dob.epochMilliseconds) /
+          (365.25 * 24 * 3600 * 1000),
       );
       if (age >= 13 && age <= 120) {
         ageBand =

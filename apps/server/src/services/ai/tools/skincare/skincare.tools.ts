@@ -1,11 +1,27 @@
+import { Temporal } from "@js-temporal/polyfill";
 import { z } from "zod";
 import { BaseTool } from "../base.tool";
 import type { ToolContext } from "../tool";
 import type { SkincareRepository } from "./skincare.repository";
+import {
+  type DateRange,
+  dateRangeShape,
+  rangeError,
+  rangeIsOrdered,
+  resolveDateRange,
+  toInstant,
+  utcDay,
+} from "../../../../common/utils/date";
 // import { fetchTasteInsights } from "../../qloo/qloo.client";
 
 const length = z.enum(["short", "long"]);
 const period = z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT", "HABIT"]);
+const recommendationType = z.enum([
+  "PRODUCT",
+  "ROUTINE",
+  "HABIT",
+  "ROUTINE_STEP",
+]);
 const category = z.enum([
   "CLEANSER",
   "TONER",
@@ -31,50 +47,69 @@ abstract class SkincareTool<TInput, TResult = unknown> extends BaseTool<
   constructor(protected readonly repo: SkincareRepository) {
     super();
   }
+
+  /** The model supplies routine ids, so make sure they belong to this user. */
+  protected async requireRoutine(userId: string, routineId: string) {
+    const routine = await this.repo.findRoutine(userId, routineId);
+    if (!routine) {
+      throw new Error(
+        `Routine ${routineId} not found for this user. Use an id from get_routines or from recommend_routine.`,
+      );
+    }
+    return routine;
+  }
 }
 
 /* ============================ READ ============================ */
 
-const scanHistorySchema = z.object({ limit: limitOf(20) });
+const scanHistorySchema = z
+  .object({ ...dateRangeShape, limit: limitOf(20) })
+  .refine(rangeIsOrdered, rangeError);
 
 export class GetScanHistoryTool extends SkincareTool<
   z.infer<typeof scanHistorySchema>
 > {
   readonly name = "get_scan_history";
   readonly description =
-    "Fetch the user's completed skin scans with score, skin age and detailed metrics, newest first.";
+    "Fetch the user's completed skin scans with score, skin age and detailed metrics, newest first. Optional startDate/endDate limit the period.";
   readonly schema = scanHistorySchema;
 
   protected async executeInternal(
     input: z.infer<typeof scanHistorySchema>,
     { userId }: ToolContext,
   ) {
-    const scans = await this.repo.scans(userId, {
+    return await this.repo.scans(userId, {
       limit: input.limit ?? 5,
       withAnalysis: true,
+      range: resolveDateRange(input),
     });
-    return scans
   }
 }
 
-const previousSchema = z.object({
-  length: length.optional(),
-  limit: limitOf(20),
-});
+const previousSchema = z
+  .object({
+    ...dateRangeShape,
+    length: length.optional(),
+    limit: limitOf(20),
+  })
+  .refine(rangeIsOrdered, rangeError);
 
 export class GetPreviousSummariesTool extends SkincareTool<
   z.infer<typeof previousSchema>
 > {
   readonly name = "get_previous_summaries";
   readonly description =
-    "Fetch summaries saved on the user's previous scans, newest first.";
+    "Fetch summaries saved on the user's previous scans, newest first. Optional startDate/endDate limit the period.";
   readonly schema = previousSchema;
 
   protected async executeInternal(
     input: z.infer<typeof previousSchema>,
     { userId }: ToolContext,
   ) {
-    const scans = await this.repo.scans(userId, { limit: input.limit ?? 5 });
+    const scans = await this.repo.scans(userId, {
+      limit: input.limit ?? 5,
+      range: resolveDateRange(input),
+    });
     return scans
       .filter((s) => s.aiShortSummary || s.aiSummary)
       .map((s) => ({
@@ -91,14 +126,17 @@ export class GetPreviousObservationsTool extends SkincareTool<
 > {
   readonly name = "get_previous_observations";
   readonly description =
-    "Fetch observations saved on the user's previous scans, newest first.";
+    "Fetch observations saved on the user's previous scans, newest first. Optional startDate/endDate limit the period.";
   readonly schema = previousSchema;
 
   protected async executeInternal(
     input: z.infer<typeof previousSchema>,
     { userId }: ToolContext,
   ) {
-    const scans = await this.repo.scans(userId, { limit: input.limit ?? 5 });
+    const scans = await this.repo.scans(userId, {
+      limit: input.limit ?? 5,
+      range: resolveDateRange(input),
+    });
     return scans
       .filter((s) => s.aiShortObservation || s.aiObservation)
       .map((s) => ({
@@ -110,18 +148,21 @@ export class GetPreviousObservationsTool extends SkincareTool<
   }
 }
 
-const getRecommendationsSchema = z.object({
-  type: z.enum(["PRODUCT", "ROUTINE", "HABIT"]).optional(),
-  accepted: z.boolean().optional(),
-  limit: limitOf(30),
-});
+const getRecommendationsSchema = z
+  .object({
+    ...dateRangeShape,
+    type: recommendationType.optional(),
+    accepted: z.boolean().optional(),
+    limit: limitOf(30),
+  })
+  .refine(rangeIsOrdered, rangeError);
 
 export class GetRecommendationsTool extends SkincareTool<
   z.infer<typeof getRecommendationsSchema>
 > {
   readonly name = "get_recommendations";
   readonly description =
-    "Fetch recommendations already made to the user (products, routines, habits) with their product or routine details.";
+    "Fetch recommendations already made to the user (products, routines, habits, routine steps) with their product or routine details. Optional startDate/endDate limit the period.";
   readonly schema = getRecommendationsSchema;
 
   protected async executeInternal(
@@ -132,18 +173,21 @@ export class GetRecommendationsTool extends SkincareTool<
       type: input.type,
       accepted: input.accepted,
       limit: input.limit ?? 10,
+      range: resolveDateRange(input),
     });
   }
 }
 
-const getRoutinesSchema = z.object({ acceptedOnly: z.boolean().optional() });
+const getRoutinesSchema = z
+  .object({ ...dateRangeShape, acceptedOnly: z.boolean().optional() })
+  .refine(rangeIsOrdered, rangeError);
 
 export class GetRoutinesTool extends SkincareTool<
   z.infer<typeof getRoutinesSchema>
 > {
   readonly name = "get_routines";
   readonly description =
-    "Fetch the user's routines with their steps. Accepted routines only by default; pass acceptedOnly false to include suggestions not yet accepted.";
+    "Fetch the user's routines with their steps. Accepted routines only by default; pass acceptedOnly false to include suggestions not yet accepted. Optional startDate/endDate filter by when the routine was created.";
   readonly schema = getRoutinesSchema;
 
   protected async executeInternal(
@@ -152,65 +196,91 @@ export class GetRoutinesTool extends SkincareTool<
   ) {
     return await this.repo.routines(userId, {
       acceptedOnly: input.acceptedOnly ?? true,
+      range: resolveDateRange(input),
     });
   }
 }
 
-const getRoutineLogsSchema = z.object({
-  routineId: z.string().optional(),
-  days: z.number().int().min(1).max(90).optional(),
-  limit: limitOf(200),
-});
+const getRoutineLogsSchema = z
+  .object({
+    ...dateRangeShape,
+    routineId: z.string().optional(),
+    days: z.number().int().min(1).max(90).optional(),
+    limit: limitOf(200),
+  })
+  .refine(rangeIsOrdered, rangeError);
 
 export class GetRoutineLogsTool extends SkincareTool<
   z.infer<typeof getRoutineLogsSchema>
 > {
   readonly name = "get_routine_logs";
   readonly description =
-    "Fetch routine completion logs for the last N days, with the number of days the user completed a routine out of the window.";
+    "Fetch routine completion logs, with the number of days the user completed a routine out of the window. Use days for a window ending now, or startDate/endDate for an explicit period (startDate takes precedence over days).";
   readonly schema = getRoutineLogsSchema;
 
   protected async executeInternal(
     input: z.infer<typeof getRoutineLogsSchema>,
     { userId }: ToolContext,
   ) {
-    const days = input.days ?? 14;
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const explicit = resolveDateRange(input);
+    const to = explicit.to ?? Temporal.Now.instant();
+    const from =
+      explicit.from ?? to.subtract({ hours: (input.days ?? 14) * 24 });
+    const range: DateRange = { from, to };
+
     const logs = await this.repo.routineLogs(userId, {
       routineId: input.routineId,
-      since,
+      range,
       limit: input.limit ?? 100,
     });
 
     const activeDays = new Set(
-      logs.map((l) => new Date(l.completedAt ?? null).toISOString().slice(0, 10)),
-    ).size;
+      logs.flatMap((l) => {
+        const at = toInstant(l.completedAt);
+        return at ? [utcDay(at)] : [];
+      }),
+    );
+
+    const fromDay = from.toZonedDateTimeISO("UTC").toPlainDate();
+    const toDay = to.toZonedDateTimeISO("UTC").toPlainDate();
+    const windowDays = Math.max(
+      1,
+      fromDay.until(toDay, { largestUnit: "days" }).days + 1,
+    );
 
     return {
-      windowDays: days,
+      from: from.toString(),
+      to: to.toString(),
+      windowDays,
       completions: logs.length,
-      daysWithCompletion: activeDays,
-      adherence: Number((activeDays / days).toFixed(2)),
+      daysWithCompletion: activeDays.size,
+      adherence: Number((activeDays.size / windowDays).toFixed(2)),
       logs,
     };
   }
 }
 
-const getConversationSchema = z.object({ limit: limitOf(100) });
+const getConversationSchema = z
+  .object({ ...dateRangeShape, limit: limitOf(100) })
+  .refine(rangeIsOrdered, rangeError);
 
 export class GetConversationTool extends SkincareTool<
   z.infer<typeof getConversationSchema>
 > {
   readonly name = "get_conversation";
   readonly description =
-    "Fetch the user's most recent chat messages (sender USER or ALINA), oldest first.";
+    "Fetch the user's most recent chat messages (sender USER or ALINA), oldest first. Optional startDate/endDate limit the period.";
   readonly schema = getConversationSchema;
 
   protected async executeInternal(
     input: z.infer<typeof getConversationSchema>,
     { userId }: ToolContext,
   ) {
-    return await this.repo.messages(userId, input.limit ?? 20);
+    return await this.repo.messages(
+      userId,
+      input.limit ?? 20,
+      resolveDateRange(input),
+    );
   }
 }
 
@@ -293,7 +363,17 @@ export class CreateRoutineTool extends SkincareTool<
     input: z.infer<typeof createRoutineSchema>,
     { userId }: ToolContext,
   ) {
-    return await this.repo.createRoutine({ userId, ...input });
+    const routine = await this.repo.createRoutine({ userId, ...input });
+
+    // A routine counts as accepted only through its ROUTINE recommendation.
+    const recommendation = await this.repo.createRecommendation({
+      userId,
+      type: "ROUTINE",
+      explanation: `Created at the user's request: ${input.title}`,
+      routineId: routine.id,
+      accepted: true,
+    });
+    return { routine, recommendation };
   }
 }
 
@@ -321,7 +401,7 @@ export class RecommendRoutineTool extends SkincareTool<
       title: input.title,
       steps: input.steps,
     });
-  
+
     const recommendation = await this.repo.createRecommendation({
       userId,
       scanId: input.scanId,
@@ -335,7 +415,7 @@ export class RecommendRoutineTool extends SkincareTool<
 
 const recommendRoutineStepSchema = z.object({
   routineId: z.string(),
-  period: z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT", "HABIT"]),
+  period,
   title: z.string().min(1),
   instruction: z.string().min(1),
   explanation: z.string().min(1),
@@ -353,6 +433,8 @@ export class RecommendRoutineStepTool extends SkincareTool<
     input: z.infer<typeof recommendRoutineStepSchema>,
     { userId }: ToolContext,
   ) {
+    await this.requireRoutine(userId, input.routineId);
+
     const routineStep = await this.repo.createRoutineStep({
       routineId: input.routineId,
       period: input.period,
@@ -365,6 +447,7 @@ export class RecommendRoutineStepTool extends SkincareTool<
       type: "ROUTINE_STEP",
       explanation: input.explanation,
       routineId: routineStep.routineId,
+      routineStepId: routineStep.id, // links the suggestion to its step
     });
     return { recommendation, routineStep };
   }
@@ -396,6 +479,8 @@ export class RecommendProductTool extends SkincareTool<
     input: z.infer<typeof recommendProductSchema>,
     { userId }: ToolContext,
   ) {
+    await this.requireRoutine(userId, input.routineId);
+
     const prefs = await this.repo.preferences(userId);
     const avoided = prefs.avoidedIngredients.map((i) => i.toLowerCase());
     const conflict = input.keyIngredients.find((ingredient) =>
@@ -421,7 +506,7 @@ export class RecommendProductTool extends SkincareTool<
       price: input.price,
       affiliateUrl: input.affiliateUrl,
     });
-  
+
     const recommendation = await this.repo.createRecommendation({
       userId,
       scanId: input.scanId,
@@ -433,7 +518,6 @@ export class RecommendProductTool extends SkincareTool<
     return { recommendation, product };
   }
 }
-
 
 // const tasteSchema = z.object({
 //   extraInterests: z.array(z.string().min(1)).max(5).optional(),
@@ -462,7 +546,7 @@ export class RecommendProductTool extends SkincareTool<
 //     if (!seeds.length) return { status: "no_taste_data", brands: [], tags: [] };
 
 //     try {
-//       const { brands, tags } = await fetchTasteInsights(seeds, );
+//       const { brands, tags } = await fetchTasteInsights(seeds);
 //       return { status: brands.length ? "ok" : "no_match", brands, tags };
 //     } catch {
 //       // A Qloo outage must never break the chat or a scan analysis

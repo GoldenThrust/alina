@@ -46,13 +46,13 @@ export const scanService = {
       ORM.Scan()
         .include("analysis")
         .where(base)
-        .orderBy((r) => r.createdAt.asc())
+        .orderBy((r: any) => r.createdAt.asc())
         .first(),
 
       ORM.Scan()
         .include("analysis")
         .where(base)
-        .orderBy((r) => r.createdAt.desc())
+        .orderBy((r: any) => r.createdAt.desc())
         .first(),
     ]);
 

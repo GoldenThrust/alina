@@ -72,6 +72,11 @@ export default async function routineRoutes(fastify: FastifyInstance) {
     C.stepController.remove,
   );
 
+  fastify.put("/:routineId/steps/reorder", {
+    preHandler: auth,
+    schema: { params: Z.RoutineIdParams, body: Z.ReorderStepsBody },
+  }, C.stepController.reorder)
+
   /* ---------- Routine logs ---------- */
   fastify.get(
     "/logs",

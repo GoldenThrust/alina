@@ -29,6 +29,20 @@ const limitParam = (max: number, fallback: number) => ({
   description: `Max results, 1-${max}. Default ${fallback}.`,
 });
 
+/* ---------------------------- DATE RANGE ---------------------------- */
+
+const startDateParam = {
+  type: "string",
+  description:
+    "Optional. Only include items on or after this date. Format YYYY-MM-DD (read as UTC), or an ISO 8601 datetime with Z or an offset. Never use words like 'last week'.",
+};
+const endDateParam = {
+  type: "string",
+  description:
+    "Optional. Only include items on or before this date, inclusive. Same format as startDate.",
+};
+const dateRange = { startDate: startDateParam, endDate: endDateParam };
+
 const routineSteps = {
   type: "array",
   description: "Steps in the order they should be done, 1 to 12.",
@@ -54,26 +68,27 @@ const routineSteps = {
 
 const getScanHistory = fn(
   "get_scan_history",
-  "Fetch the user's completed skin scans with score, skin age and detailed metrics (redness, moisture, oiliness, acne, pores, wrinkles, etc.), newest first. For all scores, higher is better. Use to describe or compare skin over time.",
-  { limit: limitParam(20, 5) },
+  "Fetch the user's completed skin scans with score, skin age and detailed metrics (redness, moisture, oiliness, acne, pores, wrinkles, etc.), newest first. For all scores, higher is better. Use to describe or compare skin over time. Use startDate/endDate to look at a specific period.",
+  { ...dateRange, limit: limitParam(20, 5) },
 );
 
 const getPreviousSummaries = fn(
   "get_previous_summaries",
-  "Fetch summaries saved on the user's previous scans, newest first. Use to stay consistent with earlier analyses.",
-  { length: lengthParam, limit: limitParam(20, 5) },
+  "Fetch summaries saved on the user's previous scans, newest first. Use to stay consistent with earlier analyses. Use startDate/endDate to look at a specific period.",
+  { ...dateRange, length: lengthParam, limit: limitParam(20, 5) },
 );
 
 const getPreviousObservations = fn(
   "get_previous_observations",
-  "Fetch observations saved on the user's previous scans, newest first. Use to compare the current scan with past findings.",
-  { length: lengthParam, limit: limitParam(20, 5) },
+  "Fetch observations saved on the user's previous scans, newest first. Use to compare the current scan with past findings. Use startDate/endDate to look at a specific period.",
+  { ...dateRange, length: lengthParam, limit: limitParam(20, 5) },
 );
 
 const getRecommendations = fn(
   "get_recommendations",
-  "Fetch products, routines and habits already recommended to the user, with their details and whether they were accepted. Use so you never repeat or contradict them.",
+  "Fetch products, routines, habits and routine steps already recommended to the user, with their details and whether they were accepted. Use so you never repeat or contradict them. Use startDate/endDate to look at a specific period.",
   {
+    ...dateRange,
     type: {
       type: "string",
       enum: ["PRODUCT", "ROUTINE", "HABIT", "ROUTINE_STEP"],
@@ -88,8 +103,9 @@ const getRecommendations = fn(
 
 const getRoutines = fn(
   "get_routines",
-  "Fetch the user's routines with their steps. Accepted routines only by default.",
+  "Fetch the user's routines with their steps. Accepted routines only by default. startDate/endDate filter by when the routine was created.",
   {
+    ...dateRange,
     acceptedOnly: {
       type: "boolean",
       description:
@@ -100,18 +116,22 @@ const getRoutines = fn(
 
 const getRoutineLogs = fn(
   "get_routine_logs",
-  "Fetch routine completion logs for the last N days, with how many days the user completed a routine (adherence). Use before adjusting a routine or judging progress.",
+  "Fetch routine completion logs, with how many days the user completed a routine (adherence). Use before adjusting a routine or judging progress. Give either days (a window ending now) or startDate/endDate (an explicit period). If startDate is given, days is ignored.",
   {
     routineId: { type: "string", description: "Limit to one routine." },
-    days: { type: "integer", description: "Window in days, 1-90. Default 14." },
+    days: {
+      type: "integer",
+      description: "Window in days, 1-90. Default 14. Ignored if startDate is given.",
+    },
+    ...dateRange,
     limit: limitParam(200, 100),
   },
 );
 
 const getConversation = fn(
   "get_conversation",
-  "Fetch recent messages (sender USER or ALINA) from the user's conversation. Use when the user refers to something said earlier that is not in context.",
-  { limit: limitParam(100, 20) },
+  "Fetch recent messages (sender USER or ALINA) from the user's conversation. Use when the user refers to something said earlier that is not in context. Use startDate/endDate to look at a specific period.",
+  { ...dateRange, limit: limitParam(100, 20) },
 );
 
 const getPreferences = fn(
@@ -176,7 +196,11 @@ const recommendRoutineStep = fn(
   "recommend_routine_step",
   "Suggest a routine step that helps the skin (sleep, hydration, sun behavior, pillowcase hygiene, etc.).",
   {
-    routineId: { type: "string", description: "Limit to one routine." },
+    routineId: {
+      type: "string",
+      description:
+        "The routine this step belongs to. Use an id from get_routines or recommend_routine.",
+    },
     period: {
       type: "string",
       enum: ["MORNING", "AFTERNOON", "EVENING", "NIGHT", "HABIT"],
@@ -326,8 +350,14 @@ const qlooTrending = fn(
 
 /* ---------------------------- TOOL SETS ---------------------------- */
 
+// get_taste_insights is declared above but its tool class is commented out in
+// skincare.tools.ts, so it stays out of the sets until that is enabled.
+void getTasteInsights;
+
 const readTools = [
   getScanHistory,
+  getPreviousSummaries,
+  getPreviousObservations,
   getRecommendations,
   getRoutines,
   getRoutineLogs,

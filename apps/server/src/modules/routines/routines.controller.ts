@@ -1,9 +1,12 @@
 import { createOwnedHandlers, getUserId, handle } from "../../lib/crud";
-import * as S from "./routines.service"
+import * as S from "./routines.service";
 
 /* ---------- plain owner-scoped CRUD ---------- */
 export const routineController = {
-  ...createOwnedHandlers(S.routineService as any, "routine", ["recommendation", "steps"]),
+  ...createOwnedHandlers(S.routineService as any, "routine", [
+    "recommendation",
+    "steps",
+  ]),
   list: handle("Failed to fetch routines", (req: any) =>
     S.routineService.list(getUserId(req), req.query),
   ),
@@ -16,7 +19,6 @@ export const routineLogController = {
   ),
 };
 
-
 /* ---------- RoutineStep (nested under a routine) ---------- */
 export const stepController = {
   list: handle("Failed to fetch steps", (req: any) =>
@@ -27,13 +29,26 @@ export const stepController = {
   ),
   create: handle(
     "Failed to create step",
-    (req: any) => S.stepService.create(getUserId(req), req.params.routineId, req.body),
+    (req: any) =>
+      S.stepService.create(getUserId(req), req.params.routineId, req.body),
     201,
   ),
   update: handle("Failed to update step", (req: any) =>
-    S.stepService.update(getUserId(req), req.params.routineId, req.params.id, req.body),
+    S.stepService.update(
+      getUserId(req),
+      req.params.routineId,
+      req.params.id,
+      req.body,
+    ),
   ),
   remove: handle("Failed to delete step", (req: any) =>
     S.stepService.remove(getUserId(req), req.params.routineId, req.params.id),
+  ),
+  reorder: handle("Failed to reorder steps", (req: any) =>
+    S.stepService.reorder(
+      getUserId(req),
+      req.params.routineId,
+      req.body,
+    ),
   ),
 };

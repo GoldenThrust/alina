@@ -1,5 +1,5 @@
 import path from "path";
-import { ORM } from "../../prisma/db";
+import { db, ORM } from "../../prisma/db";
 import {
   assertOwned,
   createOwnedService,
@@ -7,7 +7,11 @@ import {
   type ListQuery,
 } from "../../lib/crud";
 import APIError from "../../errors/APIError";
-import type { CreateStepBody, UpdateStepBody } from "./routines";
+import type {
+  CreateStepBody,
+  UpdateRoutineStepOrder,
+  UpdateStepBody,
+} from "./routines";
 import { decodeCursor, encodeCursor } from "../../common/utils/crypto";
 import { ro } from "@faker-js/faker";
 import { Temporal } from "@js-temporal/polyfill";
@@ -127,6 +131,23 @@ export const stepService = {
     await stepService.get(userId, routineId, id);
     await ORM.Step().where({ id, routineId }).delete();
     return { message: "Step deleted successfully" };
+  },
+  async reorder(
+    userId: string,
+    routineId: string,
+    payload: UpdateRoutineStepOrder,
+  ) {
+    await assertOwned(ORM.Routine, routineId, userId, "Routine");
+
+    await db.transaction(async (tx: any) => {
+      for (const item of payload) {
+        await tx.orm.public.RoutineStep.where((r: any) => r.id.eq(item.id)).update({
+          position: item.position,
+        });
+      }
+    });
+
+    return { message: "Steps reordered successfully" };
   },
 };
 
