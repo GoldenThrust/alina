@@ -3,9 +3,33 @@ import { createAdapter } from "@socket.io/redis-streams-adapter";
 
 import redis from "../config/redis.ts";
 import { allowUrls } from "../common/utils/constant.ts";
+import { fileManager } from "../common/files/file.ts";
 import { AIProcessingJob } from "../queues/ai/ai.producer.ts";
-import { db } from "../prisma/db.ts";
+import { ORM } from "../prisma/db.ts";
 
+const testData = [
+  {
+    id: "session-1",
+    textChunks: [
+      "Hello, this is a test message.",
+      "This is the second chunk of the message.",
+      "And this is the final chunk of the message.",
+    ],
+    images: [
+      "uploads/image/test/image1.jpg",
+      "uploads/image/test/image2.jpg",
+      "uploads/image/test/image3.jpg",
+    ],
+  },
+  {
+    id: "session-2",
+    textChunks: [
+      "This is another test message.",
+      "Here is the second chunk of this message.",
+    ],
+    images: ["uploads/image/test/image.jpg", "uploads/image/test/image4.jpg"],
+  },
+];
 export default class Websocket {
   static io: SocketServer;
 
@@ -43,16 +67,65 @@ export default class Websocket {
         socket.disconnect(true);
         return;
       }
+      socket.on("message", async ({ content, attachments = [] }) => {
+        const paths = await Promise.all(
+          attachments.map((attachment: Buffer) =>
+            fileManager.saveBuffer(attachment, "image", "temporal"),
+          ),
+        );
 
-      socket.on("message", (message) => {
-        AIProcessingJob({ userId: user.sub, input: message });
+        const input = [
+          paths.length > 0
+            ? `The user uploaded ${paths.length} image(s). Temporary path(s): ${paths.join(", ")}.`
+            : null,
+          content,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
 
-        db.orm.public.Message.create({
-          userId: user.sub.toString(),
-          content: message,
-          sender: "USER",
-        });
+        await Promise.all([
+          AIProcessingJob({
+            userId: user.sub,
+            input,
+          }),
+          ORM.Message().create({
+            userId: user.sub.toString(),
+            sender: "USER",
+            content,
+            images: paths,
+          }),
+        ]);
       });
+    
+      // setTimeout(() => {
+      //   for (let i = 0; i < testData.length; i++) {
+      //     const session = testData[i];
+      //     Websocket.startStream(user.sub, session.id);
+      //     setTimeout(() => {
+      //       for (let j = 0; j < session.textChunks.length; j++) {
+      //         setTimeout(() => {
+      //           Websocket.streamData(user.sub, session.id, session.textChunks[j]);
+      //         }, 1000 * j);
+      //       }
+
+      //       setTimeout(() => {
+      //         Websocket.streamImages(
+      //           user.sub,
+      //           session.id,
+      //           session.images.slice(0, 2),
+      //         );
+      //       }, 5000);
+      //       setTimeout(() => {
+      //         Websocket.streamImages(
+      //           user.sub,
+      //           session.id,
+      //           session.images.slice(2, 4),
+      //         );
+      //       }, 8000);
+      //     }, 5000 * i);
+      //     Websocket.endStream(user.sub, session.id);
+      //   }
+      // }, 5000);
 
       socket.join(user.sub.toString());
     });
@@ -93,13 +166,23 @@ export default class Websocket {
   /**
    * Send stream data to a user's client.
    */
-  static async streamData(userId: string, sessionId: string, data: any) {
+  static async streamData(userId: string, sessionId: string, data: string) {
     this.io.to(userId).emit("stream:data", {
       sessionId,
       data,
     });
   }
 
+  static async streamImages(
+    userId: string,
+    sessionId: string,
+    images: string[],
+  ) {
+    this.io.to(userId).emit("stream:images", {
+      sessionId,
+      images,
+    });
+  }
   /**
    * Notify a user that a stream has ended.
    */

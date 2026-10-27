@@ -1,4 +1,5 @@
 import { selectAll } from "../utils/entities";
+import { imageUrl } from "../utils/imageUrl"; // adjust to wherever imageUrl lives
 import { useAuthStore } from "../stores";
 import { useChatStore } from "../stores/chat.store";
 import socket from "./api/socket";
@@ -23,20 +24,49 @@ function chunkText(data: unknown): string {
   return "";
 }
 
+/**
+ * Pulls image paths out of whatever the backend sends (a string, an array, or an
+ * object holding either) and turns each one into a working URL with imageUrl().
+ */
+function imagePaths(payload: unknown): string[] {
+  const out: string[] = [];
+  const visit = (value: unknown) => {
+    if (typeof value === "string") {
+      if (value.trim()) out.push(value.trim());
+    } else if (Array.isArray(value)) {
+      value.forEach(visit);
+    } else if (value && typeof value === "object") {
+      const record = value as Record<string, unknown>;
+      for (const key of ["images", "image", "paths", "path", "urls", "url", "data"]) {
+        if (key in record) visit(record[key]);
+      }
+    }
+  };
+  visit(payload);
+  return [...new Set(out.map(imageUrl))];
+}
+
 /** Optimistically adds the message, then emits it. Alina's reply arrives as stream events. */
-export function sendChatMessage(userId: string, raw: string): void {
-  const content = raw.trim();
+export function sendChatMessage({
+  userId,
+  content,
+  attachments,
+}: {
+  userId: string;
+  content: string;
+  attachments: File[];
+}): void {
   const store = useChatStore.getState();
   if (!content || store.awaitingReply) return;
 
   if (!socket.connected) {
     store.setError("You’re not connected right now. Reconnecting…");
-    return; // the draft is left untouched
+    return;
   }
 
   const tempId = store.addPendingUserMessage(userId, content);
   store.setAwaitingReply(true);
-  socket.emit("message", content);
+  socket.emit("message", { content, attachments });
 
   // If the server never starts a stream, give the text back instead of waiting forever
   clearWatchdog();
@@ -59,12 +89,34 @@ export function attachChatListeners(): () => void {
     useChatStore.getState().beginStream(sessionId, userId());
   };
 
-  const onData = ({ sessionId, data }: { sessionId: string; data: unknown }) => {
+  const onData = ({
+    sessionId,
+    data,
+  }: {
+    sessionId: string;
+    data: unknown;
+  }) => {
     const text = chunkText(data);
     if (!text) return;
     const s = useChatStore.getState();
     if (s.streamingSessionId !== sessionId) s.beginStream(sessionId, userId()); // start event was missed
     useChatStore.getState().appendStream(sessionId, text);
+  };
+
+  // Image paths (for example results saved by the YouCam tools) belong to Alina's reply.
+  const onImages = (payload: unknown) => {
+    const urls = imagePaths(payload);
+    if (!urls.length) return;
+    clearWatchdog(); // the server is responding
+
+    const s = useChatStore.getState();
+    const sessionId =
+      (payload as { sessionId?: string } | null)?.sessionId ??
+      s.streamingSessionId;
+    if (!sessionId) return;
+
+    // The store creates the reply if it doesn't exist yet, so the order of events doesn't matter.
+    s.addMessageImages(sessionId, urls, userId());
   };
 
   const onEnd = ({ sessionId }: { sessionId: string }) => {
@@ -92,12 +144,14 @@ export function attachChatListeners(): () => void {
 
   socket.on("stream:start", onStart);
   socket.on("stream:data", onData);
+  socket.on("stream:images", onImages);
   socket.on("stream:end", onEnd);
   socket.on("disconnect", onDisconnect);
 
   return () => {
     socket.off("stream:start", onStart);
     socket.off("stream:data", onData);
+    socket.off("stream:images", onImages);
     socket.off("stream:end", onEnd);
     socket.off("disconnect", onDisconnect);
     clearWatchdog();

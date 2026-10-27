@@ -1,4 +1,10 @@
-import { useRef, type SubmitEventHandler } from "react";
+import {
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type SubmitEventHandler,
+} from "react";
 import {
   AnimatePresence,
   MotionConfig,
@@ -8,10 +14,12 @@ import {
 import {
   ArrowDown,
   ArrowUp,
+  ImagePlus,
   Info,
   Loader2,
   Sparkles,
   WifiOff,
+  X,
 } from "lucide-react";
 import PageHeading from "../components/PageHeading";
 import { useSocket } from "../context/SocketContext"; // wherever your provider lives
@@ -22,7 +30,8 @@ import { useAuthStore } from "../stores";
 import { useChatStore, useConversation } from "../stores/chat.store";
 import { EASE, container, item as fadeUp } from "../utils/motion";
 import Markdown from "../components/Markdown";
-
+import { ImageLightbox, MessageImages } from "../components/ChatImages";
+import { ACCEPT_ATTR, useImageAttachments } from "../hooks/useImageAttachments";
 /* ---------- Motion presets ---------- */
 
 const stagger: Variants = {
@@ -62,19 +71,28 @@ export default function Chat() {
     loadOlder,
   });
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachments = useImageAttachments();
+  const [preview, setPreview] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const dragDepth = useRef(0);
 
   // While a reply streams, the empty bubble is hidden and the typing dots stand in for it
   const last = messages.at(-1);
   const isStreaming = !!last?.streaming;
+  const hasBody = (m: { content: string; images?: string[] }) =>
+    m.content.length > 0 || !!m.images?.length;
   const visibleMessages =
-    last?.streaming && !last.content ? messages.slice(0, -1) : messages;
+    last?.streaming && !hasBody(last) ? messages.slice(0, -1) : messages;
   const showTyping =
-    awaitingReply &&
-    !(last && last.sender !== "USER" && last.content.length > 0);
+    awaitingReply && !(last && last.sender !== "USER" && hasBody(last));
 
   const isEmpty = initialized && visibleMessages.length === 0 && !showTyping;
-  const canSend = !!draft.trim() && !awaitingReply && connected;
-  const showChips = initialized && !isEmpty && !awaitingReply && !draft.trim();
+  const hasAttachments = attachments.items.length > 0;
+  const canSend =
+    (!!draft.trim() || hasAttachments) && !awaitingReply && connected;
+  const showChips =
+    initialized && !isEmpty && !awaitingReply && !draft.trim() && !hasAttachments;
   const statusText = !connected
     ? "Connecting…"
     : awaitingReply
@@ -83,8 +101,22 @@ export default function Chat() {
 
   const sendMessage: SubmitEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
-    send(draft);
+    if (!canSend) return;
+    send(draft, attachments.files);
+    attachments.clear();
   };
+
+  const onPaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const images = Array.from(event.clipboardData.files).filter((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (images.length === 0) return;
+    event.preventDefault();
+    attachments.add(images);
+  };
+
+  const isFileDrag = (e: DragEvent) =>
+    Array.from(e.dataTransfer.types).includes("Files");
 
   const pickSuggestion = (question: string) => {
     setDraft(question);
@@ -107,7 +139,45 @@ export default function Chat() {
           />
         </motion.div>
 
-        <motion.section className="panel ch-shell" variants={fadeUp}>
+        <motion.section
+          className="panel ch-shell"
+          variants={fadeUp}
+          onDragEnter={(e) => {
+            if (!isFileDrag(e)) return;
+            dragDepth.current += 1;
+            setDragging(true);
+          }}
+          onDragOver={(e) => {
+            if (isFileDrag(e)) e.preventDefault();
+          }}
+          onDragLeave={(e) => {
+            if (!isFileDrag(e)) return;
+            dragDepth.current = Math.max(0, dragDepth.current - 1);
+            if (dragDepth.current === 0) setDragging(false);
+          }}
+          onDrop={(e) => {
+            if (!isFileDrag(e)) return;
+            e.preventDefault();
+            dragDepth.current = 0;
+            setDragging(false);
+            attachments.add(e.dataTransfer.files);
+          }}
+        >
+          <AnimatePresence>
+            {dragging ? (
+              <motion.div
+                key="drop"
+                className="ch-drop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 }}
+              >
+                Drop images to attach
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
           {/* ---------- Header ---------- */}
           <header className="ch-header">
             <span className="ch-avatar-wrap">
@@ -276,13 +346,23 @@ export default function Chat() {
                     animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   >
-                    {fromUser ? (
-                      <p>{message.content}</p>
-                    ) : (
-                      <div className="ch-md">
-                        <Markdown>{message.content}</Markdown>
-                      </div>
-                    )}
+                    <div className="ch-body">
+                      {message.images?.length ? (
+                        <MessageImages
+                          images={message.images}
+                          onOpen={setPreview}
+                        />
+                      ) : null}
+                      {message.content ? (
+                        fromUser ? (
+                          <p>{message.content}</p>
+                        ) : (
+                          <div className="ch-md">
+                            <Markdown>{message.content}</Markdown>
+                          </div>
+                        )
+                      ) : null}
+                    </div>
                   </motion.div>
                 );
               })}
@@ -387,7 +467,67 @@ export default function Chat() {
               ) : null}
             </AnimatePresence>
 
+            <AnimatePresence initial={false}>
+              {hasAttachments ? (
+                <motion.div
+                  key="attachments"
+                  className="ch-attachments"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: EASE }}
+                >
+                  {attachments.items.map((a) => (
+                    <motion.div
+                      key={a.id}
+                      className="ch-thumb"
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <img src={a.url} alt="Attached" />
+                      <button
+                        type="button"
+                        className="ch-thumb-remove"
+                        aria-label="Remove image"
+                        onClick={() => attachments.remove(a.id)}
+                      >
+                        <X size={11} />
+                      </button>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            {attachments.error ? (
+              <p className="form-message form-error ch-attach-error" role="alert">
+                {attachments.error}
+              </p>
+            ) : null}
+
             <form className="ch-composer" onSubmit={sendMessage}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPT_ATTR}
+                multiple
+                hidden
+                onChange={(e) => {
+                  attachments.add(e.target.files ?? []);
+                  e.target.value = ""; // allow picking the same file again
+                }}
+              />
+              <button
+                type="button"
+                className="ch-attach"
+                aria-label="Attach images"
+                title="Attach images (JPEG or PNG)"
+                disabled={awaitingReply}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImagePlus size={18} />
+              </button>
               <label className="sr-only" htmlFor="chat-message">
                 Your message
               </label>
@@ -396,7 +536,12 @@ export default function Chat() {
                 ref={inputRef}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                placeholder="Ask Alina anything about your skin…"
+                onPaste={onPaste}
+                placeholder={
+                  hasAttachments
+                    ? "Add a message about this photo…"
+                    : "Ask Alina anything about your skin…"
+                }
                 autoComplete="off"
               />
               <motion.button
@@ -449,6 +594,8 @@ export default function Chat() {
           </div>
         </motion.section>
       </motion.div>
+
+      <ImageLightbox src={preview} onClose={() => setPreview(null)} />
     </MotionConfig>
   );
 }

@@ -191,6 +191,8 @@ interface Message {
   userId: string;
   sender: Sender;
   content: string;
+  images: string[];
+  sessionId: string;
   createdAt: Date;
   pending?: boolean;
   streaming?: boolean;

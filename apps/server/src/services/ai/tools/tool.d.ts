@@ -2,6 +2,7 @@ export interface ToolContext {
     userId: string;
     callId: string;
     interactionId: string;
+    sessionId: string;
 }
 
 export interface ToolCall {

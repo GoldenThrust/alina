@@ -88,13 +88,14 @@ export class GemmaAgent {
     calls: FunctionCall[],
     userId: string,
     interactionId: string,
+    sessionId: string,
   ): Promise<FunctionResultInput[]> {
     return Promise.all(
       calls.map(async (call): Promise<FunctionResultInput> => {
         try {
           const outcome = await this.executor.execute(
             { name: call.name, args: call.arguments },
-            { userId, callId: call.id, interactionId },
+            { userId, callId: call.id, interactionId, sessionId },
           );
 
           console.log(`[GemmaAgent] executed call ${call.name}:`, outcome);
@@ -139,6 +140,7 @@ export class GemmaAgent {
       let inputData: unknown = input;
       let previousId = await this.repo.lastInteractionId(userId);
       let lastText = "";
+      const sessionId = uuid();
 
       for (let turn = 0; turn < MAX_TURNS; turn++) {
         console.log(`[GemmaAgent] start analyze turn ${turn + 1}:`, {
@@ -175,7 +177,12 @@ export class GemmaAgent {
 
         if (calls.length === 0) break;
 
-        inputData = await this.runCalls(calls, userId, interaction.id);
+        inputData = await this.runCalls(
+          calls,
+          userId,
+          interaction.id,
+          sessionId,
+        );
       }
 
       await this.remember(userId, previousId);
@@ -192,11 +199,18 @@ export class GemmaAgent {
           status: "COMPLETED",
         });
 
-        await db.orm.public.Message.create({
+      await db.orm.public.Message.upsert({
+        create: {
           userId,
+          sessionId,
           content: lastText,
           sender: "ALINA",
-        });
+        },
+        update: {
+          content: lastText,
+        },
+        conflictOn: { userId, sessionId: sessionId, sender: "ALINA" },
+      });
       }
 
       logger.info(`Gemma analysis completed successfully for user: ${userId}`);
@@ -259,7 +273,12 @@ export class GemmaAgent {
           break;
         }
 
-        inputData = await this.runCalls(calls, userId, interactionId);
+        inputData = await this.runCalls(
+          calls,
+          userId,
+          interactionId,
+          sessionId,
+        );
       }
     } catch (error: any) {
       console.error("Gemma chat failed for user:", userId, "Error:", error);
@@ -277,10 +296,17 @@ export class GemmaAgent {
 
     if (fullText.trim()) {
       await this.remember(userId, previousId);
-      await db.orm.public.Message.create({
-        userId,
-        content: fullText,
-        sender: "ALINA",
+      await db.orm.public.Message.upsert({
+        create: {
+          userId,
+          sessionId,
+          content: fullText,
+          sender: "ALINA",
+        },
+        update: {
+          content: fullText,
+        },
+        conflictOn: { userId, sessionId: sessionId, sender: "ALINA" },
       });
     }
     return { text: fullText, id: previousId };

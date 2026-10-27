@@ -372,6 +372,16 @@
                   "kind": "scalar"
                 }
               },
+              "images": {
+                "many": {
+                  "elementNullable": false
+                },
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "sender": {
                 "nullable": false,
                 "type": {
@@ -383,6 +393,13 @@
                   "entityName": "Sender",
                   "namespaceId": "public",
                   "plane": "domain"
+                }
+              },
+              "sessionId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
                 }
               },
               "userId": {
@@ -422,8 +439,14 @@
                 "id": {
                   "column": "id"
                 },
+                "images": {
+                  "column": "images"
+                },
                 "sender": {
                   "column": "sender"
+                },
+                "sessionId": {
+                  "column": "sessionId"
                 },
                 "userId": {
                   "column": "userId"
@@ -2547,6 +2570,11 @@
             "Message": {
               "checks": [
                 {
+                  "expression": "array_position(\"images\", NULL) IS NULL",
+                  "name": "Message_images_elem_not_null_2f12556f",
+                  "prefix": "Message_images_elem_not_null"
+                },
+                {
                   "expression": "\"sender\" IN ('USER', 'ALINA')",
                   "name": "Message_sender_check_7a774235",
                   "prefix": "Message_sender_check"
@@ -2572,6 +2600,14 @@
                   "dataType": "pg/text",
                   "nullable": false
                 },
+                "images": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "many": {
+                    "elementNullable": false
+                  },
+                  "nullable": false
+                },
                 "sender": {
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
@@ -2582,6 +2618,11 @@
                     "namespaceId": "public",
                     "plane": "storage"
                   }
+                },
+                "sessionId": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
                 },
                 "userId": {
                   "codecId": "pg/text@1",
@@ -4221,7 +4262,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "af9bb8efe6ad27de7b384f21823414abf265f87ad88e823144084b96e8450817"
+    "storageHash": "7794d87a55b2c99ce7de7b75b855117892c2718ca1e14351650ded0b075deff7"
   },
   "execution": {
     "executionHash": "8ef08435230935997a505c5da7a8c25ca32c51966783fc5acc35bdde3b36675c",

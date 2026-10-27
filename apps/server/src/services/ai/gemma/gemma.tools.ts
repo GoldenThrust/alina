@@ -1,3 +1,11 @@
+import {
+  FACE_ATTR_DEFAULT_FEATURES,
+  FACE_ATTR_FEATURES,
+  FACE_RESHAPE_FEATURE_RANGES,
+  HD_SKIN_ACTIONS,
+  SKIN_SIMULATION_CONCERNS,
+} from "../../yomCam.service";
+
 /**
  * Tool declarations sent to Gemma.
  * Tool names MUST match the names registered in ToolRegistry
@@ -121,7 +129,8 @@ const getRoutineLogs = fn(
     routineId: { type: "string", description: "Limit to one routine." },
     days: {
       type: "integer",
-      description: "Window in days, 1-90. Default 14. Ignored if startDate is given.",
+      description:
+        "Window in days, 1-90. Default 14. Ignored if startDate is given.",
     },
     ...dateRange,
     limit: limitParam(200, 100),
@@ -268,19 +277,6 @@ const recommendProduct = fn(
   ],
 );
 
-const getTasteInsights = fn(
-  "get_taste_insights",
-  "Fetch brands and taste tags this user is likely to love, based on their favorite brands. Read-only, saves nothing. Call before recommending products, brands or routines, whether chatting or about to save a recommendation.",
-  {
-    extraInterests: {
-      type: "array",
-      items: { type: "string" },
-      description:
-        "Optional brands or styles the user just mentioned in this chat that are not saved yet (max 5).",
-    },
-  },
-);
-
 const entityTypeParam = {
   type: "string",
   enum: ["brand", "product", "place", "person", "podcast"],
@@ -301,7 +297,7 @@ const cityParam = {
 
 const qlooRecommend = fn(
   "qloo_recommend",
-  "Read-only, saves nothing. Recommend brands, products, places, people/influencers or podcasts this user is likely to love, based on their saved favorite brands, age range, gender and city. Call before recommending or discussing any of these, in plain chat too.",
+  "Recommend brands, products, places, people/influencers or podcasts this user is likely to love, based on their saved favorite brands, age range, gender and city. Call before recommending or discussing any of these, in plain chat too.",
   {
     entityType: entityTypeParam,
     interests: interestsParam,
@@ -313,7 +309,7 @@ const qlooRecommend = fn(
 
 const qlooCompare = fn(
   "qloo_compare",
-  "Read-only, saves nothing. Compare 2-4 brands, places, people/influencers or podcasts: shared and distinct traits, popularity trend, and closeness to this user's taste (userAffinity, higher is closer). For products pass brand names.",
+  "Compare 2-4 brands, places, people/influencers or podcasts: shared and distinct traits, popularity trend, and closeness to this user's taste (userAffinity, higher is closer). For products pass brand names.",
   {
     entityType: entityTypeParam,
     items: {
@@ -329,7 +325,7 @@ const qlooCompare = fn(
 
 const qlooTrending = fn(
   "qloo_trending",
-  "Read-only, saves nothing. Without items: what is trending now for this user's age range, gender and city. With items: whether those specific brands, places, people or podcasts are rising, steady or falling. For products pass brand names.",
+  "what is trending now for this user's age range, gender and city. With items: whether those specific brands, places, people or podcasts are rising, steady or falling. For products pass brand names.",
   {
     entityType: entityTypeParam,
     items: {
@@ -348,11 +344,118 @@ const qlooTrending = fn(
   ["entityType"],
 );
 
-/* ---------------------------- TOOL SETS ---------------------------- */
+/**
+ * Gemma tool declarations for the YouCam services.
+ * Tool names MUST match the names in youcam.tools.ts (ToolRegistry).
+ *
+ * Image-producing tools save the result and return a file path, because
+ * YouCam only hosts results for 2 hours.
+ */
 
-// get_taste_insights is declared above but its tool class is commented out in
-// skincare.tools.ts, so it stays out of the sets until that is enabled.
-void getTasteInsights;
+/* ---------------------------- SHARED PARAMS ---------------------------- */
+
+const imagePathParam = {
+  type: "string",
+  description: "Image file path. If not given, the latest scan image is used. If no scan exists, the tool fails.",
+};
+
+
+/* ---------------------------- ANALYSIS (read-only) ---------------------------- */
+
+const analyzeSkin = fn(
+  "youcam_analyze_skin",
+  "Run a fresh HD skin analysis on a photo: overall score, skin age and per-concern scores (acne, pores, wrinkles, redness, moisture, etc.). Costs credits, so prefer get_scan_history for existing results. Only call when the user wants a new analysis or provide a new photo.",
+  {
+    imagePath: imagePathParam,
+    concerns: {
+      type: "array",
+      items: { type: "string", enum: [...HD_SKIN_ACTIONS] },
+      description: "Optional subset of concerns to analyse. Default all.",
+    },
+  },
+);
+
+const analyzeSkinTone = fn(
+  "youcam_analyze_skin_tone",
+  "Detect skin, eye, lip, eyebrow and hair colors from a photo, as hex values with eye/hair color names.",
+  { imagePath: imagePathParam },
+);
+
+const analyzeFitzpatrick = fn(
+  "youcam_analyze_fitzpatrick",
+  "Classify the user's Fitzpatrick skin type (I-VI) and how it reacts to sun. Use for sun-protection advice",
+  { imagePath: imagePathParam },
+);
+
+const analyzeFace = fn(
+  "youcam_analyze_face",
+  `Analyse face attributes and proportions: face shape, eye/brow/lip/nose traits, cheekbones and facial ratios. Request only what the question needs. Omit features for the standard set of ${FACE_ATTR_DEFAULT_FEATURES.length}. Colors (eyeColor, lipColor, eyebrowColor, hairColor) and eyebrowPosition are opt-in.`,
+  {
+    imagePath: imagePathParam,
+    features: {
+      type: "array",
+      items: { type: "string", enum: [...FACE_ATTR_FEATURES] },
+      description: "Features to analyse, 1-28.",
+    }
+  },
+);
+
+/* ---------------------------- SIMULATIONS (generate images) ---------------------------- */
+
+const simulateAging = fn(
+  "youcam_simulate_aging",
+  "Generate a series of photos of the user from youth to old age from one selfie. Only call when the user asks to see how they might age.",
+  { imagePath: imagePathParam },
+);
+
+const simulateSkin = fn(
+  "youcam_simulate_skin",
+  "Show how the user's skin could look after improving specific concern. Set an intensity from 0.0 (original) to 1.0 (strongest improvement) for at least one concern. Properties can be inferred from user input, previous or new scan image analysis data",
+  {
+    imagePath: imagePathParam,
+    intensities: {
+      type: "object",
+      description:
+        "Intensity per concern, each 0.0-1.0. At least one must be above 0.",
+      properties: Object.fromEntries(
+        SKIN_SIMULATION_CONCERNS.map((c) => [
+          c,
+          { type: "number", description: "0.0-1.0" },
+        ]),
+      ),
+    }
+  },
+  ["intensities"],
+);
+
+const reshapeFace = fn(
+  "youcam_reshape_face",
+  "Preview a cosmetic face reshape (face, eyes, nose, lips) on the user's photo. Integer values only; 0 leaves a feature unchanged. Left/right are from the person's own perspective. A per-side value overrides the combined one. Only call when the user asks for it, and keep changes modest.",
+  {
+    imagePath: imagePathParam,
+    features: {
+      type: "object",
+      description: "Features to change. At least one must be non-zero.",
+      properties: Object.fromEntries(
+        Object.entries(FACE_RESHAPE_FEATURE_RANGES).map(([key, [min, max]]) => [
+          key,
+          { type: "integer", description: `${min} to ${max}` },
+        ]),
+      ),
+    },
+    skinSmoothStrength: {
+      type: "integer",
+      description: "0-100. Default 0 (none).",
+    },
+    skinSmoothColorIntensity: {
+      type: "integer",
+      description: "0-100. Default 0.",
+    },
+  },
+  ["features"],
+);
+
+/* ---------------------------- TOOL SETS ---------------------------- */
 
 const readTools = [
   getScanHistory,
@@ -389,4 +492,13 @@ export const streamTools = [
   recommendRoutineStep,
   recommendProduct,
   createRoutine,
+
+  analyzeSkin,
+  analyzeSkinTone,
+  analyzeFitzpatrick,
+  analyzeFace,
+
+  simulateAging,
+  simulateSkin,
+  reshapeFace,
 ];

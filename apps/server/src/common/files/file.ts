@@ -7,7 +7,7 @@ import { pipeline } from "stream/promises";
 import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
 import { fileTypeStream } from "file-type";
 import { env } from "../../config/env.ts";
-import { mkdir } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 
 type File = {
   stream: Readable;
@@ -18,6 +18,10 @@ export default class FileManager {
   private readonly types: Record<string, string[]> = {
     image: ["image/jpeg", "image/png", "image/webp", "image/gif"],
   } as const;
+
+  /** Hard cap for files downloaded from a remote URL (e.g. AI result images). */
+  private readonly maxRemoteFileBytes = 20 * 1024 * 1024;
+  private readonly remoteFetchTimeoutMs = 30_000;
 
   constructor(private filePath: string) {
     this.filePath = filePath;
@@ -48,6 +52,42 @@ export default class FileManager {
     return `${crypto.randomUUID()}.${ext}`;
   }
 
+  /**
+   * Validates the stream's real type (magic bytes), writes it to
+   * `<root>/<type>/<directory>/<uuid>.<ext>` and returns the public-style
+   * relative path (`uploads/<type>/<directory>/<uuid>.<ext>`).
+   * A partially written file is removed if the write fails.
+   */
+  private async saveStream(
+    source: Readable,
+    type: string,
+    directory = "",
+  ): Promise<string> {
+    if (!this.types[type]) {
+      throw new Error(`Unknown upload type: ${type}`);
+    }
+    if (path.isAbsolute(directory) || directory.split(/[\\/]/).includes("..")) {
+      throw new Error("Invalid directory");
+    }
+
+    const { stream, ext } = await this.validateFileType(source, type);
+
+    const filename = this.safeFilename(ext);
+    const folderPath = path.join(this.filePath, type, directory);
+    const filePath = path.join(folderPath, filename);
+
+    await mkdir(folderPath, { recursive: true });
+
+    try {
+      await pipeline(stream, fs.createWriteStream(filePath));
+    } catch (error) {
+      await rm(filePath, { force: true }).catch(() => undefined);
+      throw error;
+    }
+
+    return path.join("uploads", type, directory, filename);
+  }
+
   async uploadFile(
     req: FastifyRequest,
     type: string,
@@ -63,24 +103,72 @@ export default class FileManager {
       throw new Error(`Unknown upload type: ${type}`);
     }
 
-    const { stream, ext } = await this.validateFileType(data.file, type);
+    return this.saveStream(data.file, type, directory);
+  }
 
-    const filename = this.safeFilename(ext);
-    const folderPath = path.join(this.filePath, type, directory);
-    const filePath = path.join(folderPath, filename);
+  /**
+   * Downloads a remote file (e.g. a YouCam result URL, which expires after
+   * 2 hours) and stores it. Only http(s) URLs are accepted, the content type is
+   * verified from the bytes, and the download is capped at 20 MB.
+   */
+  async saveRemoteFile(
+    url: string,
+    type: string,
+    directory = "",
+  ): Promise<string> {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      throw new Error("Only http(s) URLs can be downloaded");
+    }
 
-    await mkdir(folderPath, { recursive: true });
+    const res = await fetch(parsed, {
+      signal: AbortSignal.timeout(this.remoteFetchTimeoutMs),
+    });
+    if (!res.ok || !res.body) {
+      throw new Error(`Failed to download file (${res.status})`);
+    }
 
-    await pipeline(stream, fs.createWriteStream(filePath));
+    const declared = Number(res.headers.get("content-length"));
+    if (Number.isFinite(declared) && declared > this.maxRemoteFileBytes) {
+      throw new Error("Remote file is too large");
+    }
 
-    return path.join("uploads", type, directory, filename);
+    const max = this.maxRemoteFileBytes;
+    const body = Readable.fromWeb(
+      res.body as unknown as NodeWebReadableStream<Uint8Array>,
+    );
+    async function* limited() {
+      let received = 0;
+      for await (const chunk of body) {
+        received += (chunk as Uint8Array).length;
+        if (received > max) throw new Error("Remote file is too large");
+        yield chunk;
+      }
+    }
+
+    return this.saveStream(
+      Readable.from(limited(), { objectMode: false }),
+      type,
+      directory,
+    );
+  }
+
+  /** Stores an in-memory buffer (type is verified from its bytes). */
+  async saveBuffer(
+    buffer: Buffer,
+    type: string,
+    directory = "",
+  ): Promise<string> {
+    return this.saveStream(
+      Readable.from(buffer, { objectMode: false }),
+      type,
+      directory,
+    );
   }
 
   deleteUploadedFile(filePath: string): void {
     filePath = filePath.replace(/^uploads[\\/]/, "");
-    fs.unlinkSync(
-      path.join(this.filePath, filePath),
-    );
+    fs.unlinkSync(path.join(this.filePath, filePath));
   }
 
   getUploadedFilePath(filePath: string): string {

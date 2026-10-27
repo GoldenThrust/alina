@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { YouCamError } from "../errors/YouCamError";
 import { httpRequest } from "../common/utils/request";
@@ -42,6 +43,288 @@ const FITZPATRICK_INFO: Record<
   VI: { label: "Very Dark Brown", sunReaction: "Almost never burns" },
 };
 
+/* ------------------------------ shared (new) ------------------------------ */
+
+/**
+ * Result images are hosted by YouCam for only 2 hours, so every feature that
+ * produces an image saves it through `fileManager` by default.
+ */
+export type SaveOptions = {
+  /** Save the result image(s) via FileManager. Default: true. */
+  save?: boolean;
+  /** Sub-directory under `uploads/image`. Each feature has its own default. */
+  saveDirectory?: string;
+};
+
+/* ----------------------------- aging simulation ---------------------------- */
+
+export type AgingOptions = SaveOptions & { poll?: PollOptions };
+
+export type AgingImage = {
+  /** Temporary YouCam URL (valid 2 hours). */
+  url: string;
+  /** Age the engine generated this image for. */
+  age: number;
+  /** Saved file path (`uploads/image/...`) when saving is enabled. */
+  path?: string;
+};
+
+export type AgingResult = {
+  /** Age the engine estimates for the uploaded photo. */
+  estimatedAge?: number;
+  /** Index in `images` that corresponds to the uploaded photo. */
+  originalIndex?: number;
+  minAge?: number;
+  maxAge?: number;
+  count?: number;
+  /** Ordered youngest to oldest. */
+  images: AgingImage[];
+};
+
+/* ---------------------------- skin simulation ------------------------------ */
+
+export const SKIN_SIMULATION_CONCERNS = [
+  "wrinkle",
+  "radiance",
+  "oiliness",
+  "acne",
+  "eye_bags",
+  "dark_circle",
+  "spots",
+  "pores",
+  "texture",
+  "redness",
+] as const;
+
+export type SkinSimulationConcern = (typeof SKIN_SIMULATION_CONCERNS)[number];
+
+/** 0.0 = original skin, 1.0 = strongest improvement. At least one must be > 0. */
+export type SkinSimulationIntensities = Partial<
+  Record<SkinSimulationConcern, number>
+>;
+
+export type SkinSimulationOptions = SaveOptions & {
+  intensities: SkinSimulationIntensities;
+  poll?: PollOptions;
+};
+
+export type SkinSimulationResult = {
+  /** Temporary YouCam URL (valid 2 hours). */
+  url: string;
+  /** Saved file path (`uploads/image/...`) when saving is enabled. */
+  path?: string;
+  intensities: Record<string, number>;
+};
+
+/* ------------------------------ face reshape ------------------------------- */
+
+const RANGE_SIGNED = [-100, 100] as const;
+const RANGE_UNSIGNED = [0, 100] as const;
+
+/** Allowed range for every face-reshape feature (from the API schema). */
+export const FACE_RESHAPE_FEATURE_RANGES = {
+  // Face
+  cheekbones: RANGE_UNSIGNED,
+  jaw: RANGE_UNSIGNED,
+  face_reshape: RANGE_SIGNED,
+  face_reshape_left: RANGE_SIGNED,
+  face_reshape_right: RANGE_SIGNED,
+  face_width: RANGE_SIGNED,
+  chin_reshape: RANGE_SIGNED,
+  chin_reshape_left: RANGE_SIGNED,
+  chin_reshape_right: RANGE_SIGNED,
+  chin_length: RANGE_SIGNED,
+  // Eyes
+  eye_size: RANGE_SIGNED,
+  eye_size_left: RANGE_SIGNED,
+  eye_size_right: RANGE_SIGNED,
+  eye_distance: RANGE_SIGNED,
+  eye_angle: RANGE_SIGNED,
+  eye_height: RANGE_SIGNED,
+  eye_width: RANGE_SIGNED,
+  // Nose
+  nose_bridge_width: RANGE_SIGNED,
+  nose_lift: RANGE_SIGNED,
+  nose_size: RANGE_SIGNED,
+  nose_tip: RANGE_SIGNED,
+  nose_tip_width: RANGE_SIGNED,
+  nose_wing: RANGE_SIGNED,
+  // Lips
+  lip_size: RANGE_SIGNED,
+  lip_width: RANGE_SIGNED,
+  lip_peak: RANGE_SIGNED,
+  lip_height_top: RANGE_SIGNED,
+  lip_height_bottom: RANGE_SIGNED,
+} as const;
+
+export type FaceReshapeFeatureKey = keyof typeof FACE_RESHAPE_FEATURE_RANGES;
+
+/**
+ * Integer values. "Left"/"Right" are from the person's perspective, not the
+ * viewer's. A per-side key overrides the combined key (`eye_size`, etc.).
+ */
+export type FaceReshapeFeatures = Partial<Record<FaceReshapeFeatureKey, number>>;
+
+export type FaceBox = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+export type FaceReshapeOptions = SaveOptions & {
+  features: FaceReshapeFeatures;
+  /** Which detected face to reshape (from `detectReshapeFaces`). Default 0. */
+  faceIndex?: number;
+  /** Run face detection first and reshape the largest face. Ignored if `faceIndex` is set. */
+  autoSelectFace?: boolean;
+  /** 0–100. Default 0 (no smoothing). */
+  skinSmoothStrength?: number;
+  /** 0–100. Default 0. */
+  skinSmoothColorIntensity?: number;
+  poll?: PollOptions;
+};
+
+export type FaceReshapeResult = {
+  /** Temporary YouCam URL (valid 2 hours). */
+  url: string;
+  /** Saved file path (`uploads/image/...`) when saving is enabled. */
+  path?: string;
+  faceIndex: number;
+  processingSeconds?: number;
+  applySeconds?: number;
+};
+
+/* ---------------------- face attributes & ratio analysis ------------------- */
+
+/** Every feature the API accepts. */
+export const FACE_ATTR_FEATURES = [
+  // Face / age / gender
+  "faceShape",
+  "age",
+  "gender",
+  // Eyes
+  "eyeShape",
+  "eyeSize",
+  "eyeAngle",
+  "eyeDistance",
+  "eyelid",
+  // Brows
+  "eyebrowShape",
+  "eyebrowThickness",
+  "eyebrowDistance",
+  "eyebrowShortness",
+  // Lips, nose, cheekbones
+  "lipShape",
+  "noseWidth",
+  "noseLength",
+  "cheekbones",
+  // Colors
+  "eyeColor",
+  "lipColor",
+  "eyebrowColor",
+  "hairColor",
+  // Ratios
+  "horizontalThird",
+  "verticalFifth",
+  "faceAspectRatio",
+  "eyeAspectRatio",
+  "eyebrowPosition",
+  "eyebrowArch",
+  "eyeHeightToEyebrowDistance",
+  "noseAspectRatio",
+  "noseWidthToMouthWidth",
+  "noseToLipToChin",
+  "upperLipToLowerLip",
+] as const;
+
+export type FaceAttrFeature = (typeof FACE_ATTR_FEATURES)[number];
+
+/**
+ * Default selection: the 26 attributes and ratios listed in the docs' Inputs &
+ * Outputs tables (15–28 features = 30 units). Colors and `eyebrowPosition` are
+ * opt-in.
+ */
+export const FACE_ATTR_DEFAULT_FEATURES: readonly FaceAttrFeature[] = [
+  "faceShape",
+  "age",
+  "gender",
+  "eyeShape",
+  "eyeSize",
+  "eyeAngle",
+  "eyeDistance",
+  "eyelid",
+  "eyebrowShape",
+  "eyebrowThickness",
+  "eyebrowDistance",
+  "eyebrowShortness",
+  "lipShape",
+  "noseWidth",
+  "noseLength",
+  "cheekbones",
+  "horizontalThird",
+  "verticalFifth",
+  "faceAspectRatio",
+  "eyeAspectRatio",
+  "eyebrowArch",
+  "eyeHeightToEyebrowDistance",
+  "noseAspectRatio",
+  "noseWidthToMouthWidth",
+  "noseToLipToChin",
+  "upperLipToLowerLip",
+];
+
+/**
+ * strict: pitch ≤4°, yaw ≤6°, roll ≤4° · high: all ≤10° · medium: ≤15° ·
+ * low: ≤20° · flexible: ≤30°. API default is "high".
+ */
+export type FaceAngleStrictness =
+  | "strict"
+  | "high"
+  | "medium"
+  | "low"
+  | "flexible";
+
+export type FaceAnalysisOptions = {
+  features?: readonly FaceAttrFeature[];
+  faceAngleStrictness?: FaceAngleStrictness;
+  poll?: PollOptions;
+};
+
+/** `[1, r]` style ratio, e.g. `[1, 1.46]` for the face aspect ratio. */
+type Ratio = number[];
+
+export type FaceAnalysisResult = {
+  faceQuality?: {
+    hasFace?: boolean;
+    area?: string;
+    frontal?: string;
+    lighting?: string;
+    faceAngle?: string;
+  };
+  faceShape?: string;
+  ageGender?: { age?: number; gender?: "female" | "male" | "unknown" };
+  /** left_/right_ eyelid, shape and angle, plus `size` and `setting` (distance). */
+  eyes?: Record<string, string>;
+  /** gap, left_/right_ shape, body/tail thickness, thinness and shortness. */
+  eyebrows?: Record<string, string>;
+  lipShapes?: string[];
+  nose?: { width?: string; length?: string };
+  cheekbones?: { left?: string; right?: string; overall?: string };
+  colors?: {
+    eyeColor?: string;
+    eyeColorName?: string;
+    lipColor?: string;
+    eyebrowColor?: string;
+    hairColor?: string;
+    hairColorName?: string;
+  };
+  /** Percent sections or `[1, r]` ratios keyed by the API's result names. */
+  ratios?: Record<string, Ratio>;
+  /** Untouched API payload. */
+  raw: Record<string, any>;
+};
+
 /* -------------------------------------------------------------------------- */
 /*  Internals                                                                 */
 /* -------------------------------------------------------------------------- */
@@ -79,6 +362,104 @@ async function settle<T>(fn: () => Promise<T>): Promise<Settled<T>> {
   }
 }
 
+function assertNumber(
+  name: string,
+  value: unknown,
+  min: number,
+  max: number,
+  integer = false,
+): asserts value is number {
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < min ||
+    value > max ||
+    (integer && !Number.isInteger(value))
+  ) {
+    throw new YouCamError(
+      `${name} must be ${integer ? "an integer" : "a number"} between ${min} and ${max}.`,
+      "invalid_parameter",
+    );
+  }
+}
+
+function buildSkinSimulationIntensities(
+  input: SkinSimulationIntensities,
+): Record<string, number> {
+  const known = SKIN_SIMULATION_CONCERNS as readonly string[];
+  const out: Record<string, number> = {};
+
+  for (const [key, value] of Object.entries(input ?? {})) {
+    if (value === undefined) continue;
+    if (!known.includes(key)) {
+      throw new YouCamError(
+        `Unknown skin simulation concern "${key}".`,
+        "invalid_parameter",
+      );
+    }
+    assertNumber(key, value, 0, 1);
+    out[key] = value;
+  }
+
+  if (!Object.values(out).some((v) => v > 0)) {
+    throw new YouCamError(
+      "At least one skin simulation intensity must be greater than 0.",
+      "invalid_parameter",
+    );
+  }
+  return out;
+}
+
+function buildFaceReshapeFeatures(
+  input: FaceReshapeFeatures,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+
+  for (const [key, value] of Object.entries(input ?? {})) {
+    if (value === undefined) continue;
+    const range = (
+      FACE_RESHAPE_FEATURE_RANGES as Record<string, readonly [number, number]>
+    )[key];
+    if (!range) {
+      throw new YouCamError(
+        `Unknown face reshape feature "${key}".`,
+        "invalid_parameter",
+      );
+    }
+    assertNumber(key, value, range[0], range[1], true);
+    out[key] = value;
+  }
+
+  if (!Object.values(out).some((v) => v !== 0)) {
+    throw new YouCamError(
+      "At least one face reshape feature must be non-zero.",
+      "invalid_parameter",
+    );
+  }
+  return out;
+}
+
+function buildFaceAttrFeatures(
+  input: readonly FaceAttrFeature[] | undefined,
+): FaceAttrFeature[] {
+  const features = [...new Set(input ?? FACE_ATTR_DEFAULT_FEATURES)];
+  if (features.length === 0) {
+    throw new YouCamError(
+      "Select at least one face attribute or ratio feature.",
+      "invalid_parameter",
+    );
+  }
+  const known = FACE_ATTR_FEATURES as readonly string[];
+  const unknown = features.filter((f) => !known.includes(f));
+  if (unknown.length) {
+    throw new YouCamError(
+      `Unknown face analysis feature(s): ${unknown.join(", ")}`,
+      "invalid_parameter",
+    );
+  }
+  return features;
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Service                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -104,6 +485,21 @@ export class YouCamService {
   }
   static get fitzpatrickScaleUrl() {
     return `${this.baseUrl}/s2s/v2.0/task/fitzpatrick-scale-analyzer`;
+  }
+  static get agingUrl() {
+    return `${this.baseUrl}/s2s/v2.0/task/aging`;
+  }
+  static get skinSimulationUrl() {
+    return `${this.baseUrl}/s2s/v2.0/task/skin-simulation`;
+  }
+  static get faceReshapeUrl() {
+    return `${this.baseUrl}/s2s/v2.0/task/face-reshape`;
+  }
+  static get faceReshapePreprocessUrl() {
+    return `${this.faceReshapeUrl}/pre-process`;
+  }
+  static get faceAttrAnalysisUrl() {
+    return `${this.baseUrl}/s2s/v2.0/task/face-attr-analysis`;
   }
 
   /** Request defaults. `src_file_id` is added per request. */
@@ -221,6 +617,27 @@ export class YouCamService {
 
   /* ------------------------------- upload -------------------------------- */
 
+  private static async toBuffer(source: string | Buffer): Promise<Buffer> {
+    return typeof source === "string"
+      ? readFile(fileManager.getUploadedFilePath(source))
+      : source;
+  }
+
+  /** Reads the image and rejects anything that is not a JPEG (before any upload). */
+  private static async toJpegBuffer(
+    source: string | Buffer,
+    feature: string,
+  ): Promise<Buffer> {
+    const buffer = await this.toBuffer(source);
+    if (detectImageType(buffer).contentType !== "image/jpg") {
+      throw new YouCamError(
+        `${feature} only supports JPEG images.`,
+        "unsupported_image_format",
+      );
+    }
+    return buffer;
+  }
+
   /**
    * File API flow: (1) register metadata, (2) PUT the bytes to the pre-signed
    * URL. Skipping step 2 makes later tasks fail with 404 / unknown_internal_error.
@@ -229,7 +646,7 @@ export class YouCamService {
     source: string | Buffer,
     fileName?: string,
   ): Promise<UploadedImage> {
-    const buffer = typeof source === "string" ? await readFile(fileManager.getUploadedFilePath(source)) : source;
+    const buffer = await this.toBuffer(source);
     const { contentType, ext } = detectImageType(buffer);
 
     if (buffer.length >= MAX_IMAGE_BYTES) {
@@ -295,6 +712,52 @@ export class YouCamService {
     fileName?: string,
   ): Promise<string> {
     return (await this.uploadImageDetailed(source, fileName)).fileId;
+  }
+
+  /* ----------------------- saving result images (new) --------------------- */
+
+  /** Downloads a YouCam result URL and stores it through FileManager. */
+  private static async persistImage(
+    url: string,
+    directory: string,
+  ): Promise<string> {
+    try {
+      return await fileManager.saveRemoteFile(url, "image", directory);
+    } catch (error) {
+      throw new YouCamError(
+        `Result was generated but could not be saved: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        "save_failed",
+        undefined,
+        { url },
+      );
+    }
+  }
+
+  /** Saves several images; if any fails, removes the ones already saved. */
+  private static async persistImages(
+    urls: string[],
+    directory: string,
+  ): Promise<string[]> {
+    const settled = await Promise.allSettled(
+      urls.map((url) => this.persistImage(url, directory)),
+    );
+
+    const failed = settled.find((s) => s.status === "rejected");
+    if (failed) {
+      for (const s of settled) {
+        if (s.status === "fulfilled") {
+          try {
+            fileManager.deleteUploadedFile(s.value);
+          } catch {
+            /* best effort cleanup */
+          }
+        }
+      }
+      throw (failed as PromiseRejectedResult).reason;
+    }
+    return settled.map((s) => (s as PromiseFulfilledResult<string>).value);
   }
 
   /* ---------------------------- skin analysis ---------------------------- */
@@ -466,6 +929,373 @@ export class YouCamService {
   ) {
     const taskId = await this.createFitzpatrickTask(fileId, options);
     return this.waitForFitzpatrick(taskId, options.poll);
+  }
+
+  /* --------------------------- aging simulation -------------------------- */
+
+  /**
+   * Generates a series of photos from youth to old age from one selfie.
+   * JPEG only, long side ≤ 4096, single face (yaw ±30°, roll ±20°, pitch ±20°).
+   * Costs 2 units.
+   */
+  static createAgingTask(fileId: string) {
+    return this.createTask(this.agingUrl, { src_file_id: fileId });
+  }
+
+  static async waitForAging(
+    taskId: string,
+    options: AgingOptions = {},
+  ): Promise<AgingResult> {
+    const data = await this.pollTask<{
+      output?: { url: string; res_age: number }[];
+      age?: number;
+      agd_idx?: number;
+      age_min?: number;
+      age_max?: number;
+      num_of_photos?: number;
+    }>(`${this.agingUrl}/${encodeURIComponent(taskId)}`, options.poll);
+
+    const output = data.results?.output;
+    if (!Array.isArray(output) || output.length === 0) {
+      throw new YouCamError(
+        "Aging simulation returned no images",
+        "invalid_response",
+        undefined,
+        data,
+      );
+    }
+
+    const images: AgingImage[] = output.map((o) => ({
+      url: o.url,
+      age: o.res_age,
+    }));
+
+    if (options.save !== false) {
+      // One folder per run keeps the whole series together.
+      const directory = path.join(options.saveDirectory ?? "aging", randomUUID());
+      const paths = await this.persistImages(
+        images.map((i) => i.url),
+        directory,
+      );
+      images.forEach((image, i) => (image.path = paths[i]));
+    }
+
+    return {
+      estimatedAge: data.results?.age,
+      originalIndex: data.results?.agd_idx,
+      minAge: data.results?.age_min,
+      maxAge: data.results?.age_max,
+      count: data.results?.num_of_photos ?? images.length,
+      images,
+    };
+  }
+
+  static async simulateAging(fileId: string, options: AgingOptions = {}) {
+    const taskId = await this.createAgingTask(fileId);
+    return this.waitForAging(taskId, options);
+  }
+
+  /** Uploads (JPEG only) and runs the aging simulation. */
+  static async simulateAgingImage(
+    source: string | Buffer,
+    options: AgingOptions = {},
+  ) {
+    const buffer = await this.toJpegBuffer(source, "Aging simulation");
+    const fileId = await this.uploadImage(buffer);
+    return { fileId, ...(await this.simulateAging(fileId, options)) };
+  }
+
+  /* --------------------------- skin simulation --------------------------- */
+
+  /**
+   * Shows the effect of improving skin concerns. Each intensity is 0.0–1.0 and
+   * at least one must be > 0. JPEG/PNG, short side ≥ 480, long side ≤ 2560,
+   * face ≥ 60% of the image width. Costs 4 units for 1–4 concerns, 6 for 5–10.
+   */
+  static createSkinSimulationTask(
+    fileId: string,
+    intensities: SkinSimulationIntensities,
+  ) {
+    return this.createTask(this.skinSimulationUrl, {
+      src_file_id: fileId,
+      ...buildSkinSimulationIntensities(intensities),
+    });
+  }
+
+  static async waitForSkinSimulation(
+    taskId: string,
+    options: Omit<SkinSimulationOptions, "intensities"> & {
+      intensities?: Record<string, number>;
+    } = {},
+  ): Promise<SkinSimulationResult> {
+    const data = await this.pollTask<{ url?: string }>(
+      `${this.skinSimulationUrl}/${encodeURIComponent(taskId)}`,
+      options.poll,
+    );
+
+    const url = data.results?.url;
+    if (!url) {
+      throw new YouCamError(
+        "Skin simulation returned no result url",
+        "invalid_response",
+        undefined,
+        data,
+      );
+    }
+
+    const savedPath =
+      options.save !== false
+        ? await this.persistImage(
+            url,
+            options.saveDirectory ?? "skin-simulation",
+          )
+        : undefined;
+
+    return { url, path: savedPath, intensities: options.intensities ?? {} };
+  }
+
+  static async simulateSkin(fileId: string, options: SkinSimulationOptions) {
+    const intensities = buildSkinSimulationIntensities(options.intensities);
+    const taskId = await this.createSkinSimulationTask(fileId, intensities);
+    return this.waitForSkinSimulation(taskId, { ...options, intensities });
+  }
+
+  /** Uploads (JPEG/PNG) and runs the skin simulation. */
+  static async simulateSkinImage(
+    source: string | Buffer,
+    options: SkinSimulationOptions,
+  ) {
+    // Validate before spending an upload.
+    buildSkinSimulationIntensities(options.intensities);
+    const fileId = await this.uploadImage(source);
+    return { fileId, ...(await this.simulateSkin(fileId, options)) };
+  }
+
+  /* ------------------------------ face reshape --------------------------- */
+
+  /**
+   * Detects faces and returns their bounding boxes (pixels). The array index is
+   * the `faceIndex` to pass to `reshapeFace`. Use it when a photo may contain
+   * more than one face.
+   */
+  static async detectReshapeFaces(
+    fileId: string,
+    poll?: PollOptions,
+  ): Promise<FaceBox[]> {
+    const taskId = await this.createTask(this.faceReshapePreprocessUrl, {
+      src_file_id: fileId,
+    });
+    const data = await this.pollTask<{ timed?: number; result?: FaceBox[] }>(
+      `${this.faceReshapePreprocessUrl}/${encodeURIComponent(taskId)}`,
+      poll,
+    );
+
+    const faces = data.results?.result;
+    if (!Array.isArray(faces)) {
+      throw new YouCamError(
+        "Face detection returned no result list",
+        "invalid_response",
+        undefined,
+        data,
+      );
+    }
+    return faces;
+  }
+
+  static createFaceReshapeTask(
+    fileId: string,
+    options: Pick<
+      FaceReshapeOptions,
+      | "features"
+      | "faceIndex"
+      | "skinSmoothStrength"
+      | "skinSmoothColorIntensity"
+    >,
+  ) {
+    const strength = options.skinSmoothStrength ?? 0;
+    const colorIntensity = options.skinSmoothColorIntensity ?? 0;
+    assertNumber("skinSmoothStrength", strength, 0, 100, true);
+    assertNumber("skinSmoothColorIntensity", colorIntensity, 0, 100, true);
+    if (options.faceIndex !== undefined) {
+      assertNumber("faceIndex", options.faceIndex, 0, Number.MAX_SAFE_INTEGER, true);
+    }
+
+    return this.createTask(this.faceReshapeUrl, {
+      src_file_id: fileId,
+      version: "1.0",
+      ...(options.faceIndex !== undefined ? { index: options.faceIndex } : {}),
+      features: buildFaceReshapeFeatures(options.features),
+      global: {
+        skin_smooth_strength: strength,
+        skin_smooth_color_intensity: colorIntensity,
+      },
+    });
+  }
+
+  static async waitForFaceReshape(
+    taskId: string,
+    options: SaveOptions & { poll?: PollOptions; faceIndex?: number } = {},
+  ): Promise<FaceReshapeResult> {
+    const data = await this.pollTask<{
+      url?: string;
+      timed?: number;
+      timed_apply?: number;
+    }>(`${this.faceReshapeUrl}/${encodeURIComponent(taskId)}`, options.poll);
+
+    const url = data.results?.url;
+    if (!url) {
+      throw new YouCamError(
+        "Face reshape returned no result url",
+        "invalid_response",
+        undefined,
+        data,
+      );
+    }
+
+    const savedPath =
+      options.save !== false
+        ? await this.persistImage(url, options.saveDirectory ?? "face-reshape")
+        : undefined;
+
+    return {
+      url,
+      path: savedPath,
+      faceIndex: options.faceIndex ?? 0,
+      processingSeconds: data.results?.timed,
+      applySeconds: data.results?.timed_apply,
+    };
+  }
+
+  /**
+   * Reshapes face, eyes, nose and lips. JPEG/PNG, long side ≤ 4096, face angle
+   * under 30°. Costs 1 unit. For multi-face photos pass `faceIndex` (see
+   * `detectReshapeFaces`) or set `autoSelectFace` to use the largest face.
+   */
+  static async reshapeFace(
+    fileId: string,
+    options: FaceReshapeOptions,
+  ): Promise<FaceReshapeResult> {
+    // Fail fast on bad input before any network call.
+    buildFaceReshapeFeatures(options.features);
+
+    let faceIndex = options.faceIndex;
+    if (faceIndex === undefined && options.autoSelectFace) {
+      const faces = await this.detectReshapeFaces(fileId, options.poll);
+      if (faces.length === 0) {
+        throw new YouCamError("No face detected in the image", "error_no_face");
+      }
+      faceIndex = faces.reduce(
+        (best, face, i) =>
+          face.width * face.height > faces[best].width * faces[best].height
+            ? i
+            : best,
+        0,
+      );
+    }
+
+    const taskId = await this.createFaceReshapeTask(fileId, {
+      ...options,
+      faceIndex,
+    });
+    return this.waitForFaceReshape(taskId, { ...options, faceIndex });
+  }
+
+  /** Uploads (JPEG/PNG) and runs the face reshape. */
+  static async reshapeFaceImage(
+    source: string | Buffer,
+    options: FaceReshapeOptions,
+  ) {
+    buildFaceReshapeFeatures(options.features);
+    const fileId = await this.uploadImage(source);
+    return { fileId, ...(await this.reshapeFace(fileId, options)) };
+  }
+
+  /* ------------------- face attributes & ratio analysis ------------------ */
+
+  /**
+   * Pricing depends on how many features you request: 1–5 = 10 units,
+   * 6–14 = 20 units, 15–28 = 30 units.
+   */
+  static createFaceAnalysisTask(
+    fileId: string,
+    options: FaceAnalysisOptions = {},
+  ) {
+    return this.createTask(this.faceAttrAnalysisUrl, {
+      src_file_id: fileId,
+      features: buildFaceAttrFeatures(options.features),
+      ...(options.faceAngleStrictness
+        ? { face_angle_strictness_level: options.faceAngleStrictness }
+        : {}),
+    });
+  }
+
+  static async waitForFaceAnalysis(
+    taskId: string,
+    poll?: PollOptions,
+  ): Promise<FaceAnalysisResult> {
+    const data = await this.pollTask<Record<string, any>>(
+      `${this.faceAttrAnalysisUrl}/${encodeURIComponent(taskId)}`,
+      poll,
+    );
+
+    const r = data.results;
+    if (!r || typeof r !== "object") {
+      throw new YouCamError(
+        "Face analysis returned no results",
+        "invalid_response",
+        undefined,
+        data,
+      );
+    }
+
+    const fq = r.face_quality;
+    const color = r.color;
+
+    return {
+      faceQuality: fq
+        ? {
+            hasFace: fq.has_face,
+            area: fq.area,
+            frontal: fq.frontal,
+            lighting: fq.lighting,
+            faceAngle: fq.faceangle,
+          }
+        : undefined,
+      faceShape: r.faceshape,
+      ageGender: r.agegender,
+      eyes: r.eyelid,
+      eyebrows: r.eyebrow,
+      lipShapes: r.lipshape,
+      nose: r.nose,
+      cheekbones: r.cheekbone,
+      colors: color
+        ? {
+            eyeColor: color.eye_color,
+            eyeColorName: color.eye_color_name,
+            lipColor: color.lip_color,
+            eyebrowColor: color.eyebrow_color,
+            hairColor: color.hair_color,
+            hairColorName: color.hair_color_name,
+          }
+        : undefined,
+      ratios: r.facialratio,
+      raw: r,
+    };
+  }
+
+  static async analyzeFace(fileId: string, options: FaceAnalysisOptions = {}) {
+    const taskId = await this.createFaceAnalysisTask(fileId, options);
+    return this.waitForFaceAnalysis(taskId, options.poll);
+  }
+
+  /** Uploads (JPEG/PNG) and runs the face attribute & ratio analysis. */
+  static async analyzeFaceImage(
+    source: string | Buffer,
+    options: FaceAnalysisOptions = {},
+  ) {
+    buildFaceAttrFeatures(options.features);
+    const fileId = await this.uploadImage(source);
+    return { fileId, ...(await this.analyzeFace(fileId, options)) };
   }
 
   /* ------------------------------ all-in-one ----------------------------- */

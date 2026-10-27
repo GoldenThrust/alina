@@ -36,6 +36,12 @@ interface ChatState {
   beginStream: (sessionId: string, userId: string) => void;
   /** stream:data. Appends a chunk to the streaming message. */
   appendStream: (sessionId: string, chunk: string) => void;
+  /**
+   * stream:images. Adds image urls to the reply of that session. Safe in any order:
+   * if the reply doesn't exist yet (images arrived before stream:start, or after the
+   * stream ended) it is created, and later stream events build on it.
+   */
+  addMessageImages: (sessionId: string, images: string[], userId: string) => void;
   /** stream:end (or a dropped connection). Finalizes the message and re-enables sending. */
   endStream: (sessionId?: string) => void;
 
@@ -75,6 +81,8 @@ export const useChatStore = create<ChatState>()((set) => ({
         userId,
         sender: "USER",
         content,
+        images: [],
+        sessionId: "", // not known until the server starts the stream
         createdAt: now(),
         pending: true,
       }),
@@ -94,14 +102,21 @@ export const useChatStore = create<ChatState>()((set) => ({
         .filter((m) => m.pending)
         .map((m) => ({ ...m, pending: false }));
 
-      const messages = upsertOne(upsertMany(s.messages, delivered), {
-        id: streamMessageId(sessionId),
+      // Keep anything already on this reply (images can arrive before stream:start)
+      const id = streamMessageId(sessionId);
+      const existing = s.messages.byId[id];
+
+      const reply: Message = {
+        id,
         userId,
         sender: "ALINA",
-        content: "",
-        createdAt: now(),
+        content: existing?.content ?? "",
+        images: existing?.images ?? [],
+        sessionId,
+        createdAt: existing?.createdAt ?? now(),
         streaming: true,
-      });
+      };
+      const messages = upsertOne(upsertMany(s.messages, delivered), reply);
 
       return { messages, streamingSessionId: sessionId, awaitingReply: true, error: null };
     }),
@@ -113,6 +128,29 @@ export const useChatStore = create<ChatState>()((set) => ({
       return { messages: upsertOne(s.messages, { ...current, content: current.content + chunk }) };
     }),
 
+  addMessageImages: (sessionId, images, userId) =>
+    set((s) => {
+      if (!images.length) return s;
+
+      const id = streamMessageId(sessionId);
+      const current = s.messages.byId[id];
+      const merged = [...new Set([...(current?.images ?? []), ...images])];
+
+      const message: Message = current
+        ? { ...current, images: merged }
+        : {
+            id,
+            userId,
+            sender: "ALINA",
+            content: "",
+            images: merged,
+            sessionId,
+            createdAt: now(),
+            streaming: s.streamingSessionId === sessionId,
+          };
+      return { messages: upsertOne(s.messages, message) };
+    }),
+
   endStream: (sessionId) =>
     set((s) => {
       const id = sessionId ?? s.streamingSessionId;
@@ -120,8 +158,10 @@ export const useChatStore = create<ChatState>()((set) => ({
       const done = { streamingSessionId: null, awaitingReply: false };
 
       if (!current) return done;
-      // A stream that produced nothing shouldn't leave an empty bubble behind
-      if (!current.content) return { ...done, messages: removeOne(s.messages, current.id) };
+      // A stream that produced nothing (no text and no images) shouldn't leave an empty bubble behind
+      if (!current.content && !current.images?.length) {
+        return { ...done, messages: removeOne(s.messages, current.id) };
+      }
       return { ...done, messages: upsertOne(s.messages, { ...current, streaming: false }) };
     }),
 
