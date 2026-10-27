@@ -1,9 +1,12 @@
+import type { Job } from "bullmq";
 import { config } from "../../config";
 import { logger } from "../../config/logger";
 import { db } from "../../prisma/db";
 import { gemmaAgent } from "../../services/ai/gemma/gemma.agents";
 import { sendEmailJob } from "../email/email.producer";
 import path from "path";
+import Websocket from "../../services/websocket.service";
+import { getNextRetryDelay } from "../../common/utils/bullmqJob";
 
 const appUrl = config.env.CLIENT_URL;
 
@@ -11,11 +14,15 @@ const GOOD = { color: "#16886c", bg: "#e8f6f0" };
 const BAD = { color: "#c55f83", bg: "#fbeef3" };
 const FLAT = { color: "#7b8092", bg: "#f3f3f7" };
 
-export async function processAI(job: any) {
-  try {
-    const { userId, scanId, input } = job.data as AIData;
-    logger.info("Processing AI job:", job.data);
+export async function processAI(job: Job) {
+  const attemptsMade = job.attemptsMade + 1;
+  const maxAttempts = job.opts.attempts ?? 1;
 
+  const isLastAttempt = attemptsMade >= maxAttempts;
+  const { userId, scanId, input } = job.data as AIData;
+  logger.info("Processing AI job:", job.data);
+
+  try {
     if (scanId) {
       const result = await gemmaAgent.analyze(userId, scanId, input);
 
@@ -166,6 +173,12 @@ export async function processAI(job: any) {
   } catch (error: any) {
     console.error("Error processing AI job:", error);
     logger.error("Error processing AI job:", error);
+
+    Websocket.sendNotification(
+      userId,
+      "error",
+      `Image analysis failed. ${!isLastAttempt ? `Retrying in ${getNextRetryDelay(job)} seconds` : `Max attempts reached`}: ${error?.message || "Unknown error"}`,
+    );
     throw error;
   }
 }

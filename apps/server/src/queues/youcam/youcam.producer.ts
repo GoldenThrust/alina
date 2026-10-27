@@ -6,7 +6,7 @@ export async function YouCamAnalysis(data: YouCamAnalysisData) {
     attempts: 3,
     backoff: {
       type: "exponential",
-      delay: 5000,
+      delay: 2000,
     },
   });
 }

@@ -6,7 +6,7 @@ export async function AIProcessingJob(data: AIData) {
     attempts: 10,
     backoff: {
       type: "exponential",
-      delay: 1000,
+      delay: 2000,
     },
   });
 }

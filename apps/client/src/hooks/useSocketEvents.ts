@@ -12,8 +12,14 @@ export function useSocketEvents() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    function onNotification(notification: unknown) {
-      toast(notification as string);
+    function onNotification({
+      notification,
+      type,
+    }: {
+      notification: string;
+      type: "success" | "error";
+    }) {
+      toast[type](notification);
     }
 
     function onNavigation({ route }: { route: string }) {

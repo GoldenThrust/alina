@@ -182,6 +182,7 @@ export class GemmaAgent {
       Websocket.sendMessage(userId, lastText);
       Websocket.sendNotification(
         userId,
+        "success",
         "Image analysis completed successfully.",
       );
       Websocket.sendNavigationSignal(userId, `/scan-result/${scanId}`);
@@ -205,11 +206,6 @@ export class GemmaAgent {
       await db.orm.public.SkinScan.where({ id: scanId }).update({
         status: "FAILED",
       });
-
-      Websocket.sendNotification(
-        userId,
-        "Image analysis failed. Please try again.",
-      );
 
       logger.error(`Gemma analysis failed for user: ${userId}, Error:`, error);
       console.error("Gemma analysis failed for user:", userId, "Error:", error);

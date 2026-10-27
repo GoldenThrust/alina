@@ -4,9 +4,16 @@ import { YouCamService } from "../../services/yomCam.service";
 import { AIProcessingJob } from "../ai/ai.producer";
 import { logger } from "../../config/logger";
 import Websocket from "../../services/websocket.service";
+import type { Job } from "bullmq";
+import { getNextRetryDelay } from "../../common/utils/bullmqJob";
 
-export async function processYoucam(job: any) {
+export async function processYoucam(job: Job) {
   logger.info("Processing YouCam job:", job.data);
+  const attemptsMade = job.attemptsMade + 1;
+  const maxAttempts = job.opts.attempts ?? 1;
+
+  const isLastAttempt = attemptsMade >= maxAttempts;
+
   const { userId, type, source, imagePath, options } =
     job.data as YouCamAnalysisData;
   let response: AnalyzeImageResult | null = null;
@@ -115,9 +122,13 @@ export async function processYoucam(job: any) {
   } catch (error: any) {
     Websocket.sendNotification(
       userId,
-      "Image analysis failed. Please try again: " + (error?.message || "Unknown error"),
+      "error",
+      `Image analysis failed. ${!isLastAttempt ? `Retrying in ${getNextRetryDelay(job)} seconds` : `Max attempts reached`}: ${(error?.message || "Unknown error")}`
     );
+  
     logger.error(`Error processing YouCam job:`, error);
     console.error("Error processing YouCam job:", error);
+
+    throw error;
   }
 }
