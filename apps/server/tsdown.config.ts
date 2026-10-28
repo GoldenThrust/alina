@@ -9,7 +9,7 @@ export default defineConfig({
   clean: true,
   hash: false,
   outputOptions: {
-    codeSplitting: false,
+    codeSplitting: true,
   },
   deps: {
     onlyBundle: false,
