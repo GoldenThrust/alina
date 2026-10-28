@@ -573,11 +573,24 @@ VITE_SERVER_URL=http://localhost
 
 ## 4. Set up the database
 
-Make sure PostgreSQL is running and the `alina` database exists, then apply migrations:
+Make sure PostgreSQL is running, then run the following from `apps/server`:
 
 ```bash
 cd apps/server
-npm run migrate
+```
+
+**First time only — generate the contract and initialise the database:**
+
+```bash
+npx prisma contract emit   # generate the typed database contract from the schema
+npx prisma db init         # create the database and apply the baseline schema
+```
+
+**Create and apply a new migration after any schema change:**
+
+```bash
+npx prisma migration new   # author a new migration file
+npx prisma db migrate      # apply pending migrations to the database
 ```
 
 Optionally seed demo data:
