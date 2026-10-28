@@ -29,6 +29,7 @@ export const env = {
 
   DATABASE_URL: getEnv("DATABASE_URL"),
 
+  REDIS_USERNAME: getEnv("REDIS_USERNAME", "default"),
   REDIS_HOST: getEnv("REDIS_HOST"),
   REDIS_PORT: getEnv("REDIS_PORT"),
   REDIS_PASSWORD: getEnv("REDIS_PASSWORD"),
