@@ -16,6 +16,8 @@ export default async function scanRoutes(fastify: FastifyInstance) {
   fastify.delete("/:id", { preHandler: auth, schema: { params: IdParams } }, C.scanController.remove);
   fastify.get("/history", { preHandler: auth, schema: { querystring: Z.ListScansQuery } }, C.scanController.history);
 
+  fastify.post("/upload/temporal", { preHandler: auth }, C.scanController.createTemporalImage)
+
   fastify.get("/first-and-last", { preHandler: auth }, C.scanController.firstAndLast);
 
   /* ---------- Skin analysis (1:1 with scan) ---------- */

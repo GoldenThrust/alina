@@ -3,6 +3,7 @@ import { imageUrl } from "../utils/imageUrl"; // adjust to wherever imageUrl liv
 import { useAuthStore } from "../stores";
 import { useChatStore } from "../stores/chat.store";
 import socket from "./api/socket";
+import { uploadTemporalImage } from "./api/image";
 
 const REPLY_TIMEOUT_MS = 20_000;
 
@@ -47,7 +48,7 @@ function imagePaths(payload: unknown): string[] {
 }
 
 /** Optimistically adds the message, then emits it. Alina's reply arrives as stream events. */
-export function sendChatMessage({
+export async function sendChatMessage({
   userId,
   content,
   attachments,
@@ -55,7 +56,7 @@ export function sendChatMessage({
   userId: string;
   content: string;
   attachments: File[];
-}): void {
+}): Promise<void> {
   const store = useChatStore.getState();
   if (!content || store.awaitingReply) return;
 
@@ -64,9 +65,10 @@ export function sendChatMessage({
     return;
   }
 
-  const tempId = store.addPendingUserMessage(userId, content);
+  const tempId = store.addPendingUserMessage(userId, content, attachments);
   store.setAwaitingReply(true);
-  socket.emit("message", { content, attachments });
+  const path = await uploadTemporalImage(attachments[0])
+  socket.emit("message", { content, attachments: [path] });
 
   // If the server never starts a stream, give the text back instead of waiting forever
   clearWatchdog();

@@ -46,6 +46,18 @@ export const scanController = {
     },
     201,
   ),
+  createTemporalImage: handle("Failed to upload images", async (req: any)=> {
+      let image: string | undefined;
+      try {
+        image = await fileManager.uploadFile(req, "image", "temporal"); // Todo: use bullmq to do cleanup
+      } catch {}
+      if (!image) throw new APIError("Image is required", 400);
+
+      return {
+        message: "Image uploaded successfully",
+        image
+      }
+  })
 };
 
 /* ---------- SkinAnalysis (nested under a scan) ---------- */

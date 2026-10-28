@@ -21,4 +21,3 @@ export const post = <T>(url: string, data?: unknown, config?: AxiosRequestConfig
   request<T>({ method: "POST", url, data, ...config });
 export const put = <T>(url: string, data?: unknown) => request<T>({ method: "PUT", url, data });
 export const del = <T = MessageResponse>(url: string) => request<T>({ method: "DELETE", url });
- 

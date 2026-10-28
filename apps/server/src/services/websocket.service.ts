@@ -67,16 +67,11 @@ export default class Websocket {
         socket.disconnect(true);
         return;
       }
+    
       socket.on("message", async ({ content, attachments = [] }) => {
-        const paths = await Promise.all(
-          attachments.map((attachment: Buffer) =>
-            fileManager.saveBuffer(attachment, "image", "temporal"),
-          ),
-        );
-
         const input = [
-          paths.length > 0
-            ? `The user uploaded ${paths.length} image(s). Temporary path(s): ${paths.join(", ")}.`
+          attachments.length > 0
+            ? `The user uploaded ${attachments.length} image(s). Image path(s): ${attachments.join(", ")}.`
             : null,
           content,
         ]
@@ -92,7 +87,7 @@ export default class Websocket {
             userId: user.sub.toString(),
             sender: "USER",
             content,
-            images: paths,
+            images: attachments,
           }),
         ]);
       });

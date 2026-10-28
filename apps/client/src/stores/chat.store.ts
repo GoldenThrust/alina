@@ -28,7 +28,7 @@ interface ChatState {
   upsertMessages: (messages: Message[]) => void;
   applyHistoryPage: (messages: Message[], nextCursor: string | null) => void;
   addMessage: (message: Message) => void;
-  addPendingUserMessage: (userId: string, content: string) => string;
+  addPendingUserMessage: (userId: string, content: string, attachments: File[]) => string;
   confirmMessage: (tempId: string, saved: Message) => void;
   discardMessage: (id: string) => void;
 
@@ -73,15 +73,19 @@ export const useChatStore = create<ChatState>()((set) => ({
       initialized: true,
     })),
   addMessage: (message) => set((s) => ({ messages: upsertOne(s.messages, message) })),
-  addPendingUserMessage: (userId, content) => {
+  addPendingUserMessage: (userId, content, attachments) => {
     const id = `temp-${crypto.randomUUID()}`;
+
+    const images = attachments.map((attachment) => URL.createObjectURL(attachment));
+
+  
     set((s) => ({
       messages: upsertOne(s.messages, {
         id,
         userId,
         sender: "USER",
         content,
-        images: [],
+        images: images,
         sessionId: "", // not known until the server starts the stream
         createdAt: now(),
         pending: true,
