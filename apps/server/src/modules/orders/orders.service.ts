@@ -4,9 +4,6 @@ import { ORM } from "../../prisma/db";
 import type { CreateOrderBody } from "./orders";
 import APIError from "../../errors/APIError";
 
-const EMAIL_TEMPLATE_PATH = path.join(import.meta.dirname, "emails");
-
-
 
 /* ===================== Order ===================== */
 const orderBase = createOwnedService({

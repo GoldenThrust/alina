@@ -6,7 +6,6 @@ import type { UpsertAnalysisBody } from "./scans";
 import { YouCamAnalysis } from "../../queues/youcam/youcam.producer";
 import { encodeCursor } from "../../common/utils/crypto";
 
-const EMAIL_TEMPLATE_PATH = path.join(import.meta.dirname, "emails");
 
 /* ===================== SkinScan ===================== */
 const scanBase = createOwnedService({

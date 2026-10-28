@@ -12,8 +12,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import { encodeToken } from "../../common/utils/crypto.ts";
 import { IPinfoWrapper } from "node-ipinfo";
 
-// Templates live next to this file. (Use __dirname instead if the project is CommonJS.)
-const EMAIL_TEMPLATE_PATH = path.join(import.meta.dirname, "emails");
+const EMAIL_TEMPLATE_PATH = path.join(config.env.EMAIL_TEMPLATE_PATH, "auth");
 const EMAIL_RESET_SEPARATOR = "|";
 
 // Verification + password reset tokens. Keep the TTL and the text shown in emails in sync.

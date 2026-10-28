@@ -4,8 +4,6 @@ import { ORM } from "../../prisma/db";
 import { pick } from "../../lib/crud";
 import type { UpsertPreferenceBody } from "./preferences";
 
-// const EMAIL_TEMPLATE_PATH = path.join(import.meta.dirname, "emails");
-
 /* ===================== Preference (one per user) ===================== */
 const PREFERENCE_FIELDS = [
   "favoriteBrands",

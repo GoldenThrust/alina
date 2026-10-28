@@ -3,7 +3,6 @@ import { assertOwned, createOwnedService } from "../../lib/crud";
 import APIError from "../../errors/APIError";
 import { ORM } from "../../prisma/db";
 
-const EMAIL_TEMPLATE_PATH = path.join(import.meta.dirname, "emails");
 
 const recommendationBase = createOwnedService({
   label: "Recommendation",

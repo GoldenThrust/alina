@@ -1,10 +1,5 @@
 import "dotenv/config";
-
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 function getEnv(key: string, defaultValue?: string): string {
   const value = process.env[key] || defaultValue;
@@ -39,7 +34,8 @@ export const env = {
   MAIL_USERNAME: getEnv("MAIL_USERNAME"),
   MAIL_PASSWORD: getEnv("MAIL_PASSWORD"),
   MAIL_FROM: getEnv("MAIL_FROM", "customersupport@Alina.com"),
-  EMAIL_TEMPLATE_PATH: path.join(__dirname, "../templates/email"),
+
+  EMAIL_TEMPLATE_PATH: path.join(process.cwd(), "templates", "emails"),
 
   RESEND_API_KEY: getEnv("RESEND_API_KEY"),
 
@@ -54,8 +50,10 @@ export const env = {
   FACEBOOK_CLIENT_ID: getEnv("FACEBOOK_CLIENT_ID"),
   FACEBOOK_CLIENT_SECRET: getEnv("FACEBOOK_CLIENT_SECRET"),
   FACEBOOK_CALLBACK_URL: getEnv("FACEBOOK_CALLBACK_URL"),
-  ROOT_DIR: path.join(__dirname,"..", ".."),
-  UPLOAD_DIR: path.join(__dirname, "..", "..", getEnv("UPLOAD_DIR")),
+  ROOT_DIR: process.cwd(),
+
+  UPLOAD_DIR: path.join(process.cwd(), getEnv("UPLOAD_DIR")),
+
   YOUCAM_API_KEY: getEnv("YOUCAM_API_KEY"),
   GOOGLE_API_KEY: getEnv("GOOGLE_API_KEY"),
   IPINFO_API_KEY: getEnv("IPINFO_API_KEY"),

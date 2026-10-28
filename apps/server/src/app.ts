@@ -11,8 +11,6 @@ import fastifyOauth2 from "@fastify/oauth2";
 import superjson from "superjson";
 import multipart from "@fastify/multipart";
 
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { env } from "./config/env.ts";
 import { allowUrls } from "./common/utils/constant.ts";
 import { readFileSync } from "node:fs";
@@ -22,9 +20,8 @@ import fastifyStatic from "@fastify/static";
 
 import "./queues/index.ts";
 import { AIProcessingJob } from "./queues/ai/ai.producer.ts";
+import path from "node:path";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const { GOOGLE_CONFIGURATION, FACEBOOK_CONFIGURATION, X_CONFIGURATION } =
   fastifyOauth2;
@@ -141,12 +138,6 @@ export function buildApp() {
   app.register(import("./plugins/prisma.ts"));
   app.register(import("./plugins/redis.ts"));
 
-  // app.register(fastifyStatic, {
-  //   root: path.join(__dirname, "../../client/dist"),
-  //   prefix: "/",
-  //   wildcard: false,
-  // });
-
   app.register(multipart, {
     limits: {
       fileSize: 5 * 1024 * 1024, // 5 MB
@@ -192,7 +183,7 @@ export function buildApp() {
   //   await db.close();
   // });
 
-  const clientRoot = path.join(__dirname, "../client/dist");
+  const clientRoot = path.join(process.cwd(), "../client/dist");
 
   app.register(fastifyStatic, {
     root: env.UPLOAD_DIR,

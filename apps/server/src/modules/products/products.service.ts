@@ -10,8 +10,6 @@ import APIError from "../../errors/APIError";
 import assert from "assert";
 import { decodeCursor, encodeCursor } from "../../common/utils/crypto";
 
-const EMAIL_TEMPLATE_PATH = path.join(import.meta.dirname, "emails");
-
 /* ===================== Product (global catalogue) ===================== */
 const PRODUCT_FIELDS = [
   "name",
@@ -86,7 +84,7 @@ export const productService = {
 
     let rows = await ORM.Product()
       .where({ ...pick(query, PRODUCT_FIELDS), userId })
-      .where((p) => p.recommendation.some({ userId }))
+      .where((p: any) => p.recommendation.some({ userId }))
       .include("recommendation")
       .orderBy([(r: any) => r.createdAt.desc(), (r: any) => r.id.desc()])
       .cursor(decodedCursor ?? {})

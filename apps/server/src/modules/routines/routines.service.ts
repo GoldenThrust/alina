@@ -16,7 +16,6 @@ import { decodeCursor, encodeCursor } from "../../common/utils/crypto";
 import { ro } from "@faker-js/faker";
 import { Temporal } from "@js-temporal/polyfill";
 
-const EMAIL_TEMPLATE_PATH = path.join(import.meta.dirname, "emails");
 
 /* ===================== Routine ===================== */
 const routineBase = createOwnedService({

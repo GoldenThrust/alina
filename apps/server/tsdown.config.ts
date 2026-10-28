@@ -13,7 +13,7 @@ export default defineConfig({
   },
   deps: {
     onlyBundle: false,
-    alwaysBundle: (id) =>
-      !isBuiltin(id),
+    alwaysBundle: (id) => !isBuiltin(id),
+    neverBundle: ["pino", "pino-pretty", "thread-stream", "sonic-boom", "argon2"],
   },
 });
