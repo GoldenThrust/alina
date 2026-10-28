@@ -68,7 +68,7 @@ const recommendSchema = z.object({
 export class QlooRecommendTool extends QlooTool<z.infer<typeof recommendSchema>> {
   readonly name = "qloo_recommend";
   readonly description =
-    "Read-only. Recommend brands, products, places, people/influencers or podcasts this user is likely to love, based on their favorite brands, age range, gender and city. Saves nothing.";
+    "Recommend brands, products, places, people/influencers or podcasts this user is likely to love, based on their favorite brands, age range, gender and city. Saves nothing.";
   readonly schema = recommendSchema;
 
   protected async executeInternal(
@@ -117,7 +117,7 @@ const compareSchema = z.object({
 export class QlooCompareTool extends QlooTool<z.infer<typeof compareSchema>> {
   readonly name = "qloo_compare";
   readonly description =
-    "Read-only. Compare 2-4 brands, places, people/influencers or podcasts: shared and distinct taste traits, audience profile, and how well each fits this user's taste. For products, pass their brand names. Saves nothing.";
+    "Compare 2-4 brands, places, people/influencers or podcasts: shared and distinct taste traits, audience profile, and how well each fits this user's taste. For products, pass their brand names. Saves nothing.";
   readonly schema = compareSchema;
 
   protected async executeInternal(
@@ -154,7 +154,7 @@ const trendingSchema = z.object({
 export class QlooTrendingTool extends QlooTool<z.infer<typeof trendingSchema>> {
   readonly name = "qloo_trending";
   readonly description =
-    "Read-only. Two uses. (1) No items: what is trending now among brands, products, places, people/influencers or podcasts for this user's age range, gender and city (set personalize true to weight by their taste). (2) With items: whether those specific brands, places, people or podcasts are rising, steady or falling in popularity over the last ~90 days. For products, pass brand names. Saves nothing.";
+    "Two uses. (1) No items: what is trending now among brands, products, places, people/influencers or podcasts for this user's age range, gender and city (set personalize true to weight by their taste). (2) With items: whether those specific brands, places, people or podcasts are rising, steady or falling in popularity over the last ~90 days. For products, pass brand names. Saves nothing.";
   readonly schema = trendingSchema;
 
   protected async executeInternal(

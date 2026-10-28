@@ -1,3 +1,4 @@
+import { env } from "../../../config/env";
 import {
   FACE_ATTR_DEFAULT_FEATURES,
   FACE_ATTR_FEATURES,
@@ -356,9 +357,9 @@ const qlooTrending = fn(
 
 const imagePathParam = {
   type: "string",
-  description: "Image file path. If not given, the latest scan image is used. If no scan exists, the tool fails.",
+  description:
+    "Image file path. If not given, the latest scan image is used. If no scan exists, the tool fails.",
 };
-
 
 /* ---------------------------- ANALYSIS (read-only) ---------------------------- */
 
@@ -396,7 +397,7 @@ const analyzeFace = fn(
       type: "array",
       items: { type: "string", enum: [...FACE_ATTR_FEATURES] },
       description: "Features to analyse, 1-28.",
-    }
+    },
   },
 );
 
@@ -423,7 +424,7 @@ const simulateSkin = fn(
           { type: "number", description: "0.0-1.0" },
         ]),
       ),
-    }
+    },
   },
   ["intensities"],
 );
@@ -466,9 +467,9 @@ const readTools = [
   getRoutineLogs,
   getConversation,
   getPreferences,
-  qlooRecommend,
-  qlooCompare,
-  qlooTrending,
+  ...(env.QLOO_API_KEY.trim() !== ""
+    ? [qlooRecommend, qlooCompare, qlooTrending]
+    : []),
 ];
 
 const baseTools = [{ type: "google_search" as const }];

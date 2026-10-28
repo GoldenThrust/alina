@@ -4,7 +4,6 @@ import { env } from "../../../../config/env.ts";
 
 /* ------------------------------ config ------------------------------ */
 
-// Hackathon keys only work on this host. For production set QLOO_API_URL and a production key.
 const BASE = env.QLOO_API_URL;
 const TIMEOUT_MS = 8_000;
 const CACHE_VERSION = "v3"; // bump when params or response shape change
@@ -42,6 +41,12 @@ const URN: Record<QlooEntityType, string> = {
   person: "urn:entity:person",
   podcast: "urn:entity:podcast",
 };
+export const URNTAG: Record<QlooEntityType, string> = {
+  brand: "urn:tag:genre:brand:health_and_beauty",
+  place: "urn:tag:genre:place:hotel:wellness",
+  person: "urn:tag:genre:person:influencer",
+  podcast: "urn:tag:genre:media:health_fitness,urn:tag:genre:media:medicine",
+};
 
 export type AgeBand =
   | "24_and_younger"
@@ -73,7 +78,8 @@ export interface EntityItem {
   tags?: string[];
 }
 
-export type Status = "ok" | "no_match" | "no_signal" | "needs_location" | "location_not_found";
+export type Status =
+  "ok" | "no_match" | "no_signal" | "needs_location" | "location_not_found";
 export interface RecResult {
   status: Status;
   items: EntityItem[];
@@ -95,13 +101,18 @@ export class QlooError extends Error {
     super(message);
   }
 }
-const isLocationError = (e: unknown) => e instanceof QlooError && e.message === "location_not_found";
+const isLocationError = (e: unknown) =>
+  e instanceof QlooError && e.message === "location_not_found";
 
 /* -------------------------------- http ------------------------------- */
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function get(path: string, params: Record<string, string>, attempt = 0): Promise<any> {
+async function get(
+  path: string,
+  params: Record<string, string>,
+  attempt = 0,
+): Promise<any> {
   const key = env.QLOO_API_KEY;
   if (!key) throw new QlooError("missing_api_key");
 
@@ -126,13 +137,18 @@ const entitiesOf = (body: any): any[] =>
 const str = (v: unknown, max = 160): string | undefined =>
   typeof v === "string" && v.trim() ? v.trim().slice(0, max) : undefined;
 const num = (v: unknown): number | undefined =>
-  typeof v === "number" && Number.isFinite(v) ? Math.round(v * 100) / 100 : undefined;
+  typeof v === "number" && Number.isFinite(v)
+    ? Math.round(v * 100) / 100
+    : undefined;
 
 function toItem(e: any, tagLimit = 5): EntityItem | null {
   const name = str(e?.name, 120);
   if (!name) return null;
   const tags = Array.isArray(e?.tags)
-    ? e.tags.map((t: any) => str(t?.name, 40)).filter((t: any): t is string => !!t).slice(0, tagLimit)
+    ? e.tags
+        .map((t: any) => str(t?.name, 40))
+        .filter((t: any): t is string => !!t)
+        .slice(0, tagLimit)
     : undefined;
   return {
     id: str(e?.entity_id, 80),
@@ -157,7 +173,8 @@ function contextParams(ctx: TasteContext): Record<string, string> {
   if (ctx.gender) p[GENDER_PARAM] = ctx.gender;
   return p;
 }
-const hasDemo = (ctx: TasteContext) => Object.keys(contextParams(ctx)).length > 0;
+const hasDemo = (ctx: TasteContext) =>
+  Object.keys(contextParams(ctx)).length > 0;
 
 /* -------------------- cache (Redis, fail-open) + dedupe -------------------- */
 
@@ -171,7 +188,10 @@ async function cached<T>(
   isEmpty: (v: T) => boolean = () => false,
 ): Promise<T> {
   // Hashed so keys hold no brand names, age band, gender or city.
-  const hash = createHash("sha256").update(JSON.stringify(parts)).digest("hex").slice(0, 32);
+  const hash = createHash("sha256")
+    .update(JSON.stringify(parts))
+    .digest("hex")
+    .slice(0, 32);
   const key = `qloo:${ns}:${CACHE_VERSION}:${hash}`;
 
   const pending = inflight.get(key) as Promise<T> | undefined;
@@ -215,7 +235,10 @@ function resolveEntity(name: string, hint?: QlooEntityType): Promise<Resolved> {
       if (hint) params.types = URN[hint]; // /search `types` is comma-separated
       const list = entitiesOf(await get(SEARCH_PATH, params).catch(() => null));
       const pick =
-        (hint && list.find((e) => e?.subtype === URN[hint] || e?.types?.includes?.(URN[hint]))) ||
+        (hint &&
+          list.find(
+            (e) => e?.subtype === URN[hint] || e?.types?.includes?.(URN[hint]),
+          )) ||
         list[0];
       return typeof pick?.entity_id === "string"
         ? { id: pick.entity_id, name: str(pick.name, 120) }
@@ -226,8 +249,12 @@ function resolveEntity(name: string, hint?: QlooEntityType): Promise<Resolved> {
 }
 
 async function resolveIds(seeds: Seed[]): Promise<string[]> {
-  const found = await Promise.all(seeds.map((s) => resolveEntity(s.name, s.hint)));
-  return [...new Set(found.map((f) => f.id).filter((id): id is string => !!id))];
+  const found = await Promise.all(
+    seeds.map((s) => resolveEntity(s.name, s.hint)),
+  );
+  return [
+    ...new Set(found.map((f) => f.id).filter((id): id is string => !!id)),
+  ];
 }
 
 /* -------------------------------- insights -------------------------------- */
@@ -245,21 +272,34 @@ function insights(
 
   return cached(
     "ins",
-    { type, ids: [...ids].sort(), exclude, demo, city: city?.toLowerCase(), take, t: !!opts.trending },
+    {
+      type,
+      ids: [...ids].sort(),
+      exclude,
+      demo,
+      city: city?.toLowerCase(),
+      take,
+      t: !!opts.trending,
+    },
     opts.trending ? TTL.trending : TTL.rec,
     async () => {
       const params: Record<string, string> = {
         "filter.type": URN[type],
+        "filter.tags": URNTAG[type],
         take: String(take),
         ...demo,
       };
-      if (ids.length) params[SEED_PARAM] = ids.join(",");
+      if (ids.length) {
+        ids.push(URNTAG[type]);
+        params[SEED_PARAM] = ids.join(",");
+      }
       if (exclude.length) params[EXCLUDE_PARAM] = exclude.join(",");
       if (city) params[LOCATION_PARAM] = city;
       if (opts.trending) {
         params[TRENDS_PARAM] = "very_high";
         // Qloo needs at least one valid signal or filter
-        if (!ids.length && !hasDemo(ctx) && !city) params[POPULARITY_MIN_PARAM] = "0.5";
+        if (!ids.length && !hasDemo(ctx) && !city)
+          params[POPULARITY_MIN_PARAM] = "0.5";
       }
       try {
         return itemsOf(await get(INSIGHTS_PATH, params));
@@ -283,13 +323,17 @@ export async function recommend(
   ctx: TasteContext,
   limit = 10,
 ): Promise<RecResult> {
-  if (type === "place" && !ctx.city?.trim()) return { status: "needs_location", items: [] };
+  if (type === "place" && !ctx.city?.trim())
+    return { status: "needs_location", items: [] };
 
   const ids = await resolveIds(seeds);
-  if (type !== "place" && !ids.length && !hasDemo(ctx)) return { status: "no_signal", items: [] };
+  if (type !== "place" && !ids.length && !hasDemo(ctx))
+    return { status: "no_signal", items: [] };
 
   try {
-    const items = (await insights(type, ids, ctx, TAKE, { excludeIds: ids })).slice(0, limit);
+    const items = (
+      await insights(type, ids, ctx, TAKE, { excludeIds: ids })
+    ).slice(0, limit);
     return { status: items.length ? "ok" : "no_match", items };
   } catch (e) {
     if (isLocationError(e)) return { status: "location_not_found", items: [] };
@@ -306,11 +350,14 @@ export async function trending(
   personalSeeds: Seed[] = [],
   limit = 10,
 ): Promise<RecResult> {
-  if (type === "place" && !ctx.city?.trim()) return { status: "needs_location", items: [] };
+  if (type === "place" && !ctx.city?.trim())
+    return { status: "needs_location", items: [] };
 
   const ids = personalSeeds.length ? await resolveIds(personalSeeds) : [];
   try {
-    const items = (await insights(type, ids, ctx, TAKE, { trending: true })).slice(0, limit);
+    const items = (
+      await insights(type, ids, ctx, TAKE, { trending: true })
+    ).slice(0, limit);
     return { status: items.length ? "ok" : "no_match", items };
   } catch (e) {
     if (isLocationError(e)) return { status: "location_not_found", items: [] };
@@ -321,7 +368,9 @@ export async function trending(
 /** Popularity momentum of one entity over ~90 days (/v2/trending is a per-entity time series). */
 function momentumById(type: QlooEntityType, id: string): Promise<Momentum> {
   const end = new Date().toISOString().slice(0, 10);
-  const start = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
+  const start = new Date(Date.now() - 90 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
 
   return cached(
     "mom",
@@ -335,7 +384,9 @@ function momentumById(type: QlooEntityType, id: string): Promise<Momentum> {
         "filter.end_date": end,
         take: "20",
       });
-      const rows: any[] = Array.isArray(body?.results?.trending) ? body.results.trending : [];
+      const rows: any[] = Array.isArray(body?.results?.trending)
+        ? body.results.trending
+        : [];
       const latest = rows[0]; // newest first
       const oldest = rows[rows.length - 1];
       const now = num(latest?.population_percentile);
@@ -360,7 +411,9 @@ export async function momentumOf(type: QlooEntityType, names: string[]) {
     names.map(async (asked) => {
       const r = await resolveEntity(asked, type);
       if (!r.id) return { asked, status: "not_found" as const };
-      const momentum = await momentumById(type, r.id).catch((): Momentum => ({ direction: "unknown" }));
+      const momentum = await momentumById(type, r.id).catch((): Momentum => ({
+        direction: "unknown",
+      }));
       return { asked, status: "ok" as const, name: r.name ?? asked, momentum };
     }),
   );
@@ -373,7 +426,8 @@ const entitiesByIds = (ids: string[]): Promise<EntityItem[]> =>
     "ent",
     { ids: [...ids].sort() },
     TTL.entity,
-    async () => itemsOf(await get(ENTITIES_PATH, { entity_ids: ids.join(",") }), 15),
+    async () =>
+      itemsOf(await get(ENTITIES_PATH, { entity_ids: ids.join(",") }), 15),
     (l) => l.length === 0,
   );
 
@@ -449,12 +503,18 @@ export async function compare(
   const ids = resolved.map((r) => r.id).filter((x): x is string => !!x);
 
   const [details, affinity, analysis] = await Promise.all([
-    ids.length ? entitiesByIds(ids).catch((): EntityItem[] => []) : Promise.resolve([] as EntityItem[]),
+    ids.length
+      ? entitiesByIds(ids).catch((): EntityItem[] => [])
+      : Promise.resolve([] as EntityItem[]),
     ids.length && userIds.length
-      ? affinitiesOf(type, ids, userIds, ctx).catch((): Record<string, number> => ({}))
+      ? affinitiesOf(type, ids, userIds, ctx).catch(
+          (): Record<string, number> => ({}),
+        )
       : Promise.resolve({} as Record<string, number>),
     ids.length === 2
-      ? analysisOf(ids[0], ids[1]).catch(() => [] as { name: string; affinity?: number }[])
+      ? analysisOf(ids[0], ids[1]).catch(
+          () => [] as { name: string; affinity?: number }[],
+        )
       : Promise.resolve([] as { name: string; affinity?: number }[]),
   ]);
 
@@ -465,7 +525,9 @@ export async function compare(
       const r = resolved[i];
       if (!r.id) return { asked, status: "not_found" };
       const d = byId.get(r.id);
-      const momentum = await momentumById(type, r.id).catch((): Momentum => ({ direction: "unknown" }));
+      const momentum = await momentumById(type, r.id).catch((): Momentum => ({
+        direction: "unknown",
+      }));
       return {
         asked,
         status: "ok",
@@ -480,10 +542,17 @@ export async function compare(
   );
 
   const ok = items.filter((i) => i.status === "ok");
-  const sets = ok.map((i) => new Set((i.tags ?? []).map((t) => t.toLowerCase())));
-  const sharedTags = sets.length ? [...sets[0]].filter((t) => sets.every((s) => s.has(t))) : [];
+  const sets = ok.map(
+    (i) => new Set((i.tags ?? []).map((t) => t.toLowerCase())),
+  );
+  const sharedTags = sets.length
+    ? [...sets[0]].filter((t) => sets.every((s) => s.has(t)))
+    : [];
   const uniqueTags = Object.fromEntries(
-    ok.map((i) => [i.name!, (i.tags ?? []).filter((t) => !sharedTags.includes(t.toLowerCase()))]),
+    ok.map((i) => [
+      i.name!,
+      (i.tags ?? []).filter((t) => !sharedTags.includes(t.toLowerCase())),
+    ]),
   );
 
   return { items, sharedTags, uniqueTags, qlooAnalysis: analysis };

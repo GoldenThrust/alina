@@ -16,6 +16,7 @@ export const env = {
   HOST: getEnv("HOST", "0.0.0.0"),
   PORT: Number(getEnv("PORT", "3000")),
 
+
   HOST_URL: getEnv("HOST_URL"),
   CLIENT_URL: getEnv("CLIENT_URL"),
 
@@ -59,5 +60,5 @@ export const env = {
   IPINFO_API_KEY: getEnv("IPINFO_API_KEY"),
   YOUCAM_BASE_URL: getEnv("YOUCAM_BASE_URL", "https://yce-api-01.makeupar.com"),
   QLOO_API_URL: getEnv("QLOO_API_URL", "https://hackathon.api.qloo.com"),
-  QLOO_API_KEY: getEnv("QLOO_API_KEY"),
+  QLOO_API_KEY: getEnv("QLOO_API_KEY", ""),
 };
