@@ -27,7 +27,7 @@ Instead of simply showing skin scores, Alina analyzes every scan, compares it wi
 
 The AI is powered by three major components:
 
-- **YouCam AI** → Performs facial skin analysis.
+- **YouCam AI** → Performs facial skin analysis and, on request, face analysis and image simulations (aging, skin improvement, face reshape).
 - **Gemma 4** → Understands, reasons, compares history, and creates personalized observations and recommendations.
 - **Qloo** → Taste intelligence that tailors brands, products, places, influencers and podcasts to each user's preferences.
 
@@ -69,7 +69,7 @@ The AI is powered by three major components:
         Store Scan + Metrics
                   │
                   ▼
-          Gemma 4 AI Agent
+          Gemma 4 AI Agent  ◄── YouCam tools on request
                   │
       ┌───────────┼───────────┐
       ▼           ▼           ▼
@@ -115,6 +115,73 @@ For every uploaded image it detects and measures:
 
 These measurements become the source of truth for every recommendation made by Alina.
 
+Beyond the scan, Alina can also call YouCam on demand from the chat. See [YouCam tools](#-youcam-tools) below.
+
+---
+
+# 🧬 YouCam tools
+
+YouCam is exposed to Gemma as eight **function-calling tools**, so the agent can run a fresh analysis or generate a simulation when the user asks for one, on any photo they choose.
+
+## Analysis
+
+| Tool | What it does |
+|------|--------------|
+| `youcam_analyze_skin` | Fresh HD skin analysis: overall score, skin age and per-concern scores (acne, pores, wrinkles, redness, moisture and more). Can be limited to a subset of concerns. |
+| `youcam_analyze_skin_tone` | Detects skin, eye, lip, eyebrow and hair colors as hex values, with eye and hair color names. |
+| `youcam_analyze_fitzpatrick` | Classifies the Fitzpatrick skin type (I-VI) and how the skin reacts to sun. Used for sun-protection advice. JPEG only. |
+| `youcam_analyze_face` | Face shape, eye, brow, lip and nose traits, cheekbones and facial ratios. Up to 28 features; defaults to a standard set of 26. |
+
+## Simulations
+
+These generate images. Results are saved on the server and returned as file paths, because YouCam only hosts a result for 2 hours.
+
+| Tool | What it does |
+|------|--------------|
+| `youcam_simulate_aging` | A series of photos of the user from youth to old age, from a single selfie. JPEG only, one face. |
+| `youcam_simulate_skin` | Shows how the skin could look after improving chosen concerns. Each concern gets an intensity from 0.0 (original) to 1.0 (strongest improvement). |
+| `youcam_detect_faces` | Finds faces in a photo and returns their bounding boxes. The array position is the `faceIndex` used by reshape. |
+| `youcam_reshape_face` | Previews a cosmetic reshape of the face, eyes, nose and lips, with optional skin smoothing. Values are integers and 0 leaves a feature unchanged. |
+
+## Which image is used
+
+Every YouCam tool takes an optional `imagePath`:
+
+- **Omitted** → the user's most recent scan photo.
+- **A specific day or older photo** → Gemma calls `get_scan_history` with `startDate` / `endDate`, then passes that scan's image path.
+- **An image the user attached in chat** → its saved path is appended to the message data, and Gemma passes it through.
+
+Paths are validated before use: only saved images under `uploads/image/` are accepted, with no path traversal, and an optional ownership check confirms the image belongs to the user.
+
+## Costs and limits
+
+Some calls use YouCam credits, so Gemma is told to prefer existing data and to call these tools only when the user wants a new result.
+
+| Tool | Cost | Notes |
+|------|------|-------|
+| `youcam_simulate_aging` | 2 units | JPEG only, one face |
+| `youcam_simulate_skin` | 4 units for 1-4 concerns, 6 for 5-10 | Face must fill at least 60% of the image width |
+| `youcam_reshape_face` | 1 unit | Face angle under 30° |
+| `youcam_analyze_face` | 10 units for 1-5 features, 20 for 6-14, 30 for 15-28 | Request only the features the question needs |
+
+All images must be JPEG or PNG and smaller than 10 MB (the aging simulation and Fitzpatrick analysis accept JPEG only).
+
+## Behaviour rules
+
+- **Reuse before re-running.** For existing results Gemma reads scan history instead of calling `youcam_analyze_skin` again.
+- **Only on request.** Simulations and reshapes run only when the user asks for them, and reshapes stay modest.
+- **Saved results.** Generated images are stored and sent to the chat as paths, never as temporary YouCam URLs.
+- **Errors are readable.** Unsupported formats, missing faces or bad angles come back to Gemma as clear tool errors it can explain to the user.
+
+## Configuration
+
+```bash
+YOUCAM_API_KEY=your_key
+YOUCAM_BASE_URL=your_youcam_api_host
+```
+
+The key is secret and the service runs server-side only. Never expose it to the browser.
+
 ---
 
 # 🤖 Gemma 4 AI Agent
@@ -133,6 +200,7 @@ It can:
 - Retrieve recommendations
 - Retrieve user preferences
 - Retrieve taste insights from Qloo
+- Run fresh YouCam analyses and simulations on a chosen photo
 - Search Google when necessary
 
 After collecting enough information, it:
@@ -243,6 +311,17 @@ Hackathon keys only work against the hackathon host above. Production requires a
 
 ---
 
+# 🖼 Chat Images
+
+Users can send images in the chat and Alina can send images back.
+
+- **Sending:** attach with the image button, paste into the message box, or drag onto the chat. JPEG or PNG, up to 4 images, each under 10 MB.
+- **Receiving:** images Alina generates (aging series, skin simulation, face reshape) appear in the conversation above her reply, and any image opens full size on click.
+- **Agent link:** a sent image is saved on the server and its path is passed to the YouCam tools as `imagePath`.
+- **History:** images are stored on the message, so they are still there when the conversation is reloaded.
+
+---
+
 # ⚡ Scan Pipeline
 
 ```text
@@ -333,6 +412,17 @@ Gemma interacts with the application through tools instead of relying only on pr
 - Routine Logs
 - User Preferences
 
+### Vision (YouCam)
+
+- Analyze Skin
+- Analyze Skin Tone
+- Analyze Fitzpatrick Type
+- Analyze Face (attributes and ratios)
+- Simulate Aging
+- Simulate Skin Improvement
+- Detect Faces
+- Reshape Face
+
 ### Taste (Qloo, read-only)
 
 - Recommend (brands, products, places, influencers, podcasts)
@@ -370,6 +460,8 @@ Alina follows a few important principles.
 
 ✅ Prefer tools over guessing
 
+✅ Reuse saved scan data before spending YouCam credits
+
 ✅ Explain recommendations in plain language
 
 ✅ Help users build long-term skincare habits
@@ -381,7 +473,7 @@ Alina follows a few important principles.
 | Technology | Purpose |
 |------------|---------|
 | Gemma 4 | AI reasoning |
-| YouCam AI | Facial skin analysis |
+| YouCam AI | Facial skin analysis, face analysis and image simulations |
 | Qloo | Taste intelligence and recommendations |
 | Fastify | Backend |
 | TypeScript | Application language |
@@ -391,6 +483,161 @@ Alina follows a few important principles.
 | BullMQ | Background jobs |
 | WebSocket | Real-time updates |
 | React (Vite) | Frontend |
+
+---
+
+# 🛠 Setup and Running Locally
+
+## Prerequisites
+
+- **Node.js** `^22.18.0` or `^24.11.0`
+- **PostgreSQL** running locally (or via Docker)
+- **Redis** running locally (or via Docker)
+- **npm** `^12.2.0`
+
+---
+
+## 1. Clone the repository
+
+```bash
+git clone https://github.com/GoldenThrust/alina.git
+cd alina
+```
+
+---
+
+## 2. Install dependencies
+
+```bash
+npm install
+```
+
+---
+
+## 3. Configure environment variables
+
+### Server
+
+```bash
+cp apps/server/.env.example apps/server/.env
+```
+
+Open `apps/server/.env` and fill in:
+
+```env
+# Database
+DATABASE_URL=postgresql://postgres:root@localhost:5432/alina?schema=public
+
+# Redis
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_PASSWORD=                        # leave blank if no password
+
+# JWT — replace with your own long random strings
+ACCESS_TOKEN_SECRET=your_access_token_secret
+REFRESH_TOKEN_SECRET=your_refresh_token_secret
+
+# Email (Resend)
+RESEND_API_KEY=re_xxxxxxxxx
+
+# YouCam Skin Analysis
+YOUCAM_BASE_URL=https://yce-api-01.makeupar.com
+YOUCAM_API_KEY=your_youcam_api_key
+
+# Qloo Taste Intelligence
+QLOO_API_URL=https://hackathon.api.qloo.com
+QLOO_API_KEY=your_qloo_api_key
+
+# Google AI (Gemma)
+GOOGLE_API_KEY=your_google_api_key
+
+# OAuth (optional — only needed if using social login)
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_client_secret
+GOOGLE_CALLBACK_URL=http://localhost:3155/auth/google/callback
+```
+
+### Client
+
+```bash
+cp apps/client/.env.example apps/client/.env
+```
+
+The default value works for local development:
+
+```env
+VITE_SERVER_URL=http://localhost
+```
+
+---
+
+## 4. Set up the database
+
+Make sure PostgreSQL is running and the `alina` database exists, then apply migrations:
+
+```bash
+cd apps/server
+npm run migrate
+```
+
+Optionally seed demo data:
+
+```bash
+npm run db:seed
+```
+
+---
+
+## 5. Start the development servers
+
+From the root of the repository, run both the API and the frontend together:
+
+```bash
+npm run dev
+```
+
+Or start them separately in two terminals:
+
+```bash
+# Terminal 1 — API
+cd apps/server
+npm run dev
+
+# Terminal 2 — Frontend
+cd apps/client
+npm run dev
+```
+
+Then open the Vite URL shown in the client terminal (default: `http://localhost:5173`).
+
+---
+
+## 6. Required services at a glance
+
+| Service | Default address | Required |
+|---------|----------------|----------|
+| PostgreSQL | `localhost:5432` | ✅ |
+| Redis | `localhost:6379` | ✅ |
+| YouCam API | external | ✅ for scanning |
+| Google AI (Gemma 4) | external | ✅ for AI chat |
+| Qloo API | external | ✅ for recommendations |
+| Resend (email) | external | For registration emails |
+
+---
+
+## 7. Optional: observability stack
+
+A Docker Compose file is included for Prometheus, Grafana, Loki, and Promtail. This is not required to run the app.
+
+```bash
+docker compose up -d
+```
+
+| Service | URL |
+|---------|-----|
+| Grafana | `http://localhost:3000` |
+| Prometheus | `http://localhost:9090` |
+| Loki | `http://localhost:3100` |
 
 ---
 
