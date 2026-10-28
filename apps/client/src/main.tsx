@@ -6,6 +6,7 @@ import "./stores/index.ts";
 import App from "./App.tsx";
 import { SocketProvider } from "./context/SocketContext.tsx";
 import { AppToaster } from "./components/ui/toaster.tsx";
+import "./utils/img.ts";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
