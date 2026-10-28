@@ -183,7 +183,8 @@ export function buildApp() {
   //   await db.close();
   // });
 
-  const clientRoot = path.join(process.cwd(), "../client/dist");
+  const clientRoot = path.join(process.cwd(), "client");
+  console.log("clientRoot", clientRoot);
 
   app.register(fastifyStatic, {
     root: env.UPLOAD_DIR,
