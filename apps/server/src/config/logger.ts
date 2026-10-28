@@ -1,5 +1,6 @@
-import pino from 'pino';
+import pino from "pino";
 import client from "prom-client";
+import { env } from "./env";
 
 // export const logger = pino({
 //   transport: {
@@ -18,17 +19,20 @@ import client from "prom-client";
 //   },
 // });
 
-
 export const logger = pino({
-  transport: {
-    target: "pino-loki",
-    options: {
-      host: "http://192.168.1.100:3100",
-      labels: { app: "fastify", env: "prod" },
-      batching: true,
-      interval: 5,
-    },
-  },
+  ...(env.NODE_ENV === "development"
+    ? {
+        transport: {
+          target: "pino-loki",
+          options: {
+            host: "http://192.168.1.100:3100",
+            labels: { app: "fastify", env: "prod" },
+            batching: true,
+            interval: 5,
+          },
+        },
+      }
+    : {}),
 });
 
 const register = new client.Registry();
