@@ -37,6 +37,9 @@ export const env = {
   MAIL_USERNAME: getEnv("MAIL_USERNAME"),
   MAIL_PASSWORD: getEnv("MAIL_PASSWORD"),
   MAIL_FROM: getEnv("MAIL_FROM", "customersupport@Alina.com"),
+  EMAIL_TEMPLATE_PATH: path.join(__dirname, "../templates/email"),
+
+  RESEND_API_KEY: getEnv("RESEND_API_KEY"),
 
   GOOGLE_CLIENT_ID: getEnv("GOOGLE_CLIENT_ID"),
   GOOGLE_CLIENT_SECRET: getEnv("GOOGLE_CLIENT_SECRET"),
@@ -51,7 +54,6 @@ export const env = {
   FACEBOOK_CALLBACK_URL: getEnv("FACEBOOK_CALLBACK_URL"),
   ROOT_DIR: path.join(__dirname,"..", ".."),
   UPLOAD_DIR: path.join(__dirname, "..", "..", getEnv("UPLOAD_DIR")),
-  EMAIL_TEMPLATE_PATH: path.join(__dirname, "../templates/email"),
   YOUCAM_API_KEY: getEnv("YOUCAM_API_KEY"),
   GOOGLE_API_KEY: getEnv("GOOGLE_API_KEY"),
   IPINFO_API_KEY: getEnv("IPINFO_API_KEY"),

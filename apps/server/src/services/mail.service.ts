@@ -7,6 +7,10 @@ import { config } from "../config/index.ts";
 import { redisService } from "./redis.service.ts";
 import { logger } from "../config/logger.ts";
 import path from "path";
+import { Resend } from "resend";
+import { env } from "../config/env.ts";
+
+const resend = new Resend(env.RESEND_API_KEY);
 
 /**
  * Mail service for sending transactional emails using Nodemailer
@@ -26,7 +30,7 @@ class MailService {
    * @param text - Plain text fallback
    * @param from - Sender email address
    */
-  send({
+  async send({
     to,
     subject,
     message,
@@ -39,13 +43,28 @@ class MailService {
     text?: string;
     from?: string;
   }) {
-    this.transporter.sendMail({
-      to,
-      sender: subject,
-      html: message,
-      text,
-      from,
-    });
+    if (env.NODE_ENV === "development") {
+      await this.transporter.sendMail({
+        to,
+        sender: subject,
+        html: message,
+        text,
+        from,
+      });
+    } else {
+      const { data, error } = await resend.emails.send({
+        from: from || env.MAIL_FROM,
+        to: to,
+        subject: subject,
+        html: message,
+      });
+
+      if (error) {
+        return console.error({ error });
+      }
+
+      console.log({ data });
+    }
   }
 
   /**
@@ -125,17 +144,34 @@ class MailService {
   ) {
     try {
       const html = await this.renderTemplate(template, data);
+      const from = `Alina <${config.env.MAIL_FROM}>`;
 
-      const info = await this.transporter.sendMail({
-        from: `"Alina" <${config.env.MAIL_FROM}>`,
-        to,
-        subject,
-        html,
-        text,
-      });
-      logger.info(info);
+      let response;
+      if (env.NODE_ENV === "development") {
+        response = await this.transporter.sendMail({
+          from,
+          to,
+          subject,
+          html,
+          text,
+        });
+      } else {
+        const { data, error } = await resend.emails.send({
+          from,
+          to,
+          subject,
+          html,
+        });
 
-      return info;
+        if (error) {
+          throw new Error(`Failed to send email: ${error.message}`);
+        }
+
+        response = data;
+      }
+
+      logger.info(`Email sent to ${to} with subject "${subject}"`);
+      return response;
     } catch (error: any) {
       console.error(error);
       if (error instanceof Error) logger.error(error.message);
