@@ -31,6 +31,7 @@ export const env = {
 
   REDIS_HOST: getEnv("REDIS_HOST"),
   REDIS_PORT: getEnv("REDIS_PORT"),
+  REDIS_PASSWORD: getEnv("REDIS_PASSWORD"),
 
   MAIL_PORT: getEnv("MAIL_PORT"),
   MAIL_HOST: getEnv("MAIL_HOST"),
