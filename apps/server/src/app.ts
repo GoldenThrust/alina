@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import {
   serializerCompiler,
   validatorCompiler,
@@ -21,7 +21,6 @@ import fastifyStatic from "@fastify/static";
 import "./queues/index.ts";
 import { AIProcessingJob } from "./queues/ai/ai.producer.ts";
 import path from "node:path";
-
 
 const { GOOGLE_CONFIGURATION, FACEBOOK_CONFIGURATION, X_CONFIGURATION } =
   fastifyOauth2;
@@ -150,15 +149,27 @@ export function buildApp() {
     prefix: "/api",
   });
 
+  app.post(
+    "/ai",
+    async (req: FastifyRequest<{ Body: { input: unknown } }>, reply) => {
+      const input = req.body?.input as any;
+      await AIProcessingJob({
+        userId: input?.userId as string,
+        scanId: input?.scanId as string,
+        input: {
+          type: "text",
+          text: JSON.stringify(input) as string,
+        },
+      });
+      return reply.send({ message: "AI job queued" });
+    },
+  );
+
   app.get("/health", async () => ({ status: "ok", service: "alina-api" }));
 
   // app.get("/", function (_, reply) {
   //   reply.send("Welcome to Alina API! Visit /api for API routes.");
   // });
-
-  app.get("/hello", function (_, reply) {
-    reply.send("Hello from Alina API! Visit /api for API routes.");
-  });
 
   app.addHook("onResponse", async (req, reply) => {
     // routeOptions.url avoids high-cardinality labels like /users/123
@@ -184,7 +195,6 @@ export function buildApp() {
   // });
 
   const clientRoot = path.join(process.cwd(), "client");
-  console.log("clientRoot", clientRoot);
 
   app.register(fastifyStatic, {
     root: env.UPLOAD_DIR,
@@ -196,63 +206,6 @@ export function buildApp() {
     root: clientRoot,
     prefix: "/",
     wildcard: false,
-  });
-
-  app.get("/ai", async (req, reply) => {
-    await AIProcessingJob({
-      userId: "9f71831f-dea6-46be-9605-a17daff52b2a",
-      scanId: "f38c92e6-2689-425e-9148-26e2cc6de661",
-      input: JSON.stringify({
-        event: "skin_scan_completed",
-        userId: "9f71831f-dea6-46be-9605-a17daff52b2a",
-        scanId: "f38c92e6-2689-425e-9148-26e2cc6de661",
-        scan: {
-          id: "f38c92e6-2689-425e-9148-26e2cc6de661",
-          score: 75,
-          skinAge: 42,
-          analysis: {
-            skinAnalysisRecord: {
-              acne: 65.14305114746094,
-              ageSpot: 68.45236206054688,
-              createdAt: "2026-10-25T14:54:27.230564Z",
-              darkCircle: 84.8574548959732,
-              droopyLowerEyelid: 75.63382387161255,
-              droopyUpperEyelid: 76.64582133293152,
-              eyeBag: 67.0788049697876,
-              firmness: 75.73339343070984,
-              id: "6331c977-33fe-4a9b-8dde-e8b02bef35da",
-              moisture: 30.307036638259888,
-              oiliness: 54.66094207763672,
-              pore: {
-                forehead: 63.31388473510742,
-                nose: 100,
-                cheek: 60.170738220214844,
-                whole: 70.9138412475586,
-              },
-              radiance: 63.66661787033081,
-              redness: 94.74559783935547,
-              scanId: "f38c92e6-2689-425e-9148-26e2cc6de661",
-              skinType: { whole: "Oily", t_zone: "Oily", u_zone: "Oily" },
-              tearTrough: 37.81869411468506,
-              texture: 61.01176470588236,
-              wrinkle: {
-                forehead: 73.59118700027466,
-                glabellar: 99,
-                crowfeet: 97.55990982055664,
-                periocular: 76.87321186065674,
-                nasolabial: 99,
-                marionette: 99,
-                whole: 85.80000042915344,
-              },
-            },
-            skinTone: "#634838",
-            fitzpatrick: "VI",
-          },
-        },
-      }),
-    });
-
-    return reply.send({ message: "AI job queued" });
   });
   // SPA fallback: anything not matched by routes/static serves index.html
   app.setNotFoundHandler((req, reply) => {

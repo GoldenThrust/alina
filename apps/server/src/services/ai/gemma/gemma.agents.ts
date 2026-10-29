@@ -182,13 +182,13 @@ export class GemmaAgent {
 
     console.log(`[GemmaAgent] start analyze turn ${state.turn + 1}:`, {
       previousId: state.previousId,
-      input: JSON.stringify(state.input),
+      input: state.input,
     });
 
     const interaction = await this.gemma.generate({
       input: state.input,
       previous_interaction_id: state.previousId,
-    } as any);
+    });
 
     const text = interaction.output_text ?? "";
 

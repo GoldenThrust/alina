@@ -9,5 +9,5 @@ export const AIWorker = new Worker(
   },
   {
     connection: config.redis,
-  }
+  },
 );

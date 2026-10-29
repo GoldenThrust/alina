@@ -81,7 +81,10 @@ export default class Websocket {
         await Promise.all([
           AIProcessingJob({
             userId: user.sub,
-            input,
+            input: {
+              type: "text",
+              text: input,
+            },
           }),
   
           ORM.Message().create({

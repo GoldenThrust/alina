@@ -1,5 +1,5 @@
 import type { JsonValue } from "@prisma/orm-postgres/contract/types";
-import { db } from "../../prisma/db";
+import { db, ORM } from "../../prisma/db";
 import { YouCamService } from "../../services/yomCam.service";
 import { AIProcessingJob } from "../ai/ai.producer";
 import { logger } from "../../config/logger";
@@ -14,9 +14,15 @@ export async function processYoucam(job: Job) {
 
   const isLastAttempt = attemptsMade >= maxAttempts;
 
-  const { userId, type, source, imagePath, options } =
-    job.data as YouCamAnalysisData;
+  const { userId, source, imagePath, options } = job.data as YouCamAnalysisData;
   let response: AnalyzeImageResult | null = null;
+
+  const user = await ORM.User()
+    .where({ id: userId })
+    .select("skinTone", "skinType")
+    .first();
+
+  const type = user?.skinTone && user?.skinType ? "skin" : "all";
 
   try {
     if (type === "all") {
@@ -88,29 +94,32 @@ export async function processYoucam(job: Job) {
       await AIProcessingJob({
         userId,
         scanId: skinScan.id,
-        input: JSON.stringify({
-          event: "skin_scan_completed",
+        input: {
+          type: "text",
+          text: JSON.stringify({
+            event: "skin_scan_completed",
 
-          userId,
+            userId,
 
-          scanId: skinScan.id,
+            scanId: skinScan.id,
 
-          scan: {
-            id: skinScan.id,
-            score: skinScan.score,
-            skinAge: skinScan.skinAge,
-            // image: skinScan.image,
-            analysis: {
-              skinAnalysisRecord,
-              skinTone: response.skinTone?.ok
-                ? response.skinTone.data
-                : user.skinTone,
-              fitzpatrick: response.fitzpatrick?.ok
-                ? response.fitzpatrick.data
-                : user.skinType,
+            scan: {
+              id: skinScan.id,
+              score: skinScan.score,
+              skinAge: skinScan.skinAge,
+              // image: skinScan.image,
+              analysis: {
+                skinAnalysisRecord,
+                skinTone: response.skinTone?.ok
+                  ? response.skinTone.data
+                  : user.skinTone,
+                fitzpatrick: response.fitzpatrick?.ok
+                  ? response.fitzpatrick.data
+                  : user.skinType,
+              },
             },
-          },
-        }),
+          }),
+        },
       });
     } else if (response?.skinAnalysis?.ok === false) {
       throw new Error(
@@ -123,9 +132,9 @@ export async function processYoucam(job: Job) {
     Websocket.sendNotification(
       userId,
       "error",
-      `Image analysis failed. ${!isLastAttempt ? `Retrying in ${getNextRetryDelay(job)} seconds` : `Max attempts reached`}: ${(error?.message || "Unknown error")}`
+      `Image analysis failed. ${!isLastAttempt ? `Retrying in ${getNextRetryDelay(job)} seconds` : `Max attempts reached`}: ${error?.message || "Unknown error"}`,
     );
-  
+
     logger.error(`Error processing YouCam job:`, error);
     console.error("Error processing YouCam job:", error);
 
