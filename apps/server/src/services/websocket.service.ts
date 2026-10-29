@@ -83,11 +83,12 @@ export default class Websocket {
             userId: user.sub,
             input,
           }),
+  
           ORM.Message().create({
             userId: user.sub.toString(),
             sender: "USER",
             content,
-            images: attachments,
+            images: attachments ?? [],
           }),
         ]);
       });

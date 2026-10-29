@@ -123,7 +123,7 @@ const saveImagePath = async (
       sessionId,
       sender: "ALINA",
       content: "Image Attachments",
-      images: paths,
+      images: paths ?? [],
     });
   }
 

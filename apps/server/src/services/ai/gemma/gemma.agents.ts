@@ -271,6 +271,7 @@ export class GemmaAgent {
             sessionId,
             content: lastText,
             sender: "ALINA",
+            images: []
           },
           update: {
             content: lastText,
@@ -423,6 +424,7 @@ export class GemmaAgent {
           sessionId,
           content: fullText,
           sender: "ALINA",
+          images: []
         },
         update: {
           content: fullText,
