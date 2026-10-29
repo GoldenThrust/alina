@@ -22,8 +22,9 @@ export async function processYoucam(job: Job) {
     .select("skinTone", "skinType")
     .first();
 
-  const type = user?.skinTone && user?.skinType ? "skin" : "all";
+  const type = !!user?.skinTone && !!user?.skinType ? "all" : "skin";
 
+  console.log(`[YouCam] Processing user ${userId} image analysis with type: ${type}`);
   try {
     if (type === "all") {
       response = await YouCamService.analyzeImage(
@@ -31,7 +32,15 @@ export async function processYoucam(job: Job) {
         options as AnalyzeImageOptions,
       );
 
-      if (response.skinTone?.ok && response.fitzpatrick?.ok) {
+      console.log(`[YouCam] Updating user ${userId} skinTone and skinType:`, {
+        skinTone: response.skinTone?.ok ? response.skinTone?.data : null,
+        skinType: response.fitzpatrick?.ok
+          ? response.fitzpatrick?.data
+          : null,
+      });
+      console.log(`[YouCam] response:`, response);
+    
+      if (response.skinTone && response.fitzpatrick) {
         const skinTone = response.skinTone?.ok ? response.skinTone?.data : null;
         const skinType = response.fitzpatrick?.ok
           ? response.fitzpatrick?.data

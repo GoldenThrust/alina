@@ -271,7 +271,7 @@ export class GemmaAgent {
             sessionId,
             content: lastText,
             sender: "ALINA",
-            images: []
+            images: [],
           },
           update: {
             content: lastText,
@@ -281,19 +281,20 @@ export class GemmaAgent {
 
         await this.remember(userId, previousId);
         Websocket.sendMessage(userId, lastText);
+        Websocket.sendNotification(
+          userId,
+          "success",
+          "Image analysis completed successfully.",
+        );
+        Websocket.sendNavigationSignal(userId, `/scan-result/${scanId}`);
+        logger.info(
+          `Gemma analysis completed successfully for user: ${userId}`,
+        );
       }
 
       await db.orm.public.SkinScan.where({ id: scanId }).update({
         status: "COMPLETED",
       });
-
-      Websocket.sendNotification(
-        userId,
-        "success",
-        "Image analysis completed successfully.",
-      );
-      Websocket.sendNavigationSignal(userId, `/scan-result/${scanId}`);
-      logger.info(`Gemma analysis completed successfully for user: ${userId}`);
 
       return { text: lastText, id: previousId };
     } catch (error: any) {
@@ -393,10 +394,13 @@ export class GemmaAgent {
 
     Websocket.startStream(userId, sessionId);
 
-    console.log(`[GemmaAgent] ${resume ? "resume" : "start"} chat session ${sessionId}:`, {
-      previousId: initial.previousId,
-      turn: initial.turn,
-    });
+    console.log(
+      `[GemmaAgent] ${resume ? "resume" : "start"} chat session ${sessionId}:`,
+      {
+        previousId: initial.previousId,
+        turn: initial.turn,
+      },
+    );
 
     try {
       final = await this.chatStep(userId, initial, save);
@@ -424,7 +428,7 @@ export class GemmaAgent {
           sessionId,
           content: fullText,
           sender: "ALINA",
-          images: []
+          images: [],
         },
         update: {
           content: fullText,
