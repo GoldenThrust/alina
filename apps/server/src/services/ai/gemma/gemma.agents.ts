@@ -43,6 +43,23 @@ export interface AgentResult {
   id: string | undefined;
 }
 
+/**
+ * Everything needed to send the *next* request to the model. It is saved to
+ * the queue job after each turn, so a retry resumes here instead of from
+ * the original input.
+ */
+export interface AgentCheckpoint {
+  sessionId: string;
+  previousId: string | undefined;
+  /** Next request payload: the original input, or function results from the last turn. */
+  input: unknown;
+  /** analyze: text of the last turn. chat: text accumulated across turns. */
+  text: string;
+  turn: number;
+}
+
+export type SaveCheckpoint = (checkpoint: AgentCheckpoint) => Promise<void>;
+
 const EMPTY_NOTE =
   "No data yet. This is expected. Do not call this tool again.";
 
@@ -76,6 +93,19 @@ export class GemmaAgent {
       await this.repo.saveInteractionId(userId, interactionId);
     } catch (error) {
       console.error("[GemmaAgent] failed to save interaction id", error);
+    }
+  }
+
+  /** Checkpointing must never break the run itself. */
+  private async checkpoint(
+    save: SaveCheckpoint | undefined,
+    checkpoint: AgentCheckpoint,
+  ) {
+    if (!save) return;
+    try {
+      await save(checkpoint);
+    } catch (error: any) {
+      logger.error("[GemmaAgent] failed to save checkpoint", error);
     }
   }
 
@@ -131,59 +161,108 @@ export class GemmaAgent {
     );
   }
 
+  /* ------------------------------------------------------------------ */
+  /* analyze                                                             */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * One turn of the analyze loop. Recurses until the model stops calling
+   * tools. State is passed in and checkpointed, so a retry re-enters here
+   * with the last saved state.
+   */
+  private async analyzeStep(
+    userId: string,
+    state: AgentCheckpoint,
+    save?: SaveCheckpoint,
+  ): Promise<AgentCheckpoint> {
+    if (state.turn >= MAX_TURNS) {
+      logger.warn(`[GemmaAgent] analyze hit MAX_TURNS for user: ${userId}`);
+      return state;
+    }
+
+    console.log(`[GemmaAgent] start analyze turn ${state.turn + 1}:`, {
+      previousId: state.previousId,
+      input: JSON.stringify(state.input),
+    });
+
+    const interaction = await this.gemma.generate({
+      input: state.input,
+      previous_interaction_id: state.previousId,
+    } as any);
+
+    const text = interaction.output_text ?? "";
+
+    const calls: FunctionCall[] = (interaction.steps ?? [])
+      .filter((step: any) => step.type === "function_call")
+      .map((step: any) => ({
+        id: step.id,
+        name: step.name,
+        arguments: step.arguments ?? {},
+      }));
+
+    console.log(`[GemmaAgent] analyze turn ${state.turn + 1}:`, {
+      interactionId: interaction.id,
+      status: interaction.status,
+      calls: JSON.stringify(calls),
+    });
+
+    // Base case: no tool calls, the model is done.
+    if (calls.length === 0) {
+      return {
+        ...state,
+        previousId: interaction.id,
+        input: null,
+        text,
+        turn: state.turn + 1,
+      };
+    }
+
+    const results = await this.runCalls(
+      calls,
+      userId,
+      interaction.id,
+      state.sessionId,
+    );
+
+    const next: AgentCheckpoint = {
+      sessionId: state.sessionId,
+      previousId: interaction.id,
+      input: results,
+      text,
+      turn: state.turn + 1,
+    };
+
+    // Saved before recursing: if the next generate() fails, the retry sends
+    // these results rather than re-running the tools.
+    await this.checkpoint(save, next);
+
+    return this.analyzeStep(userId, next, save);
+  }
+
   async analyze(
     userId: string,
     scanId: string,
     input: unknown,
+    resume?: AgentCheckpoint,
+    save?: SaveCheckpoint,
   ): Promise<AgentResult> {
     try {
-      let inputData: unknown = input;
-      let previousId = await this.repo.lastInteractionId(userId);
-      let lastText = "";
-      const sessionId = uuid();
+      const initial: AgentCheckpoint = resume ?? {
+        sessionId: uuid(),
+        previousId: await this.repo.lastInteractionId(userId),
+        input,
+        text: "",
+        turn: 0,
+      };
 
-      for (let turn = 0; turn < MAX_TURNS; turn++) {
-        console.log(`[GemmaAgent] start analyze turn ${turn + 1}:`, {
-          previousId,
-          input: JSON.stringify(inputData),
-          text: lastText,
-        });
-        const interaction = await this.gemma.generate({
-          input: inputData,
-          previous_interaction_id: previousId,
-        } as any);
-
-        lastText = interaction.output_text ?? "";
-        previousId = interaction.id;
-
-        console.log(`[GemmaAgent] analyze turn ${turn + 1}:`, {
-          interactionId: interaction.id,
-          status: interaction.status,
-          input: interaction.input,
-          calls: JSON.stringify(
-            interaction.steps?.filter(
-              (step: any) => step.type === "function_call",
-            ),
-          ),
-        });
-
-        const calls: FunctionCall[] = (interaction.steps ?? [])
-          .filter((step: any) => step.type === "function_call")
-          .map((step: any) => ({
-            id: step.id,
-            name: step.name,
-            arguments: step.arguments ?? {},
-          }));
-
-        if (calls.length === 0) break;
-
-        inputData = await this.runCalls(
-          calls,
-          userId,
-          interaction.id,
-          sessionId,
+      if (resume) {
+        logger.info(
+          `[GemmaAgent] resuming analyze for user ${userId} at turn ${resume.turn}`,
         );
       }
+
+      const final = await this.analyzeStep(userId, initial, save);
+      const { sessionId, text: lastText, previousId } = final;
 
       if (lastText.trim()) {
         await db.orm.public.Message.upsert({
@@ -196,9 +275,9 @@ export class GemmaAgent {
           update: {
             content: lastText,
           },
-          where: { userId, sessionId: sessionId, sender: "ALINA" },
+          where: { userId, sessionId, sender: "ALINA" },
         });
-        
+
         await this.remember(userId, previousId);
         Websocket.sendMessage(userId, lastText);
       }
@@ -228,58 +307,98 @@ export class GemmaAgent {
     }
   }
 
-  async chat(userId: string, input: unknown): Promise<AgentResult> {
-    const sessionId = uuid();
-    let inputData: unknown = input;
-    let previousId = await this.repo.lastInteractionId(userId);
-    let fullText = "";
+  /* ------------------------------------------------------------------ */
+  /* chat                                                                */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * One turn of the chat loop. Streams the turn, and if the model requested
+   * tools, runs them, checkpoints, and recurses.
+   */
+  private async chatStep(
+    userId: string,
+    state: AgentCheckpoint,
+    save?: SaveCheckpoint,
+  ): Promise<AgentCheckpoint> {
+    if (state.turn >= MAX_TURNS) {
+      logger.warn(`[GemmaAgent] chat hit MAX_TURNS for user: ${userId}`);
+      return state;
+    }
+
+    const { interactionId, status, text, calls } = await this.streamData(
+      userId,
+      state.sessionId,
+      state.input,
+      state.previousId,
+    );
+
+    console.log(`[GemmaAgent] chat turn ${state.turn + 1} result:`, {
+      interactionId,
+      status,
+      text,
+      calls: JSON.stringify(calls),
+    });
+
+    const previousId = interactionId ?? state.previousId;
+    const fullText = state.text + text;
+
+    // Base case: model finished, or nothing actionable.
+    if (status !== "requires_action" || calls.length === 0 || !interactionId) {
+      return {
+        ...state,
+        previousId,
+        input: null,
+        text: fullText,
+        turn: state.turn + 1,
+      };
+    }
+
+    const results = await this.runCalls(
+      calls,
+      userId,
+      interactionId,
+      state.sessionId,
+    );
+
+    const next: AgentCheckpoint = {
+      sessionId: state.sessionId,
+      previousId,
+      input: results,
+      text: fullText,
+      turn: state.turn + 1,
+    };
+
+    await this.checkpoint(save, next);
+
+    return this.chatStep(userId, next, save);
+  }
+
+  async chat(
+    userId: string,
+    input: unknown,
+    resume?: AgentCheckpoint,
+    save?: SaveCheckpoint,
+  ): Promise<AgentResult> {
+    const initial: AgentCheckpoint = resume ?? {
+      sessionId: uuid(),
+      previousId: await this.repo.lastInteractionId(userId),
+      input,
+      text: "",
+      turn: 0,
+    };
+
+    const { sessionId } = initial;
+    let final: AgentCheckpoint = initial;
 
     Websocket.startStream(userId, sessionId);
 
-    console.log(`[GemmaAgent] start chat session ${sessionId}:`, {
-      previousId,
-      input: JSON.stringify(inputData),
+    console.log(`[GemmaAgent] ${resume ? "resume" : "start"} chat session ${sessionId}:`, {
+      previousId: initial.previousId,
+      turn: initial.turn,
     });
 
     try {
-      for (let turn = 0; turn < MAX_TURNS; turn++) {
-        // console.log(`[GemmaAgent] chat turn ${turn + 1}:`, {
-        //   previousId,
-        //   input: JSON.stringify(inputData),
-        // });
-        const { interactionId, status, text, calls } = await this.streamData(
-          userId,
-          sessionId,
-          inputData,
-          previousId,
-        );
-
-        console.log(`[GemmaAgent] chat turn ${turn + 1} result:`, {
-          interactionId,
-          status,
-          text,
-          fullText,
-          calls: JSON.stringify(calls),
-        });
-
-        fullText += text;
-        if (interactionId) previousId = interactionId;
-
-        if (
-          status !== "requires_action" ||
-          calls.length === 0 ||
-          !interactionId
-        ) {
-          break;
-        }
-
-        inputData = await this.runCalls(
-          calls,
-          userId,
-          interactionId,
-          sessionId,
-        );
-      }
+      final = await this.chatStep(userId, initial, save);
     } catch (error: any) {
       console.error("Gemma chat failed for user:", userId, "Error:", error);
       logger.error(`Gemma chat failed for user: ${userId}, Error:`, error);
@@ -294,6 +413,8 @@ export class GemmaAgent {
       Websocket.endStream(userId, sessionId);
     }
 
+    const { text: fullText, previousId } = final;
+
     if (fullText.trim()) {
       await this.remember(userId, previousId);
       await db.orm.public.Message.upsert({
@@ -306,11 +427,15 @@ export class GemmaAgent {
         update: {
           content: fullText,
         },
-        where: { userId, sessionId: sessionId, sender: "ALINA" },
+        where: { userId, sessionId, sender: "ALINA" },
       });
     }
     return { text: fullText, id: previousId };
   }
+
+  /* ------------------------------------------------------------------ */
+  /* streaming                                                           */
+  /* ------------------------------------------------------------------ */
 
   private async streamData(
     userId: string,
@@ -337,7 +462,6 @@ export class GemmaAgent {
     let completed = false;
 
     for await (const event of stream) {
-      console.log(`[GemmaAgent] stream event:`, event);
       switch (event.event_type) {
         case "interaction.created":
           interactionId = event.interaction.id;
