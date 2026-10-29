@@ -17,7 +17,6 @@ import { useSkinScan, useSkinScanById } from "../hooks/useSkinScan";
 // import { useSkinScanById } from "../hooks/useSkinScanById";
 import { useScanStore } from "../stores";
 import {
-  ANALYSIS_DIRECTION,
   analysisMeta,
   getAnalysisNote,
 } from "../utils/analysis";
@@ -51,7 +50,6 @@ const FILTERS: { id: MetricFilter; label: string }[] = [
 interface Metric {
   key: string;
   meta: (typeof analysisMeta)[string];
-  direction: (typeof ANALYSIS_DIRECTION)[string];
   /** current value from this scan */
   value: number;
   /** percent change vs. the previous scan, null when there is no previous value */
@@ -81,19 +79,19 @@ function buildMetrics(
     if (value === null) return [];
 
     const before = readValue(prev[key]);
+
+
     const delta =
       before !== null && before !== 0
-        ? ((value - before) / Math.abs(before)) * 100
+        ? ((value - before) / before) * 100
         : null;
 
-    const direction = ANALYSIS_DIRECTION[key];
     const improving =
       delta === null || delta === 0
         ? null
-        : (direction === "higher" && delta > 0) ||
-          (direction === "lower" && delta < 0);
+        : delta > 0;
 
-    return [{ key, meta, direction, value, delta, improving }];
+    return [{ key, meta, value, delta, improving }];
   });
 }
 
@@ -456,7 +454,7 @@ export default function ScanResult() {
                               <small>
                                 {delta === null
                                   ? `Current value ${Math.round(metric.value)}`
-                                  : getAnalysisNote(delta, metric.direction)}
+                                  : getAnalysisNote(delta, metric.improving ? "higher" : "lower")}
                               </small>
                             </span>
                             <span className="movement-bar" aria-hidden="true">

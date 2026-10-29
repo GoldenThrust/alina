@@ -15,7 +15,6 @@ const GOOD = { color: "#16886c", bg: "#e8f6f0" };
 const BAD = { color: "#c55f83", bg: "#fbeef3" };
 const FLAT = { color: "#7b8092", bg: "#f3f3f7" };
 
-
 // extend your existing AIData type wherever it's declared
 type AIJobData = AIData & { checkpoint?: AgentCheckpoint };
 
@@ -25,22 +24,17 @@ export async function processAI(job: Job) {
   const isLastAttempt = attemptsMade >= maxAttempts;
 
   const { userId, scanId, input, checkpoint } = job.data as AIJobData;
-  logger.info(`Processing AI job: ${JSON.stringify({ userId, scanId, resumed: !!checkpoint })}`);
+  logger.info(
+    `Processing AI job: ${JSON.stringify({ userId, scanId, resumed: !!checkpoint })}`,
+  );
 
   // Persist progress on the job itself; BullMQ reuses job.data on every retry.
   const save = (cp: AgentCheckpoint) =>
     job.updateData({ ...job.data, checkpoint: cp });
 
-
   try {
     if (scanId) {
-      await gemmaAgent.analyze(
-        userId,
-        scanId,
-        input,
-        checkpoint,
-        save,
-      );
+      await gemmaAgent.analyze(userId, scanId, input, checkpoint, save);
 
       try {
         const user = await db.orm.public.User.where({ id: userId }).first();
@@ -182,7 +176,7 @@ export async function processAI(job: Job) {
         );
       }
     } else {
-  await gemmaAgent.chat(userId, input, checkpoint, save);
+      await gemmaAgent.chat(userId, input, checkpoint, save);
     }
 
     logger.info("AI job processed successfully");
@@ -190,11 +184,13 @@ export async function processAI(job: Job) {
     console.error("Error processing AI job:", error);
     logger.error("Error processing AI job:", error);
 
-    Websocket.sendNotification(
-      userId,
-      "error",
-      `Image analysis failed. ${!isLastAttempt ? `Retrying in ${getNextRetryDelay(job)} seconds` : `Max attempts reached`}: ${error?.message || "Unknown error"}`,
-    );
+    if (isLastAttempt) {
+      Websocket.sendNotification(
+        userId,
+        "error",
+        `Image analysis failed. ${!isLastAttempt ? `Retrying in ${getNextRetryDelay(job)} seconds` : `Max attempts reached`}: ${error?.message || "Unknown error"}`,
+      );
+    }
     throw error;
   }
 }

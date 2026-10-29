@@ -26,6 +26,7 @@
     "postinstall": "prisma skills sync || exit 0",
     "db:seed": "tsx src/prisma/seed/run.ts",
     "test:ai": "tsx test/runAI.ts",
+    "test:chat": "tsx test/runChat.ts",
     "test:qloo": "tsx test/runQloo.ts"
   },
   "dependencies": {

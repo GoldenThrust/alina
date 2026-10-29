@@ -67,35 +67,40 @@ export default class Websocket {
         socket.disconnect(true);
         return;
       }
-    
-      socket.on("message", async ({ content, attachments = [] }) => {
-        const input = [
-          attachments.length > 0
-            ? `The user uploaded ${attachments.length} image(s). Image path(s): ${attachments.join(", ")}.`
-            : null,
-          content,
-        ]
-          .filter(Boolean)
-          .join("\n\n");
 
-        await Promise.all([
-          AIProcessingJob({
-            userId: user.sub,
-            input: {
-              type: "text",
-              text: input,
-            },
-          }),
-  
-          ORM.Message().create({
-            userId: user.sub.toString(),
-            sender: "USER",
+      socket.on("message", async ({ content, attachments = [] }) => {
+        try {
+          const imagesPaths = (attachments as Array<string>).filter((attachment: any) => !!attachment);
+          const input = [
+            imagesPaths.length > 0
+              ? `The user uploaded ${imagesPaths.length} image(s). Image path(s): ${imagesPaths.join(", ")}.`
+              : null,
             content,
-            images: attachments ?? [],
-          }),
-        ]);
+          ]
+            .filter(Boolean)
+            .join("\n\n");
+
+          await Promise.all([
+            AIProcessingJob({
+              userId: user.sub,
+              input: {
+                type: "text",
+                text: input,
+              },
+            }),
+
+            ORM.Message().create({
+              userId: user.sub.toString(),
+              sessionId: "default",
+              sender: "USER",
+              content,
+              images: imagesPaths ?? [],
+            }),
+          ]);
+        } catch (error) {
+          console.error("Error handling message event:", error);
+        }
       });
-    
       // setTimeout(() => {
       //   for (let i = 0; i < testData.length; i++) {
       //     const session = testData[i];

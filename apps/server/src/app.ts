@@ -165,6 +165,21 @@ export function buildApp() {
     },
   );
 
+  app.post(
+    "/chat",
+    async (req: FastifyRequest<{ Body: { input: unknown } }>, reply) => {
+      const input = req.body?.input as any;
+      await AIProcessingJob({
+        userId: input?.userId as string,
+        input: {
+          type: "text",
+          text: JSON.stringify(input) as string,
+        },
+      });
+      return reply.send({ message: "AI job queued" });
+    },
+  );
+
   app.get("/health", async () => ({ status: "ok", service: "alina-api" }));
 
   // app.get("/", function (_, reply) {

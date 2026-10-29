@@ -53,26 +53,6 @@ export const analysisMeta: Record<
 
 type TrendDirection = "higher" | "lower";
 
-export const ANALYSIS_DIRECTION: Record<string, TrendDirection> = {
-  acne: "lower",
-  moisture: "higher",
-  oiliness: "lower", // closer to balanced
-  radiance: "higher",
-  redness: "lower",
-  texture: "higher",
-  ageSpot: "lower",
-  darkCircle: "lower",
-  eyeBag: "lower",
-  droopyUpperEyelid: "lower",
-  droopyLowerEyelid: "lower",
-  firmness: "higher",
-  tearTrough: "lower",
-
-  pore: "lower",
-  wrinkle: "lower",
-} as const;
-
-
 /**
  * higher = higher value is better (moisture, firmness, radiance)
  * lower = lower value is better (acne, wrinkles, pores, redness)

@@ -21,7 +21,6 @@ import SkinTrendPanel from "../components/SkinTrendPanel";
 import { useSkinScan } from "../hooks/useSkinScan";
 import { useAuthStore, useScanHistory, useScoreDeltaPercent } from "../stores";
 import {
-  ANALYSIS_DIRECTION,
   analysisMeta,
   getAnalysisNote,
 } from "../utils/analysis";
@@ -62,7 +61,6 @@ interface Movement {
   value: number;
   /** null when nothing changed */
   improving: boolean | null;
-  direction: (typeof ANALYSIS_DIRECTION)[string];
 }
 
 /* ---------- Small components ---------- */
@@ -245,17 +243,13 @@ export default function Progress() {
             : (raw as { whole?: number } | undefined)?.whole;
         if (typeof value !== "number" || !Number.isFinite(value)) return [];
 
-        const direction = ANALYSIS_DIRECTION[label];
-        const improved =
-          (direction === "higher" && value > 0) ||
-          (direction === "lower" && value < 0);
+        const improved = value > 0;
         return [
           {
             key,
             label,
             meta,
             value,
-            direction,
             improving: value === 0 ? null : improved,
           },
         ];
@@ -673,7 +667,7 @@ export default function Progress() {
                               <small>
                                 {getAnalysisNote(
                                   movement.value,
-                                  movement.direction,
+                                  movement.improving ? "higher" : "lower",
                                 )}
                               </small>
                             </span>

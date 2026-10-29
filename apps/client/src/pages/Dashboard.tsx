@@ -32,7 +32,6 @@ import {
   useSortedAnalysisDelta,
 } from "../stores";
 import {
-  ANALYSIS_DIRECTION,
   analysisMeta,
   getAnalysisNote,
 } from "../utils/analysis";
@@ -529,7 +528,6 @@ export default function Dashboard() {
                     const meta = analysisMeta[itemLabel];
                     if (!meta) return null;
 
-                    const direction = ANALYSIS_DIRECTION[itemLabel];
                     const isPositive = entry.value > 0;
                     const isNegative = entry.value < 0;
                     // const isImprovement =
@@ -544,7 +542,7 @@ export default function Dashboard() {
                         </span>
                         <span>
                           <strong>{meta.label}</strong>
-                          <small>{getAnalysisNote(entry.value, direction)}</small>
+                          <small>{getAnalysisNote(entry.value, isImprovement ? "higher" : "lower")}</small>
                         </span>
                         <span
                           className={`attribute-change ${
