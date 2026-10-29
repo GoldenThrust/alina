@@ -6,8 +6,31 @@ import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
 import { fileTypeStream } from "file-type";
+import { Agent, fetch as undiciFetch } from "undici";
 import { env } from "../../config/env.ts";
 import { mkdir, rm } from "node:fs/promises";
+
+/** Download failure that says whether trying again could help. */
+class DownloadError extends Error {
+  constructor(
+    message: string,
+    readonly retryable: boolean,
+  ) {
+    super(message);
+  }
+}
+
+function isNetworkError(error: unknown): boolean {
+  const e = error as { name?: string; code?: string; cause?: { code?: string } };
+  const code = e?.cause?.code ?? e?.code;
+  return (
+    e?.name === "TimeoutError" ||
+    e?.name === "AbortError" ||
+    error instanceof TypeError ||
+    (typeof code === "string" &&
+      /^(UND_ERR|ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE)/.test(code))
+  );
+}
 
 type File = {
   stream: Readable;
@@ -21,7 +44,22 @@ export default class FileManager {
 
   /** Hard cap for files downloaded from a remote URL (e.g. AI result images). */
   private readonly maxRemoteFileBytes = 20 * 1024 * 1024;
-  private readonly remoteFetchTimeoutMs = 30_000;
+
+  /* Remote download timing. Raise these on a slow network. */
+  /** Max time for ONE whole download attempt (connect + headers + body). */
+  private readonly remoteFetchTimeoutMs = 120_000;
+  /** Max time to open the connection (Node's built-in default is only 10 s). */
+  private readonly remoteConnectTimeoutMs = 30_000;
+  /** Max silence between headers / body chunks before giving up. */
+  private readonly remoteIdleTimeoutMs = 60_000;
+  /** Attempts per file (timeouts, network errors, 5xx and 429 are retried). */
+  private readonly remoteMaxAttempts = 3;
+
+  private readonly remoteAgent = new Agent({
+    connect: { timeout: this.remoteConnectTimeoutMs },
+    headersTimeout: this.remoteIdleTimeoutMs,
+    bodyTimeout: this.remoteIdleTimeoutMs,
+  });
 
   constructor(private filePath: string) {
     this.filePath = filePath;
@@ -110,6 +148,7 @@ export default class FileManager {
    * Downloads a remote file (e.g. a YouCam result URL, which expires after
    * 2 hours) and stores it. Only http(s) URLs are accepted, the content type is
    * verified from the bytes, and the download is capped at 20 MB.
+   * Timeouts and transient errors are retried with backoff.
    */
   async saveRemoteFile(
     url: string,
@@ -121,16 +160,54 @@ export default class FileManager {
       throw new Error("Only http(s) URLs can be downloaded");
     }
 
-    const res = await fetch(parsed, {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= this.remoteMaxAttempts; attempt++) {
+      try {
+        return await this.downloadOnce(parsed, type, directory);
+      } catch (error) {
+        lastError = error;
+        const retryable =
+          error instanceof DownloadError
+            ? error.retryable
+            : isNetworkError(error);
+        if (!retryable || attempt === this.remoteMaxAttempts) break;
+        await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
+      }
+    }
+
+    if (lastError instanceof DownloadError || !isNetworkError(lastError)) {
+      throw lastError;
+    }
+    const code =
+      (lastError as { cause?: { code?: string } })?.cause?.code ??
+      (lastError as { code?: string })?.code ??
+      (lastError as Error)?.name;
+    throw new Error(`Download failed after ${this.remoteMaxAttempts} attempts (${code})`);
+  }
+
+  private async downloadOnce(
+    url: URL,
+    type: string,
+    directory: string,
+  ): Promise<string> {
+    const res = await undiciFetch(url, {
+      dispatcher: this.remoteAgent,
       signal: AbortSignal.timeout(this.remoteFetchTimeoutMs),
     });
+
     if (!res.ok || !res.body) {
-      throw new Error(`Failed to download file (${res.status})`);
+      await res.body?.cancel().catch(() => undefined);
+      // 4xx (e.g. an expired link) will not get better by retrying.
+      throw new DownloadError(
+        `Failed to download file (${res.status})`,
+        res.status >= 500 || res.status === 429,
+      );
     }
 
     const declared = Number(res.headers.get("content-length"));
     if (Number.isFinite(declared) && declared > this.maxRemoteFileBytes) {
-      throw new Error("Remote file is too large");
+      await res.body.cancel().catch(() => undefined);
+      throw new DownloadError("Remote file is too large", false);
     }
 
     const max = this.maxRemoteFileBytes;
@@ -141,7 +218,7 @@ export default class FileManager {
       let received = 0;
       for await (const chunk of body) {
         received += (chunk as Uint8Array).length;
-        if (received > max) throw new Error("Remote file is too large");
+        if (received > max) throw new DownloadError("Remote file is too large", false);
         yield chunk;
       }
     }

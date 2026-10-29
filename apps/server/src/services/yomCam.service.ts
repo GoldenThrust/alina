@@ -749,8 +749,25 @@ export class YouCamService {
     urls: string[],
     directory: string,
   ): Promise<string[]> {
-    const settled = await Promise.allSettled(
-      urls.map((url) => this.persistImage(url, directory)),
+    // A few at a time: dozens of parallel downloads starve each other on a
+    // slow connection and cause timeouts.
+    const settled: PromiseSettledResult<string>[] = new Array(urls.length);
+    let next = 0;
+    const worker = async () => {
+      while (next < urls.length) {
+        const i = next++;
+        try {
+          settled[i] = {
+            status: "fulfilled",
+            value: await this.persistImage(urls[i], directory),
+          };
+        } catch (reason) {
+          settled[i] = { status: "rejected", reason };
+        }
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(4, urls.length) }, worker),
     );
 
     const failed = settled.find((s) => s.status === "rejected");
