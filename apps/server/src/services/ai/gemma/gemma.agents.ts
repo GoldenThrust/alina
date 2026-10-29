@@ -185,34 +185,34 @@ export class GemmaAgent {
         );
       }
 
-      await this.remember(userId, previousId);
-      Websocket.sendMessage(userId, lastText);
+      if (lastText.trim()) {
+        await db.orm.public.Message.upsert({
+          create: {
+            userId,
+            sessionId,
+            content: lastText,
+            sender: "ALINA",
+          },
+          update: {
+            content: lastText,
+          },
+          where: { userId, sessionId: sessionId, sender: "ALINA" },
+        });
+        
+        await this.remember(userId, previousId);
+        Websocket.sendMessage(userId, lastText);
+      }
+
+      await db.orm.public.SkinScan.where({ id: scanId }).update({
+        status: "COMPLETED",
+      });
+
       Websocket.sendNotification(
         userId,
         "success",
         "Image analysis completed successfully.",
       );
       Websocket.sendNavigationSignal(userId, `/scan-result/${scanId}`);
-
-      if (lastText.trim()) {
-        await db.orm.public.SkinScan.where({ id: scanId }).update({
-          status: "COMPLETED",
-        });
-
-      await db.orm.public.Message.upsert({
-        create: {
-          userId,
-          sessionId,
-          content: lastText,
-          sender: "ALINA",
-        },
-        update: {
-          content: lastText,
-        },
-        conflictOn: { userId, sessionId: sessionId, sender: "ALINA" },
-      });
-      }
-
       logger.info(`Gemma analysis completed successfully for user: ${userId}`);
 
       return { text: lastText, id: previousId };
@@ -306,7 +306,7 @@ export class GemmaAgent {
         update: {
           content: fullText,
         },
-        conflictOn: { userId, sessionId: sessionId, sender: "ALINA" },
+        where: { userId, sessionId: sessionId, sender: "ALINA" },
       });
     }
     return { text: fullText, id: previousId };

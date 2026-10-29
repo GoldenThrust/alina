@@ -139,7 +139,7 @@ export default async function register(payload: {
       fullName: payload.name,
       password: hashPassword,
     },
-    conflictOn: { email: payload.email },
+    where: { email: payload.email },
   });
 
   await db.orm.public.Preference.create({

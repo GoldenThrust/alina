@@ -33,7 +33,7 @@ export async function generateTokens(
   const refreshSecret = crypto.randomUUID();
 
   const session = await db.orm.public.Session.upsert({
-    conflictOn: {
+    where: {
       id: sessionId ?? "",
     },
     update: {
