@@ -7,6 +7,7 @@ import { sleep } from "../common/utils/sleep";
 import { env } from "../config/env";
 import path from "node:path";
 import { fileManager } from "../common/files/file";
+import { fitImage, type ImageLimits } from "../common/utils/image";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
@@ -332,6 +333,26 @@ export type FaceAnalysisResult = {
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // File API limit for images
 const MAX_RATE_LIMIT_RETRIES = 3;
 
+/**
+ * Per-feature image limits (from the YouCam docs). Images are scaled down to
+ * fit before upload, never up. `DEFAULT_IMAGE_LIMITS` applies when a caller
+ * uploads without naming a feature: 2560px is the strictest long-side limit,
+ * so the returned file_id works with every feature.
+ */
+const DEFAULT_IMAGE_LIMITS: ImageLimits = { maxLongSide: 2560 };
+export const YOUCAM_IMAGE_LIMITS = {
+  /** Skin analysis, skin tone and Fitzpatrick: long side <= 2560. */
+  analysis: { maxLongSide: 2560 },
+  /** Aging: JPEG only, long side <= 4096. PNG input is converted. */
+  aging: { maxLongSide: 4096, format: "jpeg" },
+  /** Skin simulation: short side >= 480, long side <= 2560. */
+  skinSimulation: { maxLongSide: 2560, minShortSide: 480 },
+  /** Face reshape: long side <= 4096. */
+  faceReshape: { maxLongSide: 4096 },
+  /** Face attribute & ratio analysis: short side >= 320, long side <= 4096. */
+  faceAnalysis: { maxLongSide: 4096, minShortSide: 320 },
+} as const;
+
 /** Identifies JPEG / PNG from magic bytes (the File API needs an accurate content_type). */
 function detectImageType(buf: Buffer): {
   contentType: "image/jpg" | "image/png";
@@ -623,21 +644,6 @@ export class YouCamService {
       : source;
   }
 
-  /** Reads the image and rejects anything that is not a JPEG (before any upload). */
-  private static async toJpegBuffer(
-    source: string | Buffer,
-    feature: string,
-  ): Promise<Buffer> {
-    const buffer = await this.toBuffer(source);
-    if (detectImageType(buffer).contentType !== "image/jpg") {
-      throw new YouCamError(
-        `${feature} only supports JPEG images.`,
-        "unsupported_image_format",
-      );
-    }
-    return buffer;
-  }
-
   /**
    * File API flow: (1) register metadata, (2) PUT the bytes to the pre-signed
    * URL. Skipping step 2 makes later tasks fail with 404 / unknown_internal_error.
@@ -645,8 +651,10 @@ export class YouCamService {
   static async uploadImageDetailed(
     source: string | Buffer,
     fileName?: string,
+    limits: ImageLimits = DEFAULT_IMAGE_LIMITS,
   ): Promise<UploadedImage> {
-    const buffer = await this.toBuffer(source);
+    // Downscale (never upscale) to the feature's limits before uploading.
+    const buffer = await fitImage(await this.toBuffer(source), limits);
     const { contentType, ext } = detectImageType(buffer);
 
     if (buffer.length >= MAX_IMAGE_BYTES) {
@@ -710,8 +718,9 @@ export class YouCamService {
   static async uploadImage(
     source: string | Buffer,
     fileName?: string,
+    limits?: ImageLimits,
   ): Promise<string> {
-    return (await this.uploadImageDetailed(source, fileName)).fileId;
+    return (await this.uploadImageDetailed(source, fileName, limits)).fileId;
   }
 
   /* ----------------------- saving result images (new) --------------------- */
@@ -995,13 +1004,16 @@ export class YouCamService {
     return this.waitForAging(taskId, options);
   }
 
-  /** Uploads (JPEG only) and runs the aging simulation. */
+  /** Uploads (converted to JPEG, <= 4096px) and runs the aging simulation. */
   static async simulateAgingImage(
     source: string | Buffer,
     options: AgingOptions = {},
   ) {
-    const buffer = await this.toJpegBuffer(source, "Aging simulation");
-    const fileId = await this.uploadImage(buffer);
+    const fileId = await this.uploadImage(
+      source,
+      undefined,
+      YOUCAM_IMAGE_LIMITS.aging,
+    );
     return { fileId, ...(await this.simulateAging(fileId, options)) };
   }
 
@@ -1067,7 +1079,11 @@ export class YouCamService {
   ) {
     // Validate before spending an upload.
     buildSkinSimulationIntensities(options.intensities);
-    const fileId = await this.uploadImage(source);
+    const fileId = await this.uploadImage(
+      source,
+      undefined,
+      YOUCAM_IMAGE_LIMITS.skinSimulation,
+    );
     return { fileId, ...(await this.simulateSkin(fileId, options)) };
   }
 
@@ -1206,7 +1222,11 @@ export class YouCamService {
     options: FaceReshapeOptions,
   ) {
     buildFaceReshapeFeatures(options.features);
-    const fileId = await this.uploadImage(source);
+    const fileId = await this.uploadImage(
+      source,
+      undefined,
+      YOUCAM_IMAGE_LIMITS.faceReshape,
+    );
     return { fileId, ...(await this.reshapeFace(fileId, options)) };
   }
 
@@ -1294,7 +1314,11 @@ export class YouCamService {
     options: FaceAnalysisOptions = {},
   ) {
     buildFaceAttrFeatures(options.features);
-    const fileId = await this.uploadImage(source);
+    const fileId = await this.uploadImage(
+      source,
+      undefined,
+      YOUCAM_IMAGE_LIMITS.faceAnalysis,
+    );
     return { fileId, ...(await this.analyzeFace(fileId, options)) };
   }
 
