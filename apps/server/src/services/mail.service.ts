@@ -157,12 +157,16 @@ class MailService {
           text,
         });
       } else {
+        console.log("Sending email via Resend API...");
+        console.log({ from, to, subject, html });
+      
         const { data, error } = await resend.emails.send({
           from,
           to,
           subject,
           html,
         });
+        console.log({ data, error });
 
         if (error) {
           throw new Error(`Failed to send email: ${error.message}`);
