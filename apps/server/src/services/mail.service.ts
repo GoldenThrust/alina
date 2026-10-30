@@ -43,6 +43,8 @@ class MailService {
     text?: string;
     from?: string;
   }) {
+    const fromF = `Alina <noreply@${from ||config.env.MAIL_FROM}>`;
+
     if (env.NODE_ENV === "development") {
       await this.transporter.sendMail({
         to,
@@ -53,7 +55,7 @@ class MailService {
       });
     } else {
       const { data, error } = await resend.emails.send({
-        from: from || env.MAIL_FROM,
+        from: fromF,
         to: to,
         subject: subject,
         html: message,
@@ -144,7 +146,7 @@ class MailService {
   ) {
     try {
       const html = await this.renderTemplate(template, data);
-      const from = `Alina <${config.env.MAIL_FROM}>`;
+      const from = `Alina <noreply@${config.env.MAIL_FROM}>`;
 
       let response;
       if (env.NODE_ENV === "development") {
