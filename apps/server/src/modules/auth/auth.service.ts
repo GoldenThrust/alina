@@ -142,11 +142,19 @@ export default async function register(payload: {
     where: { email: payload.email },
   });
 
-  await db.orm.public.Preference.create({
-    userId: user.id,
-    avoidedIngredients: [],
-    favoriteBrands: [],
-    favoriteIngredients: [],
+  await db.orm.public.Preference.upsert({
+    create: {
+      userId: user.id,
+      avoidedIngredients: [],
+      favoriteBrands: [],
+      favoriteIngredients: [],
+    },
+    update: {
+      avoidedIngredients: [],
+      favoriteBrands: [],
+      favoriteIngredients: [],
+    },
+    where: { userId: user.id },
   });
 
   await redisService.setAccountVerificationToken(
