@@ -13,11 +13,11 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
-    https: {
-      key: readFileSync("C:\\Users\\adeni\\Documents\\Cert\\key.pem"),
-      cert: readFileSync("C:\\Users\\adeni\\Documents\\Cert\\cert.pem"),
-    },
-    host: "0.0.0.0",
-    port: 5173,
+    // https: {
+    //   key: readFileSync("C:\\Users\\adeni\\Documents\\Cert\\key.pem"),
+    //   cert: readFileSync("C:\\Users\\adeni\\Documents\\Cert\\cert.pem"),
+    // },
+    // host: "0.0.0.0",
+    // port: 5173,
   },
 });
