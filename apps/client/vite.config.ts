@@ -1,6 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { readFileSync } from "fs";
+// import { readFileSync } from "fs";
 import { defineConfig } from "vite";
 
 // https://vite.dev/config/
