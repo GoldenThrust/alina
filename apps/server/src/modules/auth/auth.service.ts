@@ -128,34 +128,41 @@ export default async function register(payload: {
 
   const hashPassword = await hash(payload.password);
 
-  // Creates the user, or overwrites name/password on an unverified signup.
-  const user = await db.orm.public.User.upsert({
-    create: {
-      fullName: payload.name,
-      email: payload.email,
-      password: hashPassword,
-    },
-    update: {
+  let user;
+  if (existingUser && !existingUser.emailVerifiedAt) {
+    user = await db.orm.public.User.where({ id: existingUser.id }).update({
       fullName: payload.name,
       password: hashPassword,
-    },
-    where: { email: payload.email },
-  });
+    });
+  } else {
+    user = await db.orm.public.User.upsert({
+      create: {
+        fullName: payload.name,
+        email: payload.email,
+        password: hashPassword,
+      },
+      update: {
+        fullName: payload.name,
+        password: hashPassword,
+      },
+      where: { email: payload.email },
+    });
 
-  await db.orm.public.Preference.upsert({
-    create: {
-      userId: user.id,
-      avoidedIngredients: [],
-      favoriteBrands: [],
-      favoriteIngredients: [],
-    },
-    update: {
-      avoidedIngredients: [],
-      favoriteBrands: [],
-      favoriteIngredients: [],
-    },
-    where: { userId: user.id },
-  });
+    await db.orm.public.Preference.upsert({
+      create: {
+        userId: user.id,
+        avoidedIngredients: [],
+        favoriteBrands: [],
+        favoriteIngredients: [],
+      },
+      update: {
+        avoidedIngredients: [],
+        favoriteBrands: [],
+        favoriteIngredients: [],
+      },
+      where: { userId: user.id },
+    });
+  }
 
   await redisService.setAccountVerificationToken(
     tokenHash,
