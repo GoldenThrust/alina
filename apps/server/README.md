@@ -17,7 +17,7 @@ Node.js + TypeScript backend for Alina AI. Built with Fastify, Prisma Composer, 
 | Socket.IO | Real-time WebSocket updates |
 | Google Gemma 4 | AI agent with function calling |
 | YouCam AI | Facial skin analysis and simulations |
-| Qloo | Taste intelligence for recommendations |
+| Qloo | Taste intelligence for recommendations (Optional) |
 | Argon2 | Password hashing |
 | Resend | Transactional email |
 
@@ -78,7 +78,7 @@ YOUCAM_BASE_URL=https://yce-api-01.makeupar.com
 YOUCAM_API_KEY=your_youcam_api_key
 
 # Qloo
-QLOO_API_URL=https://hackathon.api.qloo.com
+QLOO_API_URL=https://api.qloo.com # Leave blank if you don't want to use the Qloo tools.
 QLOO_API_KEY=your_qloo_api_key
 
 # Google AI (Gemma 4)

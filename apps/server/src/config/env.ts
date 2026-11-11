@@ -59,6 +59,6 @@ export const env = {
   GOOGLE_API_KEY: getEnv("GOOGLE_API_KEY"),
   IPINFO_API_KEY: getEnv("IPINFO_API_KEY"),
   YOUCAM_BASE_URL: getEnv("YOUCAM_BASE_URL", "https://yce-api-01.makeupar.com"),
-  QLOO_API_URL: getEnv("QLOO_API_URL", "https://hackathon.api.qloo.com"),
+  QLOO_API_URL: getEnv("QLOO_API_URL", "https://api.qloo.com"),
   QLOO_API_KEY: getEnv("QLOO_API_KEY", ""),
 };

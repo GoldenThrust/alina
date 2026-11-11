@@ -214,7 +214,7 @@ After collecting enough information, it:
 
 ---
 
-# 🎨 Qloo Taste Intelligence
+# 🎨 Qloo Taste Intelligence (optional)
 
 Skin analysis tells Alina **what the skin needs**. [Qloo](https://qloo.com) tells Alina **what this person will actually love**. Together they produce recommendations that are both correct for the skin and appealing to the user.
 
@@ -303,11 +303,9 @@ Qloo responses are cached server-side in Redis with short, purpose-specific life
 ## Configuration
 
 ```bash
-QLOO_API_KEY=your_key
-QLOO_API_URL=https://hackathon.api.qloo.com
+QLOO_API_KEY=your_key # Leave blank if you don't want to use the Qloo tools.
+QLOO_API_URL=https://api.qloo.com 
 ```
-
-Hackathon keys only work against the hackathon host above. Production requires a production key and `QLOO_API_URL` pointed at the production host.
 
 ---
 
@@ -545,8 +543,8 @@ YOUCAM_BASE_URL=https://yce-api-01.makeupar.com
 YOUCAM_API_KEY=your_youcam_api_key
 
 # Qloo Taste Intelligence
-QLOO_API_URL=https://hackathon.api.qloo.com
-QLOO_API_KEY=your_qloo_api_key
+QLOO_API_URL=https://api.qloo.com
+QLOO_API_KEY=your_qloo_api_key (optional)
 
 # Google AI (Gemma)
 GOOGLE_API_KEY=your_google_api_key
@@ -633,7 +631,7 @@ Then open the Vite URL shown in the client terminal (default: `http://localhost:
 | Redis | `localhost:6379` | ✅ |
 | YouCam API | external | ✅ for scanning |
 | Google AI (Gemma 4) | external | ✅ for AI chat |
-| Qloo API | external | ✅ for recommendations |
+| Qloo API | external | for recommendations (optional) |
 | Resend (email) | external | For registration emails |
 
 ---
