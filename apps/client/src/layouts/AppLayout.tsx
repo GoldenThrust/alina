@@ -2,7 +2,7 @@ import {
   Activity,
   Bot,
   ChartNoAxesCombined,
-  CreditCard,
+  // CreditCard,
   House,
   LogOut,
   ScanFace,
@@ -26,7 +26,7 @@ const navigation = [
   { to: "/chat", label: "Chat", icon: Bot },
   { to: "/routine", label: "Routine", icon: Activity },
   { to: "/profile", label: "Profile", icon: Settings2 },
-  { to: "/subscription", label: "Plans", icon: CreditCard },
+  // { to: "/subscription", label: "Plans", icon: CreditCard },
 ];
 
 export default function AppLayout() {
